@@ -1,0 +1,457 @@
+export const categories = [
+  { id: 'all', name: 'Tất Cả Vòng Tay Dây', icon: 'Sparkles', count: 9 },
+  { id: 'best-seller', name: '🔥 Bán Chạy Nhất', icon: 'Flame', count: 5 },
+  { id: 'macrame-pastel', name: 'Vòng Dây Macrame Pastel', icon: 'Palette', count: 4 },
+  { id: 'vong-doi', name: 'Vòng Đôi Dây Sáp Nam Châm', icon: 'Heart', count: 1 },
+  { id: 'day-do-may-man', name: 'Vòng Dây Chỉ Đỏ Hộ Thân', icon: 'Flame', count: 1 },
+  { id: 'day-lua-co-phong', name: 'Vòng Dây Lụa & Dây Da Vintage', icon: 'Compass', count: 3 }
+];
+
+export const products = [
+  {
+    id: 'vt-pastel-whale',
+    name: 'Vòng Tay Dây Macrame Cá Voi Xanh Men Gốm & Ngôi Sao Pha Lê (Khóa Rút)',
+    category: 'macrame-pastel',
+    menh: ['Thủy', 'Kim'],
+    price: 185000,
+    originalPrice: 220000,
+    wholesalePrice: 125000,
+    wholesaleMinQty: 5,
+    isBestSeller: true,
+    salesCount: 1480,
+    rating: 5.0,
+    reviewsCount: 64,
+    tag: 'Top 1 Best Seller',
+    stoneType: 'Gốm Men Xanh Pastel & Ngôi Sao Pha Lê & Hạt Thạch Anh Tím Lavender',
+    cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút vintage',
+    beadSize: 'Hạt charm cá voi 18mm & hạt ngọc 8mm',
+    artisanName: 'Nghệ nhân KhánhVyMade',
+    leadTime: 'Làm thủ công 2h',
+    description: 'Mẫu vòng tay thắt dây chỉ kem macrame cổ điển với điểm nhấn là chú cá voi xanh men gốm phủ bóng đáng yêu bơi giữa những vì sao pha lê lấp lánh và đá thạch anh tím lavender pastel. Kiểu thắt nút rút linh hoạt dễ dàng điều chỉnh vừa khít mọi cổ tay.',
+    meaning: 'Biểu tượng của sự tự do, khát vọng vươn mình ra biển lớn và những ước mơ ngọt ngào.',
+    stock: 30,
+    cordComposition: {
+      coreMaterial: 'Sợi chỉ sáp dệt Macrame dẻo dai 1.0mm chống thấm',
+      braidingTechnique: 'Đan thoi Square Knot thủ công kết hợp nút thắt rút trượt đôi (Double Sliding Knot)',
+      mainCharm: 'Gốm men xanh pastel phủ bóng nung 1200°C & Pha lê Ánh Cực Quang Aurora',
+      cordColor: 'Kem Be Vintage (Ivory Beige)',
+      wristSizeRange: '13cm - 19cm (Freesize tự co rút)',
+      durability: 'Chống nước khi tắm gội, không xơ xù, bảo hành dây đan trọn đời'
+    },
+    images: [
+      '/images/products/bracelet-whale-ceramic.jpg',
+      '/images/products/bracelet-pastel-macrame-trio.jpg'
+    ]
+  },
+  {
+    id: 'vt-mint-flower',
+    name: 'Vòng Tay Dây Sáp Hoa Cúc Mint & Cặp Lá Non & Hoa Anh Đào Pastel (Thắt Rút)',
+    category: 'macrame-pastel',
+    menh: ['Mộc', 'Hỏa'],
+    price: 195000,
+    originalPrice: 240000,
+    wholesalePrice: 130000,
+    wholesaleMinQty: 5,
+    isBestSeller: true,
+    salesCount: 1240,
+    rating: 5.0,
+    reviewsCount: 82,
+    tag: 'Top 2 Best Seller',
+    stoneType: 'Mặt Hoa Cúc Xanh Mint Trong Suốt & Hạt Lá Non Acrylic & Hoa Anh Đào Hồng',
+    cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút vintage',
+    beadSize: 'Hoa cúc 16mm & hạt ngọc 8mm',
+    artisanName: 'Nghệ nhân KhánhVyMade',
+    leadTime: 'Làm thủ công 2h',
+    description: 'Một khu vườn mùa xuân thu nhỏ trên cổ tay với đóa hoa cúc màu xanh mint ngọc ngà điểm nhụy vàng, bao quanh bởi cặp lá non xanh mướt và những bông hoa anh đào hồng phấn mong manh. Phối trên nền dây kem thắt nút macrame tinh tế.',
+    meaning: 'Tượng trưng cho sự sinh sôi, tươi mới, thanh lọc tâm hồn và nụ cười rạng rỡ.',
+    stock: 25,
+    cordComposition: {
+      coreMaterial: 'Sợi chỉ sáp dệt Macrame dẻo dai 1.0mm chống thấm nước',
+      braidingTechnique: 'Đan thoi Square Knot thủ công kết hợp nút thắt rút trượt đôi (Double Sliding Knot)',
+      mainCharm: 'Mặt hoa cúc trong suốt pastel nung bóng và charm lá non',
+      cordColor: 'Kem Be Vintage (Ivory Beige)',
+      wristSizeRange: '13cm - 19cm (Freesize tự co rút)',
+      durability: 'Chống nước khi tắm gội, không xơ xù, bảo hành dây đan trọn đời'
+    },
+    images: [
+      '/images/products/bracelet-mint-flower.jpg',
+      '/images/products/bracelet-pastel-macrame-trio.jpg'
+    ]
+  },
+  {
+    id: 'vt-butterfly-fairy',
+    name: 'Vòng Tay Dây Macrame Bướm Pha Lê Hologram Cánh Tiên & Hạt Óng Ánh',
+    category: 'macrame-pastel',
+    menh: ['Kim', 'Thủy', 'Thổ'],
+    price: 210000,
+    originalPrice: 260000,
+    wholesalePrice: 145000,
+    wholesaleMinQty: 5,
+    isBestSeller: true,
+    salesCount: 980,
+    rating: 5.0,
+    reviewsCount: 95,
+    tag: 'Fairycore Best Seller',
+    stoneType: 'Charm Bướm Pha Lê Hologram Tỏa Sắc & Hạt Pha Lê Cắt Giác Aurora Borealis',
+    cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút vintage',
+    beadSize: 'Bướm cánh tiên 20mm & hạt 8mm',
+    artisanName: 'Nghệ nhân KhánhVyMade',
+    leadTime: 'Làm thủ công 2h',
+    description: 'Vẻ đẹp thần tiên fairycore huyền ảo với chú bướm pha lê hologram tán sắc bảy màu theo góc ánh sáng ban ngày. Kết hợp hạt đá thạch anh vàng chanh dịu mắt và hạt pha lê óng ánh trên sợi dây thắt thủ công tỉ mỉ.',
+    meaning: 'Hóa thân rực rỡ, may mắn trong tình yêu và mang lại nguồn năng lượng thu hút tích cực.',
+    stock: 20,
+    cordComposition: {
+      coreMaterial: 'Sợi chỉ sáp dệt Macrame dẻo dai 1.0mm chống nước',
+      braidingTechnique: 'Đan nút thoi thủ công và khóa rút trượt đôi tiện lợi',
+      mainCharm: 'Charm bướm dạ quang tán sắc 7 màu & Hạt pha lê cắt giác',
+      cordColor: 'Kem Be Vintage (Ivory Beige)',
+      wristSizeRange: '13cm - 19cm (Freesize tự co rút)',
+      durability: 'Chống nước khi tắm gội, không xơ xù, bảo hành đan lại trọn đời'
+    },
+    images: [
+      '/images/products/bracelet-hologram-butterfly.jpg',
+      '/images/products/bracelet-pastel-macrame-trio.jpg'
+    ]
+  },
+  {
+    id: 'vt-combo-macrame-trio',
+    name: 'Combo Bộ 3 Vòng Tay Dây Macrame Pastel Cổ Điển - Cá Voi, Bướm Tiên & Hoa Cúc Mint',
+    category: 'macrame-pastel',
+    menh: ['Tất cả'],
+    price: 499000,
+    originalPrice: 590000,
+    wholesalePrice: 360000,
+    wholesaleMinQty: 3,
+    isBestSeller: true,
+    salesCount: 1650,
+    rating: 5.0,
+    reviewsCount: 154,
+    tag: 'Combo Hot Best Seller',
+    stoneType: 'Set 3 Vòng Phối Gốm Sứ, Pha Lê Hologram, Hoa Cúc & Ngọc Pastel',
+    cordType: 'Trọn bộ 3 sợi dây kem dệt Macrame nút rút tùy chỉnh',
+    beadSize: 'Bộ 3 vòng tay kích thước chuẩn',
+    artisanName: 'Xưởng Thủ Công KhánhVyMade',
+    leadTime: 'Đóng hộp quà tặng cao cấp',
+    description: 'Trọn bộ 3 mẫu vòng tay pastel dây kem thắt nút thủ công được yêu thích nhất: Vòng Cá Voi Xanh biển cả + Vòng Hoa Cúc Mint lá non + Vòng Bướm Pha Lê Hologram cánh tiên. Có thể đeo riêng lẻ từng sợi hoặc mix layer cả 3 sợi cực kỳ phong cách và nổi bật!',
+    meaning: 'Món quà kỷ niệm trọn vẹn dành tặng bản thân hoặc bạn thân, người thương với lời chúc bình an và niềm vui ngập tràn.',
+    stock: 15,
+    cordComposition: {
+      coreMaterial: 'Bộ 3 sợi chỉ sáp dệt Macrame chuyên dụng 1.0mm',
+      braidingTechnique: 'Dệt đan tay nút rút trượt đôi đa tầng layering',
+      mainCharm: 'Bộ 3 charm: Cá voi gốm nung + Bướm hologram + Hoa cúc mint',
+      cordColor: 'Kem Be Macrame Pastel',
+      wristSizeRange: '13cm - 19cm',
+      durability: 'Bền bỉ trên 3 năm, chống nước tắm gội'
+    },
+    images: [
+      '/images/products/bracelet-pastel-macrame-trio.jpg',
+      '/images/products/bracelet-whale-ceramic.jpg',
+      '/images/products/bracelet-mint-flower.jpg',
+      '/images/products/bracelet-hologram-butterfly.jpg'
+    ]
+  },
+  {
+    id: 'vt-04',
+    name: 'Vòng Đôi Dây Sáp Macrame Tình Yêu Nam Châm Hút Trái Tim (Khắc Tên Riêng)',
+    category: 'vong-doi',
+    menh: ['Tất cả'],
+    price: 240000,
+    originalPrice: 290000,
+    wholesalePrice: 160000,
+    wholesaleMinQty: 5,
+    isBestSeller: true,
+    salesCount: 2350,
+    rating: 4.9,
+    reviewsCount: 310,
+    tag: 'Top 1 Vòng Đôi Bán Chạy',
+    stoneType: 'Đá Núi Lửa Lava & Đá Howlite Trắng',
+    cordType: 'Dây sáp Hàn Quốc đan xoắn kép chống nước',
+    beadSize: '8mm',
+    artisanName: 'Xưởng KhánhVyMade',
+    leadTime: 'Khắc tên & hoàn thiện 3h',
+    description: 'Set gồm 2 chiếc vòng dây sáp đan tay phối màu tương phản Âm - Dương. Khi hai bàn tay nắm lại gần nhau, mặt charm bán nguyệt nam châm sẽ tự động hút chặt lấy nhau tạo thành một trái tim hoàn chỉnh.',
+    meaning: 'Minh chứng cho tình yêu bền chặt, khoảng cách bao xa cũng sẽ hút về bên nhau.',
+    stock: 50,
+    cordComposition: {
+      coreMaterial: 'Sợi dây sáp bóng Hàn Quốc 1.2mm chống thấm nước 100%',
+      braidingTechnique: 'Đan xoắn kép chịu lực kéo cao kết hợp nút rút trượt',
+      mainCharm: 'Khóa nam châm vĩnh cửu hợp kim cao cấp chống rỉ sét',
+      cordColor: 'Đen Mờ (Nam) & Trắng Ngà (Nữ)',
+      wristSizeRange: 'Nam 16-20cm, Nữ 14-18cm (Tự điều chỉnh)',
+      durability: 'Không bao giờ mất từ tính, không bai dão'
+    },
+    images: [
+      '/images/products/bracelet-couple-magnetic.webp'
+    ]
+  },
+  {
+    id: 'vt-06',
+    name: 'Vòng Dây Chỉ Đỏ Ngũ Phúc Tây Tạng May Mắn (Nút Thắt Vô Tận Cát Tường)',
+    category: 'day-do-may-man',
+    menh: ['Tất cả'],
+    price: 165000,
+    originalPrice: 200000,
+    wholesalePrice: 95000,
+    wholesaleMinQty: 5,
+    isBestSeller: true,
+    salesCount: 3120,
+    rating: 4.9,
+    reviewsCount: 420,
+    tag: 'Hộ thân Best Seller',
+    stoneType: 'Hạt Gỗ Mun & Gốm Đỏ Ngũ Phúc',
+    cordType: 'Chỉ đỏ Tây Tạng đan nút thắt vô tận (Endless Knot)',
+    beadSize: '5mm',
+    artisanName: 'Nghệ nhân KhánhVyMade',
+    leadTime: 'Đan tay tỉ mỉ',
+    description: 'Sợi chỉ đỏ se tay kiên cố không xù lông theo thời gian, chống nước tắm giặt thoải mái. Kết hợp nút thắt Cát Tường truyền thống tượng trưng cho Ngũ Phúc Lâm Môn (Phú, Quý, Thọ, Khang, Ninh).',
+    meaning: 'Xua đuổi vận xui, trừ tà khí, mang bình an sức khỏe cho người đeo.',
+    stock: 80,
+    cordComposition: {
+      coreMaterial: 'Sợi chỉ dù đỏ Tây Tạng se tay kiên cố 0.8mm',
+      braidingTechnique: 'Nút thắt vô tận Cát Tường (Endless Knot) truyền thống',
+      mainCharm: 'Nút thắt vô tận Ngũ Phúc & Hạt Gốm Đỏ',
+      cordColor: 'Đỏ Chu Sa Tây Tạng',
+      wristSizeRange: '13cm - 19cm (Khóa trượt tự do)',
+      durability: 'Chống nước tắm gội, không bay màu, bền bỉ trên 5 năm'
+    },
+    images: [
+      '/images/products/bracelet-red-luck.webp'
+    ]
+  },
+  {
+    id: 'vt-03',
+    name: 'Vòng Dây Rút Macrame Cát Sa Mạc & Đá Mặt Trăng (Moonstone) Xanh Khói',
+    category: 'day-lua-co-phong',
+    menh: ['Kim', 'Thủy'],
+    price: 380000,
+    originalPrice: 420000,
+    wholesalePrice: 260000,
+    wholesaleMinQty: 5,
+    isBestSeller: false,
+    salesCount: 420,
+    rating: 4.8,
+    reviewsCount: 76,
+    tag: 'Ánh xà cừ cao cấp',
+    stoneType: 'Đá Mặt Trăng Tự Nhiên Sri Lanka',
+    cordType: 'Dây rút Macrame tông cát sa mạc',
+    beadSize: '8mm',
+    artisanName: 'Nghệ nhân KhánhVyMade',
+    leadTime: 'Làm thủ công trong 3h',
+    description: 'Hạt đá Moonstone có hiệu ứng quang học Adularescence tỏa ánh sáng xanh mờ ảo như vầng trăng đêm rằm. Phối cùng sợi dây rút Macrame màu be cát sa mạc đan tay tỉ mỉ.',
+    meaning: 'Khai mở trực giác, nuôi dưỡng vẻ đẹp dịu dàng của phái nữ, cân bằng nhịp sinh học.',
+    stock: 18,
+    cordComposition: {
+      coreMaterial: 'Sợi chỉ sáp cao cấp màu cát sa mạc',
+      braidingTechnique: 'Đan đan chéo tỉ mỉ khóa rút giọt nước',
+      mainCharm: 'Đá Mặt Trăng tự nhiên chuẩn AA',
+      cordColor: 'Be Cát Sa Mạc (Desert Sand)',
+      wristSizeRange: '14cm - 18cm',
+      durability: 'Bảo hành dây đan 12 tháng'
+    },
+    images: [
+      '/images/products/bracelet-moonstone-chic.webp'
+    ]
+  },
+  {
+    id: 'vt-07',
+    name: 'Vòng Dây Lụa Tơ Tằm Cổ Phong Thắt Nút Hoa Sen & Ngọc Bích Tự Nhiên',
+    category: 'day-lua-co-phong',
+    menh: ['Mộc', 'Hỏa'],
+    price: 580000,
+    originalPrice: 650000,
+    wholesalePrice: 420000,
+    wholesaleMinQty: 3,
+    isBestSeller: false,
+    salesCount: 310,
+    rating: 5.0,
+    reviewsCount: 52,
+    tag: 'Tuyệt tác ngọc quý',
+    stoneType: 'Ngọc Bích Hòa Điền Nephrite Tự Nhiên',
+    cordType: 'Dây lụa tơ tằm nhuộm thủ công thực vật',
+    beadSize: '8mm',
+    artisanName: 'Nghệ nhân KhánhVyMade',
+    leadTime: 'Chế tác 1 ngày',
+    description: 'Chất ngọc mịn màng, sắc xanh lục ấm áp thấu quang nhẹ nhàng. Thắt trên nền dây lụa tơ tằm cổ phong kết thúc bằng nút thắt hoa sen đan tay hoàng gia Á Đông quý phái.',
+    meaning: 'Nuôi dưỡng sinh khí, tượng trưng cho đức hạnh nhân từ, đem lại phú quý trường cửu.',
+    stock: 8,
+    cordComposition: {
+      coreMaterial: 'Sợi lụa tơ tằm nguyên chất se sợi thủ công',
+      braidingTechnique: 'Nút thắt hoa sen hoàng gia cung đình Á Đông',
+      mainCharm: 'Ngọc bích Hòa Điền Nephrite thiên nhiên thấu quang',
+      cordColor: 'Xanh Rêu Cổ Phong & Lục Bảo',
+      wristSizeRange: '14cm - 18cm',
+      durability: 'Mềm mại như nhung, không cọ xát da tay'
+    },
+    images: [
+      '/images/products/bracelet-jade-antique.webp'
+    ]
+  },
+  {
+    id: 'vt-09',
+    name: 'Vòng Dây Da Bò Sáp Mộc Bện Tay & Hạt Gốm Thổ Cẩm Sapa',
+    category: 'day-lua-co-phong',
+    menh: ['Tất cả'],
+    price: 195000,
+    originalPrice: 230000,
+    wholesalePrice: 135000,
+    wholesaleMinQty: 5,
+    isBestSeller: false,
+    salesCount: 390,
+    rating: 4.7,
+    reviewsCount: 45,
+    tag: 'Độc bản mộc mạc',
+    stoneType: 'Hạt Gốm Nung Men Rạn Vẽ Tay Thổ Cẩm',
+    cordType: 'Dây da bò mộc sáp dầu 100% tự nhiên',
+    beadSize: '9mm',
+    artisanName: 'Xưởng KhánhVyMade',
+    leadTime: 'Làm thủ công trong 2h',
+    description: 'Chiếc vòng mang đậm phong vị núi rừng Tây Bắc. Hạt gốm nung củi men rạn với hoa văn kỷ hà độc bản, phối cùng dây da bò sáp bện tay càng đeo càng bóng mềm.',
+    meaning: 'Tự do, phóng khoáng, khơi dậy tinh thần phiêu lưu và kết nối cùng thiên nhiên.',
+    stock: 30,
+    cordComposition: {
+      coreMaterial: 'Dây da bò sáp Crazy Horse 100% tự nhiên',
+      braidingTechnique: 'Bện tay 4 sợi truyền thống của người H’Mông',
+      mainCharm: 'Hạt gốm nung củi men rạn khắc hoa văn thổ cẩm',
+      cordColor: 'Nâu Cà Phê Sáp Mộc',
+      wristSizeRange: '15cm - 19cm',
+      durability: 'Càng đeo da càng bóng sậm màu theo thời gian'
+    },
+    images: [
+      '/images/products/bracelet-boho-ceramic.webp'
+    ]
+  }
+];
+
+export const customizerOptions = {
+  cords: [
+    { id: 'cord-cream-macrame', name: 'Dây chỉ sáp Màu Kem Be Macrame (Vintage Nút Rút)', price: 30000, color: '#F7F3EB', description: 'Đan thủ công Macrame dây kem be vintage, thắt nút rút điều chỉnh tiện lợi' },
+    { id: 'cord-waxed-brown', name: 'Dây sáp Hàn Quốc Nâu Vintage', price: 25000, color: '#6A4E36', description: 'Đan thắt nút rút, chống nước, phong trần mộc mạc' },
+    { id: 'cord-waxed-black', name: 'Dây sáp Hàn Quốc Đen Huyền Bí', price: 25000, color: '#2B2B2B', description: 'Đan thắt nút rút, mạnh mẽ, bền màu vĩnh cửu' },
+    { id: 'cord-red-luck', name: 'Dây chỉ may mắn Đỏ Tây Tạng', price: 20000, color: '#B92B27', description: 'Đan tay nút thắt may mắn, hộ thân trừ tà' },
+    { id: 'cord-silk', name: 'Dây lụa tơ tằm cổ phong Á Đông', price: 35000, color: '#2E5A44', description: 'Lụa tơ tằm mềm mại thắt nút hoa sen thanh nhã' },
+    { id: 'cord-leather', name: 'Dây da bò sáp dầu bện tay', price: 35000, color: '#8B5A2B', description: 'Phong cách Boho vintage cao cấp cá tính' }
+  ],
+  beads: [
+    { id: 'bead-strawberry', name: 'Thạch Anh Dâu Hồng', pricePerBead: 8000, color: '#EAA9A9', previewClass: 'bg-rose-300', menh: 'Hỏa, Thổ', desc: 'Tình duyên ngọt ngào' },
+    { id: 'bead-glass-star', name: 'Hạt Ngôi Sao Thủy Tinh Lấp Lánh', pricePerBead: 10000, color: '#E8F1F5', previewClass: 'bg-sky-100', menh: 'Kim, Thủy', desc: 'Ngôi sao dẫn lối may mắn' },
+    { id: 'bead-lavender-pastel', name: 'Hạt Ngọc Tím Lam Lavender Pastel', pricePerBead: 12000, color: '#D4CEEB', previewClass: 'bg-indigo-200', menh: 'Thủy, Thổ', desc: 'Mộng mơ và dịu êm' },
+    { id: 'bead-mint-leaf', name: 'Hạt Cặp Lá Non Acrylic Xanh Mint', pricePerBead: 10000, color: '#BDE6C8', previewClass: 'bg-emerald-200', menh: 'Mộc, Hỏa', desc: 'Tươi mới sinh sôi' },
+    { id: 'bead-peach-sakura', name: 'Hạt Hoa Anh Đào Hồng Pastel', pricePerBead: 14000, color: '#FBCFD0', previewClass: 'bg-pink-200', menh: 'Hỏa, Thổ', desc: 'Ngọt ngào tình duyên' },
+    { id: 'bead-moonstone', name: 'Đá Mặt Trăng Moonstone', pricePerBead: 12000, color: '#DCE6ED', previewClass: 'bg-slate-200', menh: 'Kim, Thủy', desc: 'Trực giác thanh khiết' },
+    { id: 'bead-amethyst', name: 'Thạch Anh Tím Sâu', pricePerBead: 10000, color: '#9973B8', previewClass: 'bg-purple-400', menh: 'Hỏa, Thổ', desc: 'Tâm an định tĩnh' },
+    { id: 'bead-tigereye', name: 'Đá Mắt Hổ Vàng Nâu', pricePerBead: 9000, color: '#A06E28', previewClass: 'bg-amber-600', menh: 'Kim, Thổ', desc: 'Quyết đoán tài lộc' },
+    { id: 'bead-jade', name: 'Ngọc Bích Hòa Điền', pricePerBead: 15000, color: '#668F6C', previewClass: 'bg-emerald-600', menh: 'Mộc, Hỏa', desc: 'Phú quý bình an' },
+    { id: 'bead-aquamarine', name: 'Đá Lam Ngọc Aquamarine', pricePerBead: 14000, color: '#73B4C8', previewClass: 'bg-sky-300', menh: 'Thủy, Mộc', desc: 'Chữa lành dịu mát' },
+    { id: 'bead-lava', name: 'Đá Núi Lửa Đen Nhám', pricePerBead: 7000, color: '#3A3A3A', previewClass: 'bg-neutral-800', menh: 'Thủy, Kim', desc: 'Hấp thu năng lượng xấu' },
+    { id: 'bead-agarwood', name: 'Hạt Gỗ Trầm Tự Nhiên', pricePerBead: 18000, color: '#6E4D34', previewClass: 'bg-yellow-900', menh: 'Mộc, Thủy', desc: 'Thơm dịu phong thủy' }
+  ],
+  charms: [
+    { id: 'charm-whale-blue', name: 'Charm Cá Voi Xanh Men Gốm Pastel', price: 55000, icon: 'Fish', desc: 'Tự do & bình an biển cả (Ảnh Mẫu)' },
+    { id: 'charm-mint-flower', name: 'Charm Hoa Cúc Mint Trong Suốt & Nhụy Vàng', price: 40000, icon: 'Flower2', desc: 'Đóa hoa cúc ngọc ngà thanh khiết (Ảnh Mẫu)' },
+    { id: 'charm-butterfly-hologram', name: 'Charm Bướm Pha Lê Hologram Cánh Tiên', price: 65000, icon: 'Sparkles', desc: 'Tán sắc 7 màu lung linh huyền ảo (Ảnh Mẫu)' },
+    { id: 'charm-lotus', name: 'Hoa Sen Gốm Men Ngọc', price: 55000, icon: 'Flower2', desc: 'Thuần khiết và bình an' },
+    { id: 'charm-flower-nang', name: 'Mặt Hoa Cúc Nhiều Màu (KhánhVyMade)', price: 35000, icon: 'Flower2', desc: 'Hoa acrylic pastel xinh xắn dễ thương' },
+    { id: 'charm-clover', name: 'Cỏ Bốn Lá May Mắn Pastel', price: 45000, icon: 'Clover', desc: 'May mắn trọn vẹn 4 mùa' },
+    { id: 'charm-initial', name: 'Khắc Chữ Cái Theo Tên (A-Z)', price: 45000, icon: 'Type', desc: 'Khắc dấu ấn cá nhân lên thẻ mộc' },
+    { id: 'charm-moon-star', name: 'Vầng Trăng & Ngôi Sao Men Sứ', price: 50000, icon: 'Moon', desc: 'Mơ mộng & dẫn lối' },
+    { id: 'charm-pixiu', name: 'Tỳ Hưu Gốm Hoàng Kim', price: 75000, icon: 'Coins', desc: 'Hút tài lộc buôn bán' },
+    { id: 'charm-magnet-heart', name: 'Trái Tim Nam Châm Đôi', price: 50000, icon: 'HeartHandshake', desc: 'Hút chặt khi gần nhau' },
+    { id: 'charm-bell', name: 'Chuông Gió Gốm Leng Keng', price: 40000, icon: 'BellRing', desc: 'Âm thanh thanh tẩy vui tươi' }
+  ],
+  sizes: [
+    { id: 'size-xs', label: '14 - 15 cm (Cổ tay rất nhỏ / Nữ mảnh mai)', beadCount: 19 },
+    { id: 'size-s', label: '15 - 16 cm (Size Nữ chuẩn phổ biến)', beadCount: 21 },
+    { id: 'size-m', label: '16 - 17 cm (Nữ tay vừa / Nam tay thon)', beadCount: 23 },
+    { id: 'size-l', label: '17 - 18 cm (Size Nam chuẩn)', beadCount: 25 },
+    { id: 'size-xl', label: '18 - 19 cm (Nam tay đậm / Đeo rộng)', beadCount: 27 }
+  ]
+};
+
+export const sampleOrders = [
+  {
+    id: 'DH-8921',
+    customerName: 'Nguyễn Thảo Linh',
+    phone: '0982345678',
+    address: 'Số 24 ngõ 81 Láng Hạ, Đống Đa, Hà Nội',
+    items: [
+      {
+        id: 'vt-pastel-whale',
+        name: 'Vòng Tay Dây Macrame Cá Voi Xanh Men Gốm & Ngôi Sao Pha Lê (Khóa Rút)',
+        price: 185000,
+        quantity: 1,
+        wristSize: '15.5 cm',
+        note: 'Gói hộp quà gấm tặng sinh nhật bạn gái giúp mình nhé'
+      }
+    ],
+    totalAmount: 210000, // 185k + 25k ship
+    shippingFee: 25000,
+    paymentMethod: 'VietQR',
+    paymentStatus: 'Đã thanh toán',
+    orderStatus: 'Đang kết hạt thủ công',
+    timeline: [
+      { time: '14:20 07/09/2026', status: 'Đã nhận đơn hàng và xác thực thanh toán VietQR' },
+      { time: '15:10 07/09/2026', status: 'Nghệ nhân KhánhVyMade đang chọn charm cá voi và đan dây Macrame' }
+    ],
+    createdAt: '2026-09-07T14:20:00.000Z'
+  },
+  {
+    id: 'DH-8922',
+    customerName: 'Trần Hoàng Nam',
+    phone: '0912889977',
+    address: 'Chung cư Masteri Thảo Điền, Quận 2, TP.HCM',
+    items: [
+      {
+        id: 'custom-01',
+        name: 'Vòng Dây Sáp Tự Phối Thủ Công (Custom Studio)',
+        isCustom: true,
+        customDetails: {
+          cord: 'Dây chỉ sáp Màu Kem Be Macrame (Vintage Nút Rút)',
+          mainBead: 'Charm Cá Voi Xanh Men Gốm Pastel',
+          charm: 'Charm Hoa Cúc Mint Trong Suốt & Nhụy Vàng',
+          size: '16.5 cm',
+          engravedLetter: 'N'
+        },
+        price: 295000,
+        quantity: 1,
+        note: 'Đan thắt nút chắc tay giúp mình'
+      }
+    ],
+    totalAmount: 320000,
+    shippingFee: 25000,
+    paymentMethod: 'COD',
+    paymentStatus: 'Chờ thanh toán khi nhận',
+    orderStatus: 'Đã hoàn thiện, chuẩn bị giao',
+    timeline: [
+      { time: '10:00 07/09/2026', status: 'Khách tự phối thiết kế trên Customizer Studio' },
+      { time: '11:30 07/09/2026', status: 'Đan dây hoàn tất, đã xông khói trầm thanh tẩy' }
+    ],
+    createdAt: '2026-09-07T10:00:00.000Z'
+  },
+  {
+    id: 'DH-8920',
+    customerName: 'Lê Minh Hằng',
+    phone: '0977123987',
+    address: '15 Phan Chu Trinh, Hoàn Kiếm, Hà Nội',
+    items: [
+      {
+        id: 'vt-06',
+        name: 'Vòng Dây Chỉ Đỏ Ngũ Phúc Tây Tạng May Mắn (Nút Thắt Vô Tận Cát Tường)',
+        price: 165000,
+        quantity: 2,
+        wristSize: '15 cm',
+        note: 'Chia 2 túi gấm đỏ riêng biệt'
+      }
+    ],
+    totalAmount: 355000,
+    shippingFee: 25000,
+    paymentMethod: 'VietQR',
+    paymentStatus: 'Đã thanh toán',
+    orderStatus: 'Đang giao hàng',
+    trackingCode: 'VNP-88392109',
+    timeline: [
+      { time: '09:00 06/09/2026', status: 'Đơn hàng hoàn tất khâu đan dây thủ công' },
+      { time: '14:00 06/09/2026', status: 'Bàn giao cho bưu tá Viettel Post' }
+    ],
+    createdAt: '2026-09-06T09:00:00.000Z'
+  }
+];

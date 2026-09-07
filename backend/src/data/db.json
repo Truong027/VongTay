@@ -1,0 +1,268 @@
+{
+  "products": [
+    {
+      "id": "vt-pastel-whale",
+      "name": "Vòng Tay Dây Macrame Cá Voi Xanh Men Gốm & Ngôi Sao Pha Lê (Khóa Rút)",
+      "category": "macrame-pastel",
+      "menh": [
+        "Thủy",
+        "Kim"
+      ],
+      "price": 185000,
+      "originalPrice": 220000,
+      "wholesalePrice": 125000,
+      "wholesaleMinQty": 5,
+      "rating": 5,
+      "reviewsCount": 64,
+      "tag": "Mẫu Độc Bản Theo Ảnh Bạn Cung Cấp",
+      "stoneType": "Gốm Men Xanh Pastel & Ngôi Sao Pha Lê & Hạt Thạch Anh Tím Lavender",
+      "cordType": "Dây chỉ sáp dệt Macrame màu kem be nút rút vintage",
+      "beadSize": "Hạt charm cá voi 18mm & hạt ngọc 8mm",
+      "artisanName": "Nghệ nhân KhánhVyMade",
+      "leadTime": "Làm thủ công 2h",
+      "description": "Mẫu vòng tay thắt dây chỉ kem macrame cổ điển với điểm nhấn là chú cá voi xanh men gốm phủ bóng đáng yêu bơi giữa những vì sao pha lê lấp lánh và đá thạch anh tím lavender pastel. Kiểu thắt nút rút linh hoạt dễ dàng điều chỉnh vừa khít mọi cổ tay.",
+      "meaning": "Biểu tượng của sự tự do, khát vọng vươn mình ra biển lớn và những ước mơ ngọt ngào.",
+      "stock": 30,
+      "images": [
+        "/images/products/bracelet-whale-ceramic.jpg",
+        "/images/products/bracelet-pastel-macrame-trio.jpg"
+      ]
+    },
+    {
+      "id": "vt-mint-flower",
+      "name": "Vòng Tay Dây Sáp Hoa Cúc Mint & Cặp Lá Non & Hoa Anh Đào Pastel (Thắt Rút)",
+      "category": "macrame-pastel",
+      "menh": [
+        "Mộc",
+        "Hỏa"
+      ],
+      "price": 195000,
+      "originalPrice": 240000,
+      "wholesalePrice": 130000,
+      "wholesaleMinQty": 5,
+      "rating": 5,
+      "reviewsCount": 82,
+      "tag": "Hot Trend Pastel 2026",
+      "stoneType": "Mặt Hoa Cúc Xanh Mint Trong Suốt & Hạt Lá Non Acrylic & Hoa Anh Đào Hồng",
+      "cordType": "Dây chỉ sáp dệt Macrame màu kem be nút rút vintage",
+      "beadSize": "Hoa cúc 16mm & hạt ngọc 8mm",
+      "artisanName": "Nghệ nhân KhánhVyMade",
+      "leadTime": "Làm thủ công 2h",
+      "description": "Một khu vườn mùa xuân thu nhỏ trên cổ tay với đóa hoa cúc màu xanh mint ngọc ngà điểm nhụy vàng, bao quanh bởi cặp lá non xanh mướt và những bông hoa anh đào hồng phấn mong manh. Phối trên nền dây kem thắt nút macrame tinh tế.",
+      "meaning": "Tượng trưng cho sự sinh sôi, tươi mới, thanh lọc tâm hồn và nụ cười rạng rỡ.",
+      "stock": 25,
+      "images": [
+        "/images/products/bracelet-mint-flower.jpg",
+        "/images/products/bracelet-pastel-macrame-trio.jpg"
+      ]
+    },
+    {
+      "id": "vt-butterfly-fairy",
+      "name": "Vòng Tay Dây Macrame Bướm Pha Lê Hologram Cánh Tiên & Hạt Óng Ánh",
+      "category": "macrame-pastel",
+      "menh": [
+        "Kim",
+        "Thủy",
+        "Thổ"
+      ],
+      "price": 210000,
+      "originalPrice": 260000,
+      "wholesalePrice": 145000,
+      "wholesaleMinQty": 5,
+      "rating": 5,
+      "reviewsCount": 95,
+      "tag": "Fairycore Lung Linh",
+      "stoneType": "Charm Bướm Pha Lê Hologram Tỏa Sắc & Hạt Pha Lê Cắt Giác Aurora Borealis",
+      "cordType": "Dây chỉ sáp dệt Macrame màu kem be nút rút vintage",
+      "beadSize": "Bướm cánh tiên 20mm & hạt 8mm",
+      "artisanName": "Nghệ nhân KhánhVyMade",
+      "leadTime": "Làm thủ công 2h",
+      "description": "Vẻ đẹp thần tiên fairycore huyền ảo với chú bướm pha lê hologram tán sắc bảy màu theo góc ánh sáng ban ngày. Kết hợp hạt đá thạch anh vàng chanh dịu mắt và hạt pha lê óng ánh trên sợi dây thắt thủ công tỉ mỉ.",
+      "meaning": "Hóa thân rực rỡ, may mắn trong tình yêu và mang lại nguồn năng lượng thu hút tích cực.",
+      "stock": 20,
+      "images": [
+        "/images/products/bracelet-hologram-butterfly.jpg",
+        "/images/products/bracelet-pastel-macrame-trio.jpg"
+      ]
+    },
+    {
+      "id": "vt-combo-macrame-trio",
+      "name": "Combo Bộ 3 Vòng Tay Dây Macrame Pastel Cổ Điển - Cá Voi, Bướm Tiên & Hoa Cúc Mint",
+      "category": "macrame-pastel",
+      "menh": [
+        "Tất cả"
+      ],
+      "price": 499000,
+      "originalPrice": 590000,
+      "wholesalePrice": 360000,
+      "wholesaleMinQty": 3,
+      "rating": 5,
+      "reviewsCount": 154,
+      "tag": "Set Yêu Thích Nhất (Theo Ảnh Mẫu)",
+      "stoneType": "Set 3 Vòng Phối Gốm Sứ, Pha Lê Hologram, Hoa Cúc & Ngọc Pastel",
+      "cordType": "Trọn bộ 3 sợi dây kem dệt Macrame nút rút tùy chỉnh",
+      "beadSize": "Bộ 3 vòng tay kích thước chuẩn",
+      "artisanName": "Xưởng Thủ Công KhánhVyMade",
+      "leadTime": "Đóng hộp quà tặng cao cấp",
+      "description": "Trọn bộ 3 mẫu vòng tay pastel dây kem thắt nút thủ công được yêu thích nhất: Vòng Cá Voi Xanh biển cả + Vòng Hoa Cúc Mint lá non + Vòng Bướm Pha Lê Hologram cánh tiên. Có thể đeo riêng lẻ từng sợi hoặc mix layer cả 3 sợi cực kỳ phong cách và nổi bật!",
+      "meaning": "Món quà kỷ niệm trọn vẹn dành tặng bản thân hoặc bạn thân, người thương với lời chúc bình an và niềm vui ngập tràn.",
+      "stock": 15,
+      "images": [
+        "/images/products/bracelet-pastel-macrame-trio.jpg",
+        "/images/products/bracelet-whale-ceramic.jpg",
+        "/images/products/bracelet-mint-flower.jpg",
+        "/images/products/bracelet-hologram-butterfly.jpg"
+      ]
+    }
+  ],
+  "orders": [
+    {
+      "id": "DH-8921",
+      "customerName": "Nguyễn Thảo Linh",
+      "phone": "0982345678",
+      "address": "Số 24 ngõ 81 Láng Hạ, Đống Đa, Hà Nội",
+      "items": [
+        {
+          "id": "vt-pastel-whale",
+          "name": "Vòng Tay Dây Macrame Cá Voi Xanh Men Gốm & Ngôi Sao Pha Lê (Khóa Rút)",
+          "price": 185000,
+          "quantity": 1,
+          "wristSize": "15.5 cm",
+          "note": "Gói hộp quà gấm tặng sinh nhật bạn gái giúp mình nhé"
+        }
+      ],
+      "totalAmount": 210000,
+      "shippingFee": 25000,
+      "paymentMethod": "VietQR",
+      "paymentStatus": "Đã thanh toán",
+      "orderStatus": "Đã giao hàng",
+      "timeline": [
+        {
+          "time": "23:26 07/09/2026",
+          "status": "Trạng thái: Đã giao hàng"
+        },
+        {
+          "time": "14:20 07/09/2026",
+          "status": "Đã nhận đơn hàng và xác thực thanh toán VietQR"
+        },
+        {
+          "time": "15:10 07/09/2026",
+          "status": "Nghệ nhân KhánhVyMade đang chọn charm cá voi và đan dây Macrame"
+        }
+      ],
+      "createdAt": "2026-09-07T14:20:00.000Z"
+    },
+    {
+      "id": "DH-8922",
+      "customerName": "Trần Hoàng Nam",
+      "phone": "0912889977",
+      "address": "Chung cư Masteri Thảo Điền, Quận 2, TP.HCM",
+      "items": [
+        {
+          "id": "custom-01",
+          "name": "Vòng Dây Sáp Tự Phối Thủ Công (Custom Studio)",
+          "isCustom": true,
+          "customDetails": {
+            "cord": "Dây chỉ sáp Màu Kem Be Macrame (Vintage Nút Rút)",
+            "mainBead": "Charm Cá Voi Xanh Men Gốm Pastel",
+            "charm": "Charm Hoa Cúc Mint Trong Suốt & Nhụy Vàng",
+            "size": "16.5 cm",
+            "engravedLetter": "N"
+          },
+          "price": 295000,
+          "quantity": 1,
+          "note": "Đan thắt nút chắc tay giúp mình"
+        }
+      ],
+      "totalAmount": 320000,
+      "shippingFee": 25000,
+      "paymentMethod": "COD",
+      "paymentStatus": "Chờ thanh toán khi nhận",
+      "orderStatus": "Đã giao hàng",
+      "timeline": [
+        {
+          "time": "23:26 07/09/2026",
+          "status": "Trạng thái: Đã giao hàng"
+        },
+        {
+          "time": "10:00 07/09/2026",
+          "status": "Khách tự phối thiết kế trên Customizer Studio"
+        },
+        {
+          "time": "11:30 07/09/2026",
+          "status": "Đan dây hoàn tất, đã xông khói trầm thanh tẩy"
+        }
+      ],
+      "createdAt": "2026-09-07T10:00:00.000Z"
+    },
+    {
+      "id": "DH-8920",
+      "customerName": "Lê Minh Hằng",
+      "phone": "0977123987",
+      "address": "15 Phan Chu Trinh, Hoàn Kiếm, Hà Nội",
+      "items": [
+        {
+          "id": "vt-06",
+          "name": "Vòng Dây Chỉ Đỏ Ngũ Phúc Tây Tạng May Mắn & Hạt Gỗ Mun Gốm Đỏ (Nút Thắt Vô Tận)",
+          "price": 165000,
+          "quantity": 2,
+          "wristSize": "15 cm",
+          "note": "Chia 2 túi gấm đỏ riêng biệt"
+        }
+      ],
+      "totalAmount": 355000,
+      "shippingFee": 25000,
+      "paymentMethod": "VietQR",
+      "paymentStatus": "Đã thanh toán",
+      "orderStatus": "Đã giao hàng",
+      "trackingCode": "VNP-88392109",
+      "timeline": [
+        {
+          "time": "23:26 07/09/2026",
+          "status": "Trạng thái: Đã giao hàng"
+        },
+        {
+          "time": "09:00 06/09/2026",
+          "status": "Đơn hàng hoàn tất khâu đan dây thủ công"
+        },
+        {
+          "time": "14:00 06/09/2026",
+          "status": "Bàn giao cho bưu tá Viettel Post"
+        }
+      ],
+      "createdAt": "2026-09-06T09:00:00.000Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-admin",
+      "email": "admin@khanhvymade.vn",
+      "password": "admin123",
+      "fullName": "Quản Trị Viên KhánhVyMade",
+      "phone": "0988668899",
+      "address": "Xưởng Chế Tác KhánhVyMade, 128 Nguyễn Trãi, Hà Nội",
+      "role": "admin",
+      "createdAt": "2026-09-01T08:00:00.000Z"
+    },
+    {
+      "id": "user-01",
+      "email": "khachhang@gmail.com",
+      "password": "123",
+      "fullName": "Lê Thảo Nhi",
+      "phone": "0912345678",
+      "address": "Số 24 ngõ 81 Láng Hạ, Đống Đa, Hà Nội",
+      "role": "customer",
+      "createdAt": "2026-09-05T10:30:00.000Z"
+    },
+    {
+      "id": "user-02",
+      "email": "artisan@khanhvymade.vn",
+      "password": "123",
+      "fullName": "Nghệ nhân KhánhVyMade",
+      "phone": "0988776655",
+      "address": "Xưởng Đan Vòng KhánhVyMade",
+      "role": "artisan",
+      "createdAt": "2026-09-02T14:15:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,232 @@
+const BASE_URL = '/api';
+
+export const api = {
+  // Products & Categories
+  async getProducts(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${BASE_URL}/products${query ? `?${query}` : ''}`);
+    if (!res.ok) throw new Error('Không thể tải danh sách sản phẩm');
+    return res.json();
+  },
+
+  async getProductById(id) {
+    const res = await fetch(`${BASE_URL}/products/${id}`);
+    if (!res.ok) throw new Error('Không tìm thấy sản phẩm');
+    return res.json();
+  },
+
+  async getCategories() {
+    const res = await fetch(`${BASE_URL}/products/categories`);
+    if (!res.ok) throw new Error('Không thể tải danh mục');
+    return res.json();
+  },
+
+  // Customizer
+  async getCustomizerOptions() {
+    const res = await fetch(`${BASE_URL}/customizer/options`);
+    if (!res.ok) throw new Error('Không thể tải linh kiện phối vòng');
+    return res.json();
+  },
+
+  async calculateCustomPrice(payload) {
+    const res = await fetch(`${BASE_URL}/customizer/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Lỗi tính giá vòng tự thiết kế');
+    return res.json();
+  },
+
+  // Orders
+  async getOrders(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${BASE_URL}/orders${query ? `?${query}` : ''}`);
+    if (!res.ok) throw new Error('Không thể tải danh sách đơn hàng');
+    return res.json();
+  },
+
+  async getOrderById(id) {
+    const res = await fetch(`${BASE_URL}/orders/${id}`);
+    if (!res.ok) throw new Error('Không tìm thấy đơn hàng');
+    return res.json();
+  },
+
+  async createOrder(orderData) {
+    const res = await fetch(`${BASE_URL}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || 'Lỗi đặt hàng');
+    }
+    return res.json();
+  },
+
+  async updateOrderStatus(id, statusData) {
+    const res = await fetch(`${BASE_URL}/orders/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(statusData)
+    });
+    if (!res.ok) throw new Error('Không thể cập nhật đơn hàng');
+    return res.json();
+  },
+
+  // Admin Stats
+  async getAdminStats() {
+    const res = await fetch(`${BASE_URL}/admin/stats`);
+    if (!res.ok) throw new Error('Không thể tải thống kê xưởng');
+    return res.json();
+  },
+
+  // Auth & User
+  async login(email, password) {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi đăng nhập');
+    return data;
+  },
+
+  async register(userData) {
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi đăng ký');
+    return data;
+  },
+
+  async getMe() {
+    const res = await fetch(`${BASE_URL}/auth/me`);
+    return res.json();
+  },
+
+  async configureDb(connectionString) {
+    const res = await fetch(`${BASE_URL}/auth/configure-db`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionString })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi cấu hình database');
+    return data;
+  },
+
+  async createProduct(productData) {
+    const res = await fetch(`${BASE_URL}/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi thêm sản phẩm');
+    return data;
+  },
+
+  async updateProduct(id, productData) {
+    const res = await fetch(`${BASE_URL}/products/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(productData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật sản phẩm');
+    return data;
+  },
+
+  async deleteProduct(id) {
+    const res = await fetch(`${BASE_URL}/products/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi xóa sản phẩm');
+    return data;
+  },
+
+  // Admin User Management
+  async getUsers() {
+    const res = await fetch(`${BASE_URL}/admin/users`);
+    if (!res.ok) throw new Error('Không thể tải danh sách tài khoản');
+    return res.json();
+  },
+
+  async createUser(userData) {
+    const res = await fetch(`${BASE_URL}/admin/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi tạo tài khoản');
+    return data;
+  },
+
+  async updateUserRole(id, role) {
+    const res = await fetch(`${BASE_URL}/admin/users/${id}/role`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật vai trò');
+    return data;
+  },
+
+  async deleteUser(id) {
+    const res = await fetch(`${BASE_URL}/admin/users/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi xóa tài khoản');
+    return data;
+  },
+
+  // Database Sync & Telemetry
+  async syncNeonDatabase() {
+    const res = await fetch(`${BASE_URL}/admin/sync-neon`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi đồng bộ Neon PostgreSQL');
+    return data;
+  },
+
+  async getDatabaseTelemetry() {
+    const res = await fetch(`${BASE_URL}/admin/telemetry`);
+    if (!res.ok) throw new Error('Không thể tải thông tin telemetry database');
+    return res.json();
+  },
+
+  // AI Gemini Vision Analysis
+  async analyzeWrist(payload) {
+    const res = await fetch(`${BASE_URL}/ai/analyze-wrist`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi phân tích AI');
+    return data;
+  },
+
+  async analyzeBraceletCord(payload) {
+    const res = await fetch(`${BASE_URL}/ai/analyze-bracelet-cord`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi bóc tách thành phần dây');
+    return data;
+  }
+};
+

@@ -1,0 +1,67 @@
+name: CI/CD Pipeline - Build & Deploy to Vercel
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    name: Build & Verify Project
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Root Dependencies
+        run: npm install
+
+      - name: Build Frontend
+        run: npm run build
+
+      - name: Verify Backend & Serverless API Syntax
+        run: |
+          node --check api/index.js
+          node --check backend/src/server.js
+
+  deploy-to-vercel:
+    name: Deploy to Vercel
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Deploy to Vercel Production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "🚀 Đang deploy tự động lên Vercel Production bằng Vercel Token..."
+            vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+            vercel build --prod --token=$VERCEL_TOKEN
+            vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+          else
+            echo "ℹ️ VERCEL_TOKEN chưa được cài đặt trong GitHub Secrets."
+            echo "👉 Nếu bạn đã liên kết Repo trực tiếp trên Vercel Dashboard, Vercel sẽ tự động trigger deploy ngay lập tức!"
+          fi
