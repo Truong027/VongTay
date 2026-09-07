@@ -455,3 +455,136 @@ export const sampleOrders = [
     createdAt: '2026-09-06T09:00:00.000Z'
   }
 ];
+
+export const sampleVouchers = [
+  {
+    id: 'vouch-01',
+    code: 'KHANHVY10',
+    discountType: 'percentage',
+    discountValue: 10,
+    minOrderValue: 200000,
+    maxDiscount: 50000,
+    usageLimit: 500,
+    usedCount: 84,
+    description: 'Giảm 10% cho đơn hàng thủ công từ 200.000₫',
+    isActive: true,
+    expiresAt: '2027-12-31T23:59:59.000Z'
+  },
+  {
+    id: 'vouch-02',
+    code: 'FREESHIP',
+    discountType: 'fixed',
+    discountValue: 25000,
+    minOrderValue: 250000,
+    maxDiscount: 25000,
+    usageLimit: 1000,
+    usedCount: 312,
+    description: 'Miễn phí giao hàng toàn quốc (trừ 25.000₫) cho đơn từ 250.000₫',
+    isActive: true,
+    expiresAt: '2027-12-31T23:59:59.000Z'
+  },
+  {
+    id: 'vouch-03',
+    code: 'BANMOI20K',
+    discountType: 'fixed',
+    discountValue: 20000,
+    minOrderValue: 150000,
+    maxDiscount: 20000,
+    usageLimit: 200,
+    usedCount: 45,
+    description: 'Tặng ngay 20.000₫ cho bạn mới lần đầu đặt vòng tay tại Xưởng',
+    isActive: true,
+    expiresAt: '2027-12-31T23:59:59.000Z'
+  },
+  {
+    id: 'vouch-04',
+    code: 'TRIANXUONG50K',
+    discountType: 'fixed',
+    discountValue: 50000,
+    minOrderValue: 400000,
+    maxDiscount: 50000,
+    usageLimit: 100,
+    usedCount: 28,
+    description: 'Tri ân khách hàng: Giảm 50.000₫ cho đơn từ 400.000₫ hoặc mua combo',
+    isActive: true,
+    expiresAt: '2027-12-31T23:59:59.000Z'
+  }
+];
+
+export const sampleReviews = [
+  {
+    id: 'rev-01',
+    productId: 'vt-pastel-whale',
+    userId: 'user-01',
+    customerName: 'Lê Thảo Nhi',
+    rating: 5,
+    wristFit: 'Vừa vặn ôm tay đẹp (15cm)',
+    comment: 'Vòng ở ngoài màu pastel gốm bóng đẹp hơn ảnh rất nhiều! Khóa rút đan Square Knot rất chắc, tắm không bị xơ chỉ hay bay màu. Cực kỳ ưng ý!',
+    isVerifiedBuyer: true,
+    photos: ['/images/products/bracelet-whale-ceramic.jpg'],
+    createdAt: '2026-09-05T14:20:00.000Z'
+  },
+  {
+    id: 'rev-02',
+    productId: 'vt-pastel-whale',
+    userId: 'user-02',
+    customerName: 'Hoàng Minh Quân',
+    rating: 5,
+    wristFit: 'Dễ co rút linh hoạt',
+    comment: 'Mua tặng bạn gái nhân dịp sinh nhật, bạn ấy mê tít chú cá voi xanh men gốm và hạt pha lê đổi màu. Đóng hộp quà vintage rất chỉn chu.',
+    isVerifiedBuyer: true,
+    photos: [],
+    createdAt: '2026-09-04T09:15:00.000Z'
+  },
+  {
+    id: 'rev-03',
+    productId: 'vt-mint-flower',
+    userId: 'user-01',
+    customerName: 'Nguyễn Bích Phương',
+    rating: 5,
+    wristFit: 'Chuẩn size nữ (15 - 16cm)',
+    comment: 'Tone màu xanh mint phối hoa cúc pastel mang vào nhìn trắng tay hẳn ra. Nút thắt rút kéo nhẹ là khít, đeo một mình rất tiện.',
+    isVerifiedBuyer: true,
+    photos: ['/images/products/bracelet-mint-flower.jpg'],
+    createdAt: '2026-09-03T16:45:00.000Z'
+  },
+  {
+    id: 'rev-04',
+    productId: 'vt-04',
+    userId: 'user-01',
+    customerName: 'Trần Hải Đăng',
+    rating: 5,
+    wristFit: 'Vừa vặn cả 2 người',
+    comment: 'Vòng đôi nam châm hút rất chặt, đi xe nắm tay nhau là 2 nửa trái tim tự ghép lại. Đan chữ khắc tên sắc nét, 10 sao cho xưởng!',
+    isVerifiedBuyer: true,
+    photos: ['/images/products/vong-doi-tinh-yeu.png'],
+    createdAt: '2026-09-02T11:30:00.000Z'
+  },
+  {
+    id: 'rev-05',
+    productId: 'vt-06',
+    userId: 'user-01',
+    customerName: 'Vũ Thu Trang',
+    rating: 5,
+    wristFit: 'Ôm tay nhẹ nhàng',
+    comment: 'Chỉ đỏ Tây Tạng đan tay nút thắt vô tận nhìn thanh lịch, dây sáp mịn không bị ngứa da cổ tay. Mình đeo đi làm ai cũng khen.',
+    isVerifiedBuyer: true,
+    photos: ['/images/products/vong-tay-chi-do-tay-tang.png'],
+    createdAt: '2026-09-01T08:10:00.000Z'
+  }
+];
+
+export const sampleConsultations = [
+  {
+    id: 'csl-01',
+    customerName: 'Đặng Ngọc Ánh',
+    phone: '0983112233',
+    email: 'ngocanh@gmail.com',
+    menh: 'Mộc',
+    wristCircumference: '14.5 cm',
+    message: 'Mình sinh năm 2002 mệnh Mộc, muốn nhờ xưởng tư vấn phối màu dây xanh mint kết hợp đá phong thủy bình an cho kỳ thi sắp tới.',
+    status: 'Đã hoàn tất',
+    createdAt: '2026-09-06T11:00:00.000Z'
+  }
+];
+

@@ -12,7 +12,7 @@ export const getProducts = async (req, res) => {
     let result = [...allProducts];
     const { category, menh, search, sort } = req.query;
 
-    if (category && category !== 'all') {
+    if (category && category !== 'all' && category !== 'undefined' && category !== 'null') {
       if (category === 'best-seller') {
         result = result.filter(p => p.isBestSeller);
       } else {
@@ -20,17 +20,19 @@ export const getProducts = async (req, res) => {
       }
     }
 
-    if (menh && menh !== 'all') {
+    if (menh && menh !== 'all' && menh !== 'undefined' && menh !== 'null') {
       result = result.filter(p => p.menh && (p.menh.includes(menh) || p.menh.includes('Tất cả')));
     }
 
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(p => 
-        (p.name && p.name.toLowerCase().includes(q)) || 
-        (p.stoneType && p.stoneType.toLowerCase().includes(q)) ||
-        (p.description && p.description.toLowerCase().includes(q))
-      );
+    if (search && search !== 'undefined' && search !== 'null') {
+      const q = search.toLowerCase().trim();
+      if (q) {
+        result = result.filter(p => 
+          (p.name && p.name.toLowerCase().includes(q)) || 
+          (p.stoneType && p.stoneType.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q))
+        );
+      }
     }
 
     if (sort === 'price-asc') {

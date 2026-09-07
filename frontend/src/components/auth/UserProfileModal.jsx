@@ -15,10 +15,11 @@ export default function UserProfileModal({
 }) {
   if (!isOpen || !currentUser) return null;
 
-  const { wishlist, toggleWishlist, addToCart } = useCart();
+  const { wishlist, isWishlisted, toggleWishlist, addToCart } = useCart();
   const [activeTab, setActiveTab] = useState(defaultTab || 'orders'); // 'orders' | 'wishlist' | 'profile'
   const [userOrders, setUserOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [modalProducts, setModalProducts] = useState(products || []);
 
   // Cập nhật tab khi mở modal với tab chỉ định
   useEffect(() => {
@@ -27,8 +28,19 @@ export default function UserProfileModal({
     }
   }, [isOpen, defaultTab]);
 
+  // Đảm bảo luôn có danh sách sản phẩm để đối chiếu yêu thích
+  useEffect(() => {
+    if (products && products.length > 0) {
+      setModalProducts(products);
+    } else if (isOpen) {
+      api.getProducts({}).then(res => {
+        if (res.success && res.data) setModalProducts(res.data);
+      }).catch(console.warn);
+    }
+  }, [products, isOpen]);
+
   // Danh sách sản phẩm yêu thích của riêng tài khoản này
-  const wishlistedProducts = (products || []).filter(p => wishlist.includes(p.id));
+  const wishlistedProducts = (modalProducts || []).filter(p => isWishlisted(p.id));
 
   useEffect(() => {
     const fetchUserOrders = async () => {

@@ -23,6 +23,7 @@ import ProductModal from './components/product/ProductModal';
 import WristSizeModal from './components/product/WristSizeModal';
 import BraceletStudio from './components/customizer/BraceletStudio';
 import CartDrawer from './components/cart/CartDrawer';
+import WishlistDrawer from './components/cart/WishlistDrawer';
 import CheckoutModal from './components/checkout/CheckoutModal';
 import OrderTrackingModal from './components/tracking/OrderTrackingModal';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -32,7 +33,7 @@ import UserProfileModal from './components/auth/UserProfileModal';
 import PersonalizedSection from './components/personalization/PersonalizedSection';
 
 function MainShop({ currentUser, setCurrentUser }) {
-  const { wishlist } = useCart();
+  const { wishlist, isWishlisted } = useCart();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileDefaultTab, setProfileDefaultTab] = useState('orders');
@@ -62,16 +63,29 @@ function MainShop({ currentUser, setCurrentUser }) {
 
   // Data
   const [products, setProducts] = useState([]);
+  const [allProductsMaster, setAllProductsMaster] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Nạp toàn bộ kho sản phẩm nền (Master list) ngay khi ứng dụng khởi chạy
+  useEffect(() => {
+    api.getProducts({}).then(res => {
+      if (res.success && Array.isArray(res.data)) {
+        setAllProductsMaster(res.data);
+      }
+    }).catch(console.error);
+  }, []);
 
   // Fetch products and categories from backend
   const loadShopData = async () => {
     setLoading(true);
     try {
+      const isWishlistTab = activeTab === 'wishlist';
+
+      // Luôn lấy toàn bộ danh mục sản phẩm nền nếu chưa có
       const [prodRes, catRes] = await Promise.all([
-        api.getProducts({
-          category: activeTab !== 'wishlist' ? activeTab : undefined,
+        api.getProducts(isWishlistTab ? {} : {
+          category: activeTab !== 'all' ? activeTab : undefined,
           menh: selectedMenh !== 'all' ? selectedMenh : undefined,
           sort: sortOption,
           search: searchQuery
@@ -79,9 +93,19 @@ function MainShop({ currentUser, setCurrentUser }) {
         api.getCategories()
       ]);
 
-      if (prodRes.success) {
-        if (activeTab === 'wishlist') {
-          setProducts(prodRes.data.filter(p => wishlist.includes(p.id)));
+      if (prodRes.success && Array.isArray(prodRes.data)) {
+        // Cập nhật kho sản phẩm tổng thể
+        setAllProductsMaster(prev => {
+          const map = new Map();
+          [...prev, ...prodRes.data].forEach(item => map.set(item.id, item));
+          return Array.from(map.values());
+        });
+
+        if (isWishlistTab) {
+          // Lọc chính xác các sản phẩm có id nằm trong danh sách yêu thích
+          const fullPool = prodRes.data.length > 0 ? prodRes.data : allProductsMaster;
+          const wishlisted = fullPool.filter(p => isWishlisted(p.id));
+          setProducts(wishlisted);
         } else {
           setProducts(prodRes.data);
         }
@@ -96,9 +120,27 @@ function MainShop({ currentUser, setCurrentUser }) {
     }
   };
 
+  // Khi danh sách wishlist hoặc kho sản phẩm thay đổi, cập nhật ngay nếu đang xem tab wishlist
+  useEffect(() => {
+    if (activeTab === 'wishlist') {
+      const source = allProductsMaster.length > 0 ? allProductsMaster : products;
+      setProducts(source.filter(p => isWishlisted(p.id)));
+    }
+  }, [wishlist, activeTab, allProductsMaster]);
+
+  // Tự động cuộn xuống phần sản phẩm khi mở tab wishlist
+  useEffect(() => {
+    if (activeTab === 'wishlist') {
+      const el = document.getElementById('products-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     loadShopData();
-  }, [activeTab, selectedMenh, sortOption, searchQuery, wishlist]);
+  }, [activeTab, selectedMenh, sortOption, searchQuery]);
 
   const handleProceedToCheckout = (data) => {
     setCheckoutData(data);
@@ -189,7 +231,7 @@ function MainShop({ currentUser, setCurrentUser }) {
       {/* Automated Personalized Recommendation Section */}
       {activeTab === 'all' && !searchQuery && (
         <PersonalizedSection
-          products={products}
+          products={allProductsMaster.length > 0 ? allProductsMaster : products}
           onQuickView={(p) => setSelectedProduct(p)}
           currentUser={currentUser}
         />
@@ -270,18 +312,40 @@ function MainShop({ currentUser, setCurrentUser }) {
           </div>
         ) : products.length === 0 ? (
           <div className="py-20 text-center bg-white rounded-3xl border border-[#E8DFD3] p-8 space-y-3">
-            <p className="font-serif-boutique text-xl font-bold text-[#26211C]">
-              Không tìm thấy sản phẩm nào
-            </p>
-            <p className="text-xs text-[#6B6258] max-w-sm mx-auto">
-              Không có mẫu vòng tay nào phù hợp với bộ lọc hiện tại. Bạn có thể chọn lại mệnh hoặc mở xưởng tự phối vòng theo ý thích.
-            </p>
-            <button
-              onClick={() => { setActiveTab('all'); setSelectedMenh('all'); setSearchQuery(''); }}
-              className="mt-2 px-5 py-2 rounded-xl bg-[#26211C] text-white text-xs font-semibold"
-            >
-              Xem Tất Cả Vòng Tay
-            </button>
+            {activeTab === 'wishlist' ? (
+              <>
+                <div className="w-14 h-14 rounded-full bg-[#FAF4ED] text-[#B86244] flex items-center justify-center mx-auto mb-2 border border-[#EADBCC]">
+                  <Heart className="w-7 h-7 stroke-[1.5]" />
+                </div>
+                <p className="font-serif-boutique text-2xl font-bold text-[#26211C]">
+                  Bộ sưu tập yêu thích của bạn đang trống
+                </p>
+                <p className="text-xs text-[#6B6258] max-w-sm mx-auto leading-relaxed">
+                  Bạn chưa lưu mẫu vòng tay nào. Hãy nhấn vào biểu tượng trái tim ❤️ ở góc bất kỳ mẫu vòng tay nào trên trang chủ để lưu vào đây nhé!
+                </p>
+                <button
+                  onClick={() => { setActiveTab('all'); setSelectedMenh('all'); setSearchQuery(''); }}
+                  className="mt-3 px-6 py-2.5 rounded-full bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold transition-all shadow-sm"
+                >
+                  Khám Phá Các Mẫu Vòng Tay
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="font-serif-boutique text-xl font-bold text-[#26211C]">
+                  Không tìm thấy sản phẩm nào
+                </p>
+                <p className="text-xs text-[#6B6258] max-w-sm mx-auto">
+                  Không có mẫu vòng tay nào phù hợp với bộ lọc hiện tại. Bạn có thể chọn lại mệnh hoặc mở xưởng tự phối vòng theo ý thích.
+                </p>
+                <button
+                  onClick={() => { setActiveTab('all'); setSelectedMenh('all'); setSearchQuery(''); }}
+                  className="mt-2 px-5 py-2 rounded-xl bg-[#26211C] text-white text-xs font-semibold"
+                >
+                  Xem Tất Cả Vòng Tay
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -315,6 +379,7 @@ function MainShop({ currentUser, setCurrentUser }) {
           setSelectedProduct(null);
           setIsSizeGuideOpen(true);
         }}
+        onProceedToCheckout={handleProceedToCheckout}
       />
 
       <BraceletStudio
@@ -339,6 +404,16 @@ function MainShop({ currentUser, setCurrentUser }) {
 
       <CartDrawer
         onProceedToCheckout={handleProceedToCheckout}
+      />
+
+      {/* Slide-out Wishlist Drawer */}
+      <WishlistDrawer
+        products={allProductsMaster.length > 0 ? allProductsMaster : products}
+        onOpenProduct={(prod) => setSelectedProduct(prod)}
+        onSelectWishlistTab={() => {
+          setActiveTab('wishlist');
+          handleScrollToProducts();
+        }}
       />
 
       <CheckoutModal
@@ -377,7 +452,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
         defaultTab={profileDefaultTab}
-        products={products}
+        products={allProductsMaster.length > 0 ? allProductsMaster : products}
         onOpenProduct={(prod) => {
           setIsProfileOpen(false);
           setSelectedProduct(prod);

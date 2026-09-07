@@ -3,8 +3,8 @@ import { Star, Heart, ShoppingBag, Eye, Sparkles } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 export default function ProductCard({ product, onQuickView }) {
-  const { addToCart, wishlist, toggleWishlist } = useCart();
-  const isWishlisted = wishlist.includes(product.id);
+  const { addToCart, isWishlisted, toggleWishlist } = useCart();
+  const liked = isWishlisted(product.id);
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
@@ -59,7 +59,7 @@ export default function ProductCard({ product, onQuickView }) {
           className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-md text-[#6B6258] hover:text-[#B86244] transition-all duration-200 shadow-sm hover:scale-110 z-10"
           title="Thêm vào yêu thích"
         >
-          <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
+          <Heart className={`w-4 h-4 ${liked ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
         </button>
 
         {/* Quick View Hover Button */}

@@ -10,7 +10,9 @@ import {
   Sparkles, 
   ArrowRight,
   QrCode,
-  Check
+  Check,
+  Gift,
+  Tag
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
@@ -19,7 +21,8 @@ import { api } from '../../services/api';
 export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSuccess, currentUser }) {
   if (!isOpen) return null;
 
-  const { cartItems, clearCart } = useCart();
+  const { clearCart } = useCart();
+  const cartItems = checkoutData?.items || [];
 
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
@@ -31,9 +34,52 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
   const [completedOrder, setCompletedOrder] = useState(null);
   const [copiedField, setCopiedField] = useState('');
 
-  const finalTotal = checkoutData?.finalTotal || 0;
-  const discount = checkoutData?.discount || 0;
+  // Gift Packaging Service
+  const [isGiftBox, setIsGiftBox] = useState(false);
+  const [giftCardMessage, setGiftCardMessage] = useState('');
+
+  // Voucher Promotion state
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState(null);
+  const [voucherError, setVoucherError] = useState('');
+  const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+
+  const rawTotal = checkoutData?.finalTotal || 0;
+  const discount = (checkoutData?.discount || 0) + (appliedVoucher?.discountAmount || 0);
   const shippingFee = checkoutData?.shippingFee || 25000;
+  const giftBoxFee = isGiftBox ? 25000 : 0;
+  const finalTotal = Math.max(0, rawTotal + giftBoxFee - (appliedVoucher?.discountAmount || 0));
+
+  const handleApplyVoucher = async (codeToApply = null) => {
+    const code = (codeToApply || voucherCodeInput).trim().toUpperCase();
+    if (!code) {
+      setVoucherError('Vui lòng nhập mã voucher');
+      return;
+    }
+    setVoucherError('');
+    setIsCheckingVoucher(true);
+    try {
+      const res = await api.applyVoucher(code, rawTotal);
+      if (res.success) {
+        setAppliedVoucher(res);
+        setVoucherCodeInput(res.code);
+      } else {
+        setVoucherError(res.message || 'Mã giảm giá không hợp lệ');
+        setAppliedVoucher(null);
+      }
+    } catch (e) {
+      setVoucherError('Lỗi kiểm tra mã giảm giá');
+      setAppliedVoucher(null);
+    } finally {
+      setIsCheckingVoucher(false);
+    }
+  };
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherCodeInput('');
+    setVoucherError('');
+  };
 
   // Real bank info for VietQR
   const bankInfo = {
@@ -65,7 +111,9 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
         customerName: fullName,
         phone,
         address,
-        note,
+        note: isGiftBox 
+          ? `[HỘP QUÀ GẤM & THIỆP TAY: "${giftCardMessage || 'Thương gửi'}"]. ${note}`.trim()
+          : note,
         paymentMethod,
         items: cartItems.map(item => ({
           id: item.id,
@@ -83,6 +131,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
         totalAmount: finalTotal,
         shippingFee,
         discount,
+        voucherCode: appliedVoucher?.code || null,
+        voucherDiscount: appliedVoucher?.discountAmount || 0,
         wholesaleSavings: checkoutData?.wholesaleSavings || 0
       };
 
@@ -257,6 +307,42 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
                   />
                 </div>
+
+                {/* Dịch vụ Hộp Quà Gấm & Thiệp Viết Tay */}
+                <div className="p-3.5 bg-[#FAF4ED] rounded-2xl border border-[#EADBCC] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isGiftBox}
+                        onChange={(e) => setIsGiftBox(e.target.checked)}
+                        className="w-4 h-4 rounded accent-[#B86244]"
+                      />
+                      <span className="text-xs font-bold text-[#26211C] flex items-center gap-1.5">
+                        <Gift className="w-4 h-4 text-[#B86244]" />
+                        Đóng Hộp Quà Gấm Nam Châm (+25.000₫)
+                      </span>
+                    </label>
+                    <span className="text-[10px] bg-[#B86244]/10 text-[#B86244] font-bold px-2 py-0.5 rounded-full">
+                      Tặng rơm & túi thơm
+                    </span>
+                  </div>
+
+                  {isGiftBox && (
+                    <div className="space-y-1.5 pt-2 border-t border-[#EADBCC]/80 animate-fadeIn">
+                      <label className="text-[11px] font-semibold text-[#6B6258] block">
+                        ✍️ Lời chúc trên thiệp tay (Nghệ nhân viết tặng miễn phí):
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Ví dụ: Chúc em tuổi mới luôn rực rỡ, bình an và hạnh phúc!"
+                        value={giftCardMessage}
+                        onChange={(e) => setGiftCardMessage(e.target.value)}
+                        className="w-full text-xs p-2 rounded-xl border border-[#EADBCC] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Right Column: Payment Method & VietQR */}
@@ -371,6 +457,78 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                   </div>
                 )}
 
+                {/* NEW: Voucher Promo Code Box */}
+                <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EADBCC] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#26211C] flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-[#B86244]" />
+                      Mã Giảm Giá / Voucher Xưởng
+                    </span>
+                    {appliedVoucher && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveVoucher}
+                        className="text-[10px] text-rose-600 hover:underline font-semibold"
+                      >
+                        Gỡ bỏ
+                      </button>
+                    )}
+                  </div>
+
+                  {appliedVoucher ? (
+                    <div className="p-2 bg-[#EDF5F0] border border-[#C2DEC8] rounded-lg flex items-center justify-between text-xs text-[#2E583A]">
+                      <span className="font-bold flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-[#3A754B]" />
+                        Đã áp dụng: {appliedVoucher.code} (-{appliedVoucher.discountAmount.toLocaleString('vi-VN')}₫)
+                      </span>
+                      <span className="text-[10px] font-medium text-[#4E6857]">
+                        {appliedVoucher.description}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nhập mã (VD: KHANHVY10, FREESHIP)..."
+                          value={voucherCodeInput}
+                          onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
+                          className="flex-1 text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white uppercase font-bold tracking-wider focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleApplyVoucher()}
+                          disabled={isCheckingVoucher}
+                          className="px-3.5 py-2 bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap shadow-xs"
+                        >
+                          {isCheckingVoucher ? 'Đang kiểm tra...' : 'Áp Dụng'}
+                        </button>
+                      </div>
+
+                      {voucherError && (
+                        <p className="text-[11px] text-rose-600 font-medium">
+                          ⚠️ {voucherError}
+                        </p>
+                      )}
+
+                      {/* Quick Voucher Suggestions */}
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <span className="text-[10px] text-[#8C8276]">Gợi ý mã:</span>
+                        {['KHANHVY10', 'FREESHIP', 'BANMOI20K'].map(code => (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => handleApplyVoucher(code)}
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#EADBCC] text-[#845339] font-semibold hover:border-[#B86244] hover:text-[#B86244] transition-colors"
+                          >
+                            🏷️ {code}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 {/* Final Price Breakdown */}
                 <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] space-y-1 text-xs">
                   <div className="flex justify-between text-[#8C8276]">
@@ -393,6 +551,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     <span>Phí ship bưu tá:</span>
                     <span>{shippingFee === 0 ? 'Miễn phí' : `${shippingFee.toLocaleString('vi-VN')}₫`}</span>
                   </div>
+                  {isGiftBox && (
+                    <div className="flex justify-between text-[#B86244] font-semibold bg-[#FAF4ED] -mx-1 px-2 py-1 rounded">
+                      <span>Hộp quà gấm & thiệp viết tay:</span>
+                      <span>+25.000₫</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-sm text-[#26211C] border-t border-[#F3ECE1] pt-1.5">
                     <span>Tổng cần thanh toán:</span>
                     <span className="text-base text-[#B86244]">{finalTotal.toLocaleString('vi-VN')}₫</span>

@@ -9,6 +9,11 @@ import customizerRoutes from './routes/customizerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import voucherRoutes from './routes/voucherRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
+import wishlistRoutes from './routes/wishlistRoutes.js';
+import consultationRoutes from './routes/consultationRoutes.js';
 
 dotenv.config();
 
@@ -27,9 +32,14 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan('dev'));
 
-// Routes
+// Routes across all 10 tables
 app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/vouchers', voucherRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/consultations', consultationRoutes);
 app.use('/api/customizer', customizerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);

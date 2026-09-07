@@ -33,7 +33,7 @@ export default function Navbar({
   onOpenProfile,
   onLogout
 }) {
-  const { totalCount, openCart, wishlist } = useCart();
+  const { totalCount, openCart, wishlist, openWishlist } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -72,14 +72,14 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* 2. CENTER: Perfectly Centered Navigation for Cord Bracelets */}
-          <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-2 flex-1 mx-2">
+          {/* 2. CENTER: Perfectly Balanced Boutique Navigation */}
+          <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-3 flex-1 mx-4">
             <button
               onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative ${
                 !isAdminView && activeTab === 'all'
-                  ? 'bg-[#26211C] text-[#FAF7F2] shadow-xs' 
-                  : 'text-[#5A5147] hover:text-[#26211C] hover:bg-[#EFE6DA]'
+                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
+                  : 'text-[#5A5147] hover:text-[#26211C]'
               }`}
             >
               Tất Cả Vòng Dây
@@ -87,10 +87,10 @@ export default function Navbar({
 
             <button
               onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative flex items-center gap-1.5 ${
                 !isAdminView && activeTab === 'macrame-pastel'
-                  ? 'bg-[#26211C] text-[#FAF7F2] shadow-xs' 
-                  : 'text-[#5A5147] hover:text-[#26211C] hover:bg-[#EFE6DA]'
+                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
+                  : 'text-[#5A5147] hover:text-[#26211C]'
               }`}
             >
               <span>Macrame Pastel</span>
@@ -99,10 +99,10 @@ export default function Navbar({
 
             <button
               onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative ${
                 !isAdminView && activeTab === 'vong-doi'
-                  ? 'bg-[#26211C] text-[#FAF7F2] shadow-xs' 
-                  : 'text-[#5A5147] hover:text-[#26211C] hover:bg-[#EFE6DA]'
+                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
+                  : 'text-[#5A5147] hover:text-[#26211C]'
               }`}
             >
               Vòng Đôi Dây Sáp
@@ -110,19 +110,21 @@ export default function Navbar({
 
             <button
               onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative ${
                 !isAdminView && activeTab === 'day-do-may-man'
-                  ? 'bg-[#26211C] text-[#FAF7F2] shadow-xs' 
-                  : 'text-[#5A5147] hover:text-[#26211C] hover:bg-[#EFE6DA]'
+                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
+                  : 'text-[#5A5147] hover:text-[#26211C]'
               }`}
             >
               Dây Đỏ Hộ Thân
             </button>
 
+            <div className="h-4 w-[1px] bg-[#E8DFD3] mx-1"></div>
+
             {/* Customizer button */}
             <button
               onClick={onOpenCustomizer}
-              className="px-3 py-1.5 text-xs font-semibold rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all whitespace-nowrap inline-flex items-center gap-1 shadow-2xs"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs hover:shadow-sm"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>Tự Phối Vòng</span>
@@ -131,46 +133,52 @@ export default function Navbar({
             {/* AI Camera Stylist */}
             <button
               onClick={onOpenAICamera}
-              className="px-3 py-1.5 text-xs font-semibold rounded-full bg-gradient-to-r from-amber-600 to-[#B86244] text-white hover:opacity-95 transition-all whitespace-nowrap inline-flex items-center gap-1 shadow-xs"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#B86244] hover:bg-[#A05237] text-white transition-all whitespace-nowrap inline-flex items-center gap-1.5 shadow-xs hover:shadow-sm"
               title="Quét cổ tay bằng camera để AI tư vấn mẫu vòng dây phù hợp"
             >
-              <Camera className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
-              <span>AI Quét Tay</span>
+              <Camera className="w-3.5 h-3.5 text-amber-200" />
+              <span>AI Quét Cổ Tay</span>
             </button>
           </nav>
 
           {/* 3. RIGHT: Actions (Search, Wishlist, ĐĂNG NHẬP, QUẢN TRỊ, GIỎ HÀNG) */}
-          {/* shrink-0 and ml-auto guarantee this group is ALWAYS fully visible and NEVER pushed off-screen! */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
             
             {/* Search Icon Trigger */}
             <button
               onClick={() => setShowSearchInput(!showSearchInput)}
-              className={`p-2 rounded-full transition-colors ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                 showSearchInput 
                   ? 'bg-[#26211C] text-white' 
-                  : 'text-[#6B6258] hover:text-[#26211C] hover:bg-[#EFE6DA]'
+                  : 'text-[#5A5147] hover:text-[#26211C] hover:bg-[#EFE6DA]'
               }`}
               title="Tìm kiếm vòng tay dây"
             >
-              <Search className="w-4.5 h-4.5" />
+              <Search className="w-4 h-4" />
             </button>
 
             {/* Wishlist Button */}
             <button
-              onClick={() => setActiveTab('wishlist')}
-              className="relative p-2 rounded-full text-[#6B6258] hover:text-[#B86244] hover:bg-[#EFE6DA] transition-colors hidden sm:inline-flex"
-              title="Yêu thích"
+              onClick={() => {
+                openWishlist();
+                setActiveTab('wishlist');
+              }}
+              className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                activeTab === 'wishlist' 
+                  ? 'bg-[#FAF4ED] text-[#B86244]' 
+                  : 'text-[#5A5147] hover:text-[#B86244] hover:bg-[#EFE6DA]'
+              }`}
+              title="Bộ sưu tập yêu thích của bạn"
             >
-              <Heart className={`w-4.5 h-4.5 ${wishlist.length > 0 ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
+              <Heart className={`w-4 h-4 ${wishlist.length > 0 ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
               {wishlist.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-[#B86244] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 bg-[#B86244] text-white text-[9px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-[#FAF7F2] shadow-2xs">
                   {wishlist.length}
                 </span>
               )}
             </button>
 
-            {/* USER AUTH / PROFILE (ALWAYS VISIBLE, NEVER CUT OFF) */}
+            {/* USER AUTH / PROFILE */}
             {currentUser ? (
               <div className="relative shrink-0">
                 <button
@@ -219,7 +227,7 @@ export default function Navbar({
                     </button>
 
                     <button
-                      onClick={() => { onOpenProfile('wishlist'); setShowUserDropdown(false); }}
+                      onClick={() => { openWishlist(); setShowUserDropdown(false); }}
                       className="w-full text-left px-4 py-2 hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center justify-between"
                     >
                       <span className="flex items-center gap-2">
@@ -262,10 +270,10 @@ export default function Navbar({
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#B86244] hover:bg-[#A05237] text-white transition-all shadow-xs whitespace-nowrap shrink-0 hover:shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0 hover:shadow-sm"
                 title="Đăng nhập hoặc đăng ký tài khoản"
               >
-                <User className="w-3.5 h-3.5 text-amber-200" />
+                <User className="w-3.5 h-3.5" />
                 <span>Đăng Nhập</span>
               </button>
             )}
@@ -273,7 +281,7 @@ export default function Navbar({
             {/* Admin Toggle Button */}
             <button
               onClick={() => onOpenAdmin(!isAdminView)}
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 transition-all whitespace-nowrap shrink-0 ${
+              className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ${
                 isAdminView 
                   ? 'bg-[#4E6857] text-white shadow-xs' 
                   : 'bg-[#EDF3EF] text-[#4E6857] hover:bg-[#D8E6DE]'
@@ -287,12 +295,12 @@ export default function Navbar({
             {/* Shopping Cart Button */}
             <button
               onClick={openCart}
-              className="relative p-2 bg-[#26211C] text-[#FAF7F2] rounded-full hover:bg-[#3D352E] transition-all shadow-xs flex items-center justify-center shrink-0"
+              className="relative w-9 h-9 bg-[#26211C] text-[#FAF7F2] rounded-full hover:bg-[#3D352E] transition-all shadow-xs flex items-center justify-center shrink-0"
               aria-label="Giỏ hàng"
             >
-              <ShoppingBag className="w-4.5 h-4.5" />
+              <ShoppingBag className="w-4 h-4" />
               {totalCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#B86244] text-white text-[10px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-[#FAF7F2] shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[#B86244] text-white text-[9px] font-bold min-w-4.5 h-4.5 px-1 rounded-full flex items-center justify-center border-2 border-[#FAF7F2] shadow-xs">
                   {totalCount}
                 </span>
               )}
@@ -430,6 +438,19 @@ export default function Navbar({
               AI Quét Cổ Tay Nhận Diện Vòng Hợp
             </span>
             <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full uppercase">VIP</span>
+          </button>
+
+          <button
+            onClick={() => { openWishlist(); setIsMobileMenuOpen(false); }}
+            className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] flex items-center justify-between shadow-2xs"
+          >
+            <span className="flex items-center gap-2">
+              <Heart className="w-3.5 h-3.5 text-[#B86244] fill-[#B86244]" />
+              Bộ Sưu Tập Yêu Thích Của Bạn
+            </span>
+            <span className="text-[10px] bg-[#B86244] text-white font-bold px-2 py-0.5 rounded-full">
+              {wishlist.length}
+            </span>
           </button>
 
           <button

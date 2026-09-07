@@ -3,7 +3,13 @@ const BASE_URL = '/api';
 export const api = {
   // Products & Categories
   async getProducts(params = {}) {
-    const query = new URLSearchParams(params).toString();
+    const cleanParams = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all' && value !== 'undefined' && value !== 'null') {
+        cleanParams[key] = value;
+      }
+    }
+    const query = new URLSearchParams(cleanParams).toString();
     const res = await fetch(`${BASE_URL}/products${query ? `?${query}` : ''}`);
     if (!res.ok) throw new Error('Không thể tải danh sách sản phẩm');
     return res.json();
@@ -227,6 +233,74 @@ export const api = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi bóc tách thành phần dây');
     return data;
+  },
+
+  // Vouchers & Promotions
+  async getVouchers() {
+    const res = await fetch(`${BASE_URL}/vouchers`);
+    if (!res.ok) throw new Error('Không thể tải danh sách mã giảm giá');
+    return res.json();
+  },
+
+  async applyVoucher(code, orderTotal) {
+    const res = await fetch(`${BASE_URL}/vouchers/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, orderTotal })
+    });
+    return res.json();
+  },
+
+  // Reviews
+  async getReviews(productId = null) {
+    const url = productId ? `${BASE_URL}/reviews/${productId}` : `${BASE_URL}/reviews`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Không thể nạp đánh giá');
+    return res.json();
+  },
+
+  async createReview(reviewData) {
+    const res = await fetch(`${BASE_URL}/reviews`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reviewData)
+    });
+    return res.json();
+  },
+
+  // Database-Synced Wishlist
+  async getUserWishlist(userId) {
+    const res = await fetch(`${BASE_URL}/wishlist/${userId}`);
+    if (!res.ok) return { success: false, data: [] };
+    return res.json();
+  },
+
+  async toggleWishlistDb(userId, productId) {
+    const res = await fetch(`${BASE_URL}/wishlist/toggle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, productId })
+    });
+    return res.json();
+  },
+
+  async syncWishlistDb(userId, productIds) {
+    const res = await fetch(`${BASE_URL}/wishlist/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, productIds })
+    });
+    return res.json();
+  },
+
+  // Consultations
+  async createConsultation(consultationData) {
+    const res = await fetch(`${BASE_URL}/consultations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(consultationData)
+    });
+    return res.json();
   }
 };
 

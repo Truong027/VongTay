@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const CartContext = createContext();
 
@@ -6,6 +7,55 @@ const getWishlistKey = (user) => {
   if (user?.id) return `khanhvy_wishlist_user_${user.id}`;
   if (user?.email) return `khanhvy_wishlist_user_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
   return 'khanhvy_wishlist_guest';
+};
+
+const extractNormalizedIds = (raw) => {
+  if (!raw) return [];
+  try {
+    const arr = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(arr)) return [];
+    return Array.from(new Set(
+      arr.map(item => {
+        if (!item) return null;
+        if (typeof item === 'object') return item.id || item._id ? String(item.id || item._id) : null;
+        return String(item);
+      }).filter(Boolean)
+    ));
+  } catch {
+    return [];
+  }
+};
+
+const loadStoredWishlist = (user) => {
+  try {
+    const userKey = user?.id ? `khanhvy_wishlist_user_${user.id}` : (user?.email ? `khanhvy_wishlist_user_${user.email.replace(/[^a-zA-Z0-9]/g, '_')}` : null);
+    
+    // 1. Kiểm tra tài khoản người dùng đăng nhập
+    if (userKey) {
+      const userSaved = localStorage.getItem(userKey);
+      if (userSaved) {
+        const ids = extractNormalizedIds(userSaved);
+        if (ids.length > 0) return ids;
+      }
+    }
+
+    // 2. Kiểm tra bộ nhớ khách (guest)
+    const guestSaved = localStorage.getItem('khanhvy_wishlist_guest');
+    if (guestSaved) {
+      const ids = extractNormalizedIds(guestSaved);
+      if (ids.length > 0) return ids;
+    }
+
+    // 3. Kiểm tra khóa tương thích cũ viban_wishlist
+    const legacySaved = localStorage.getItem('viban_wishlist');
+    if (legacySaved) {
+      const ids = extractNormalizedIds(legacySaved);
+      if (ids.length > 0) return ids;
+    }
+  } catch (e) {
+    console.error('Lỗi đọc wishlist từ localStorage:', e);
+  }
+  return [];
 };
 
 export const CartProvider = ({ children, currentUser }) => {
@@ -18,35 +68,33 @@ export const CartProvider = ({ children, currentUser }) => {
     }
   });
 
-  const [wishlist, setWishlist] = useState(() => {
-    try {
-      const key = getWishlistKey(currentUser);
-      const saved = localStorage.getItem(key);
-      if (saved) return JSON.parse(saved);
-      // Nếu chưa có, kiểm tra dữ liệu cũ
-      const oldSaved = localStorage.getItem('viban_wishlist');
-      return oldSaved ? JSON.parse(oldSaved) : [];
-    } catch {
-      return [];
-    }
-  });
-
+  const [wishlist, setWishlist] = useState(() => loadStoredWishlist(currentUser));
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  // Tự động tải lại danh sách yêu thích riêng khi người dùng đăng nhập, đăng xuất hoặc đổi tài khoản
+  const showToast = (message, icon = '❤️') => {
+    setToast({ message, icon, id: Date.now() });
+    setTimeout(() => {
+      setToast(null);
+    }, 2500);
+  };
+
+  // Đồng bộ và kế thừa danh sách yêu thích khi đăng nhập / đăng xuất
   useEffect(() => {
-    const key = getWishlistKey(currentUser);
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        setWishlist(JSON.parse(saved));
-      } else {
-        // Tài khoản mới chưa có danh sách yêu thích
-        setWishlist([]);
+    const currentStored = loadStoredWishlist(currentUser);
+    setWishlist(prev => {
+      // Kết hợp các mục hiện tại với bộ nhớ để không bao giờ bị mất sản phẩm vừa bấm thích
+      const combined = Array.from(new Set([...prev, ...currentStored]));
+      const activeKey = getWishlistKey(currentUser);
+      try {
+        localStorage.setItem(activeKey, JSON.stringify(combined));
+        localStorage.setItem('khanhvy_wishlist_guest', JSON.stringify(combined));
+        localStorage.setItem('viban_wishlist', JSON.stringify(combined));
+      } catch (e) {
+        console.error(e);
       }
-    } catch {
-      setWishlist([]);
-    }
+      return combined;
+    });
   }, [currentUser?.id, currentUser?.email]);
 
   useEffect(() => {
@@ -57,13 +105,21 @@ export const CartProvider = ({ children, currentUser }) => {
     }
   }, [cartItems]);
 
-  // Lưu danh sách yêu thích vào đúng bộ nhớ của tài khoản đang đăng nhập
+  // Luôn lưu danh sách yêu thích vào bộ nhớ trình duyệt
   useEffect(() => {
-    const key = getWishlistKey(currentUser);
+    if (!Array.isArray(wishlist)) return;
+    const activeKey = getWishlistKey(currentUser);
     try {
-      localStorage.setItem(key, JSON.stringify(wishlist));
+      localStorage.setItem(activeKey, JSON.stringify(wishlist));
+      localStorage.setItem('khanhvy_wishlist_guest', JSON.stringify(wishlist));
+      localStorage.setItem('viban_wishlist', JSON.stringify(wishlist));
     } catch (e) {
       console.error(e);
+    }
+
+    // Cloud Database Synchronization for Authenticated Users
+    if (currentUser?.id && wishlist.length > 0) {
+      api.syncWishlistDb(currentUser.id, wishlist).catch(() => {});
     }
   }, [wishlist, currentUser?.id, currentUser?.email]);
 
@@ -122,16 +178,69 @@ export const CartProvider = ({ children, currentUser }) => {
     ));
   };
 
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
   const clearCart = () => {
     setCartItems([]);
   };
 
-  const toggleWishlist = (productId) => {
-    setWishlist(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
+  const isWishlisted = (productOrId) => {
+    if (!productOrId) return false;
+    const strId = typeof productOrId === 'object' 
+      ? String(productOrId.id || productOrId._id || '') 
+      : String(productOrId);
+    if (!strId) return false;
+    return (wishlist || []).some(id => {
+      if (!id) return false;
+      const existingId = typeof id === 'object' ? String(id.id || id._id || '') : String(id);
+      return existingId === strId;
+    });
+  };
+
+  const toggleWishlist = (productOrId) => {
+    if (!productOrId) return;
+    const strId = typeof productOrId === 'object' 
+      ? String(productOrId.id || productOrId._id || '') 
+      : String(productOrId);
+    if (!strId) return;
+
+    setWishlist(prev => {
+      const exists = (prev || []).some(id => {
+        const currentId = typeof id === 'object' ? String(id.id || id._id || '') : String(id);
+        return currentId === strId;
+      });
+
+      const next = exists 
+        ? (prev || []).filter(id => {
+            const currentId = typeof id === 'object' ? String(id.id || id._id || '') : String(id);
+            return currentId !== strId;
+          })
+        : [...(prev || []).filter(id => {
+            const currentId = typeof id === 'object' ? String(id.id || id._id || '') : String(id);
+            return currentId !== strId;
+          }), strId];
+      
+      if (exists) {
+        showToast('Đã bỏ khỏi danh sách yêu thích', '🤍');
+      } else {
+        showToast('Đã lưu mẫu vòng vào mục Yêu Thích!', '❤️');
+      }
+
+      const activeKey = getWishlistKey(currentUser);
+      try {
+        localStorage.setItem(activeKey, JSON.stringify(next));
+        localStorage.setItem('khanhvy_wishlist_guest', JSON.stringify(next));
+        localStorage.setItem('viban_wishlist', JSON.stringify(next));
+      } catch (e) {
+        console.error('Lỗi lưu wishlist:', e);
+      }
+
+      if (currentUser?.id) {
+        api.toggleWishlistDb(currentUser.id, strId).catch(() => {});
+      }
+
+      return next;
+    });
   };
 
   const totalCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -165,15 +274,29 @@ export const CartProvider = ({ children, currentUser }) => {
       setIsCartOpen,
       openCart: () => setIsCartOpen(true),
       closeCart: () => setIsCartOpen(false),
+      isWishlistOpen,
+      setIsWishlistOpen,
+      openWishlist: () => setIsWishlistOpen(true),
+      closeWishlist: () => setIsWishlistOpen(false),
       totalCount,
       subtotal,
       retailSubtotal,
       wholesaleSavings,
       hasWholesaleDiscount,
       wishlist,
-      toggleWishlist
+      isWishlisted,
+      toggleWishlist,
+      showToast
     }}>
       {children}
+
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] bg-[#26211C]/95 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-2xl border border-white/10 flex items-center gap-2.5 text-xs font-semibold animate-slideUp pointer-events-none">
+          <span className="text-base">{toast.icon}</span>
+          <span>{toast.message}</span>
+        </div>
+      )}
     </CartContext.Provider>
   );
 };

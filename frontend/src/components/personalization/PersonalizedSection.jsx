@@ -16,7 +16,7 @@ import {
 import { useCart } from '../../context/CartContext';
 
 export default function PersonalizedSection({ products, onQuickView, currentUser }) {
-  const { addToCart, wishlist, toggleWishlist } = useCart();
+  const { addToCart, isWishlisted, toggleWishlist } = useCart();
 
   // Load preferences from localStorage or initialize with smart defaults
   const [preferences, setPreferences] = useState(() => {
@@ -274,7 +274,7 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
                   }}
                   className="absolute top-2.5 right-2.5 p-2 rounded-full bg-white/90 backdrop-blur-md text-[#6B6258] hover:text-[#B86244] transition-transform hover:scale-110 shadow-xs"
                 >
-                  <Heart className={`w-3.5 h-3.5 ${wishlist.includes(prod.id) ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
+                  <Heart className={`w-3.5 h-3.5 ${isWishlisted(prod.id) ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
                 </button>
               </div>
 
