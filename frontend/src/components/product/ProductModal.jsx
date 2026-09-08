@@ -595,67 +595,77 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
           </div>
         </div>
 
-        {/* 3. SHOPEE STICKY BOTTOM ACTION BAR (Docked neatly at bottom on all devices) */}
-        <div className="sticky bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E8DFD3] p-3 sm:p-4 px-4 sm:px-6 shadow-lg">
-          <div className="flex items-center gap-2 sm:gap-3">
+        {/* 3. ODOO LUXURY STICKY BOTTOM ACTION BAR */}
+        <div className="sticky bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E8DFD3] p-2.5 sm:p-4 px-3 sm:px-6 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-1.5 sm:gap-3 max-w-full">
             
-            {/* Shopee Chat / Tư Vấn Icon Button */}
+            {/* Odoo Tư Vấn Icon Button */}
             <a
               href="https://zalo.me"
               target="_blank"
               rel="noreferrer"
-              className="flex flex-col items-center justify-center p-2 rounded-xl text-[#6B6258] hover:text-[#B86244] hover:bg-[#FAF4ED] transition-colors shrink-0"
+              className="flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#FAF7F2] hover:bg-[#FAF4ED] text-[#6B6258] hover:text-[#B86244] transition-all border border-[#E8DFD3] shrink-0 active:scale-95"
               title="Tư vấn nghệ nhân"
             >
-              <MessageCircle className="w-5 h-5 text-[#B86244]" />
-              <span className="text-[9px] font-semibold mt-0.5">Tư Vấn</span>
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#B86244]" />
+              <span className="text-[9px] font-semibold leading-tight mt-0.5">Tư Vấn</span>
             </a>
 
-            {/* Shopee Wishlist Heart Icon Button */}
+            {/* Odoo Wishlist Heart Icon Button */}
             <button
               type="button"
               onClick={() => toggleWishlist(product.id)}
-              className="flex flex-col items-center justify-center p-2 rounded-xl text-[#6B6258] hover:text-[#B86244] hover:bg-[#FAF4ED] transition-colors shrink-0"
+              className="flex flex-col items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#FAF7F2] hover:bg-[#FAF4ED] text-[#6B6258] hover:text-[#B86244] transition-all border border-[#E8DFD3] shrink-0 active:scale-95"
               title="Yêu thích sản phẩm"
             >
-              <Heart className={`w-5 h-5 ${liked ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
-              <span className="text-[9px] font-semibold mt-0.5">{liked ? 'Đã Thích' : 'Yêu Thích'}</span>
+              <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${liked ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
+              <span className="text-[9px] font-semibold leading-tight mt-0.5">{liked ? 'Đã Thích' : 'Thích'}</span>
             </button>
 
-            {/* Shopee Button 1: Thêm Vào Giỏ Hàng (Outline Terracotta) */}
+            {/* Odoo Button 1: Thêm Vào Giỏ Hàng (Soft Terracotta Outline) */}
             <button
               type="button"
               onClick={handleAddToCart}
               disabled={isAdded}
-              className={`flex-1 py-3 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border ${
+              className={`flex-1 min-w-0 h-11 sm:h-12 px-2 sm:px-4 rounded-xl font-bold transition-all border flex items-center justify-center active:scale-[0.98] ${
                 isAdded 
                   ? 'bg-[#3A754B] text-white border-[#3A754B]' 
-                  : 'bg-[#FBEFEA] text-[#B86244] border-[#B86244] hover:bg-[#B86244] hover:text-white shadow-xs'
+                  : 'bg-[#FAF4ED] text-[#B86244] border-[#B86244]/40 hover:bg-[#B86244] hover:text-white shadow-2xs hover:shadow-xs'
               }`}
             >
               {isAdded ? (
-                <>
-                  <Check className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-white">
+                  <Check className="w-4 h-4 shrink-0" />
                   <span>Đã Thêm!</span>
-                </>
+                </div>
               ) : (
-                <>
-                  <ShoppingBag className="w-4 h-4" />
-                  <span className="truncate">Thêm Giỏ Hàng</span>
-                </>
+                <div className="flex flex-col items-center justify-center leading-none">
+                  <span className="text-xs sm:text-sm font-bold flex items-center gap-1 whitespace-nowrap">
+                    <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                    <span>Thêm Giỏ</span>
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-normal opacity-75 mt-0.5 whitespace-nowrap hidden sm:block">
+                    Vào Giỏ Hàng
+                  </span>
+                </div>
               )}
             </button>
 
-            {/* Shopee Button 2: Mua Ngay (Solid Terracotta) */}
+            {/* Odoo Button 2: Mua Ngay (Solid Terracotta with Price) */}
             <button
               type="button"
               onClick={handleQuickBuy}
-              className="flex-1 py-3 px-3 sm:px-5 rounded-xl font-bold text-xs sm:text-sm bg-[#B86244] hover:bg-[#A05237] text-white flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+              className="flex-1 min-w-0 h-11 sm:h-12 px-2 sm:px-4 rounded-xl font-bold bg-[#B86244] hover:bg-[#A05237] text-white flex items-center justify-center transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
             >
-              <Zap className="w-4 h-4 text-amber-200 fill-amber-200" />
-              <span>
-                Mua Ngay ({((isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price) * quantity).toLocaleString('vi-VN')}₫)
-              </span>
+              <div className="flex flex-col items-center justify-center leading-none">
+                <span className="text-xs sm:text-sm font-bold flex items-center gap-1 whitespace-nowrap">
+                  <Zap className="w-3.5 h-3.5 text-amber-200 fill-amber-200 shrink-0" />
+                  <span>Mua Ngay</span>
+                </span>
+                <span className="text-[10px] sm:text-xs font-semibold text-amber-100 mt-0.5 whitespace-nowrap tracking-tight">
+                  {((isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price) * quantity).toLocaleString('vi-VN')}₫
+                </span>
+              </div>
             </button>
 
           </div>
