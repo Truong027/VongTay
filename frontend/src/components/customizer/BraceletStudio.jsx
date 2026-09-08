@@ -28,7 +28,7 @@ const charmIconMap = {
   BellRing: BellRing
 };
 
-export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, initialPreset }) {
+export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpenAiVision, initialPreset }) {
   if (!isOpen) return null;
 
   const { addToCart } = useCart();
@@ -57,11 +57,13 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, initi
           
           const defaultCord = (initialPreset?.cordId && res.data.cords.find(c => c.id === initialPreset.cordId)) || res.data.cords[0];
           const defaultBead = (initialPreset?.mainBeadId && res.data.beads.find(b => b.id === initialPreset.mainBeadId)) || res.data.beads[0];
+          const defaultSecondaryBead = (initialPreset?.secondaryBeadId && res.data.beads.find(b => b.id === initialPreset.secondaryBeadId)) || null;
           const defaultCharm = (initialPreset?.charmId && res.data.charms.find(c => c.id === initialPreset.charmId)) || res.data.charms[0];
           const defaultSize = (initialPreset?.sizeId && res.data.sizes.find(s => s.id === initialPreset.sizeId)) || res.data.sizes[1];
 
           setSelectedCord(defaultCord);
           setSelectedMainBead(defaultBead);
+          setSelectedSecondaryBead(defaultSecondaryBead);
           setSelectedCharm(defaultCharm);
           setSelectedSize(defaultSize);
           if (initialPreset?.mainBeadId) setActiveStep('bead');
@@ -199,12 +201,25 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, initi
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#CFC1B0] hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2.5">
+            {onOpenAiVision && (
+              <button
+                onClick={onOpenAiVision}
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-[#B86244] to-[#C09A58] hover:opacity-95 text-white text-xs font-bold rounded-full shadow-md transition-all"
+                title="Tải ảnh hoa lá, trang phục, bảng màu để AI gợi ý từ kho có sẵn"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+                <span>Tải Ảnh Gợi Ý (AI Vision)</span>
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-full hover:bg-white/10 text-[#CFC1B0] hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Studio Grid */}
@@ -375,6 +390,16 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, initi
                 <span className="font-bold text-[#26211C]">{priceData.beadCount} hạt</span>
               </div>
             </div>
+
+            {onOpenAiVision && (
+              <button
+                onClick={onOpenAiVision}
+                className="w-full mt-3 py-2.5 px-3 bg-gradient-to-r from-amber-500/10 via-[#B86244]/15 to-amber-500/10 hover:from-amber-500/20 hover:to-[#B86244]/25 border border-amber-500/30 rounded-xl text-xs font-bold text-[#845339] hover:text-[#26211C] flex items-center justify-center gap-2 transition-all shadow-2xs"
+              >
+                <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
+                <span>📸 Tải Ảnh Để AI Gợi Ý Phối Từ Hạt & Charm Có Sẵn</span>
+              </button>
+            )}
 
           </div>
 

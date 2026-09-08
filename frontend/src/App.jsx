@@ -9,7 +9,9 @@ import {
   Compass,
   ArrowRight,
   Filter,
-  Camera
+  Camera,
+  Palette,
+  Flower2
 } from 'lucide-react';
 import { CartProvider, useCart } from './context/CartContext';
 import { api } from './services/api';
@@ -58,8 +60,19 @@ function MainShop({ currentUser, setCurrentUser }) {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutData, setCheckoutData] = useState(null);
   const [isAICameraOpen, setIsAICameraOpen] = useState(false);
+  const [aiModalMode, setAiModalMode] = useState('wrist');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [aiCustomPreset, setAiCustomPreset] = useState(null);
+
+  const handleOpenAiWrist = () => {
+    setAiModalMode('wrist');
+    setIsAICameraOpen(true);
+  };
+
+  const handleOpenAiMatch = () => {
+    setAiModalMode('catalog_match');
+    setIsAICameraOpen(true);
+  };
 
   // Data
   const [products, setProducts] = useState([]);
@@ -206,7 +219,7 @@ function MainShop({ currentUser, setCurrentUser }) {
           setAiCustomPreset(null);
           setIsCustomizerOpen(true);
         }}
-        onOpenAICamera={() => setIsAICameraOpen(true)}
+        onOpenAICamera={handleOpenAiWrist}
         onOpenTracking={() => setIsTrackingOpen(true)}
         onOpenSizeGuide={() => setIsSizeGuideOpen(true)}
         onOpenAdmin={(targetState) => {
@@ -283,11 +296,19 @@ function MainShop({ currentUser, setCurrentUser }) {
             {/* AI Camera & Customizer Quick Triggers */}
             <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setIsAICameraOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-amber-600 to-[#B86244] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
+                onClick={handleOpenAiWrist}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-amber-600 to-[#B86244] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
               >
                 <Camera className="w-3.5 h-3.5 text-amber-200" />
-                <span>AI Quét Cổ Tay Nhận Diện Mẫu Hợp</span>
+                <span>AI Quét Cổ Tay</span>
+              </button>
+
+              <button
+                onClick={handleOpenAiMatch}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-[#B86244] to-[#C09A58] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
+              >
+                <Palette className="w-3.5 h-3.5 text-amber-200" />
+                <span>Tải Ảnh Gợi Ý Hạt & Charm Có Sẵn</span>
               </button>
 
               <button
@@ -295,10 +316,10 @@ function MainShop({ currentUser, setCurrentUser }) {
                   setAiCustomPreset(null);
                   setIsCustomizerOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] text-xs font-semibold hover:bg-[#B86244] hover:text-white transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] text-xs font-semibold hover:bg-[#B86244] hover:text-white transition-all shadow-sm"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Tự phối vòng độc bản</span>
+                <Flower2 className="w-3.5 h-3.5 text-amber-500" />
+                <span>Tự phối vòng thủ công</span>
               </button>
             </div>
           </div>
@@ -403,6 +424,7 @@ function MainShop({ currentUser, setCurrentUser }) {
           setAiCustomPreset(null);
         }}
         onOpenSizeGuide={() => setIsSizeGuideOpen(true)}
+        onOpenAiVision={handleOpenAiMatch}
         initialPreset={aiCustomPreset}
       />
 
@@ -445,6 +467,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         isOpen={isAICameraOpen}
         onClose={() => setIsAICameraOpen(false)}
         onApplyCustomPreset={handleApplyCustomPreset}
+        initialMode={aiModalMode}
       />
 
       {/* NEW: Auth Modal (Login / Register) */}

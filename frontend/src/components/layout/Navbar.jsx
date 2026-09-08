@@ -134,10 +134,10 @@ export default function Navbar({
             <button
               onClick={onOpenAICamera}
               className="px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#B86244] hover:bg-[#A05237] text-white transition-all whitespace-nowrap inline-flex items-center gap-1.5 shadow-xs hover:shadow-sm"
-              title="Quét cổ tay bằng camera để AI tư vấn mẫu vòng dây phù hợp"
+              title="Quét cổ tay đo size & Tải ảnh gợi ý phối từ hạt và charm có sẵn"
             >
-              <Camera className="w-3.5 h-3.5 text-amber-200" />
-              <span>AI Quét Cổ Tay</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+              <span>AI Quét & Gợi Ý Vòng</span>
             </button>
           </nav>
 

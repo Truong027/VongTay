@@ -244,6 +244,17 @@ export const api = {
     return data;
   },
 
+  async matchBeadsAndCharms(payload) {
+    const res = await fetch(`${BASE_URL}/ai/match-beads-charms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi gợi ý bản phối hạt & charm');
+    return data;
+  },
+
   // Vouchers & Promotions
   async getVouchers(includeAll = false) {
     const url = includeAll ? `${BASE_URL}/vouchers?all=true` : `${BASE_URL}/vouchers`;
