@@ -4,7 +4,8 @@ import {
   dbCreateProduct, 
   dbUpdateProduct, 
   dbDeleteProduct,
-  dbToggleProductVisibility 
+  dbToggleProductVisibility,
+  dbGetCategories
 } from '../data/dbStore.js';
 
 export const getProducts = async (req, res) => {
@@ -71,11 +72,19 @@ export const getProductById = async (req, res) => {
   }
 };
 
-export const getCategories = (req, res) => {
-  res.json({
-    success: true,
-    data: categories
-  });
+export const getCategories = async (req, res) => {
+  try {
+    const cats = await dbGetCategories();
+    res.json({
+      success: true,
+      data: cats && cats.length > 0 ? cats : categories
+    });
+  } catch (error) {
+    res.json({
+      success: true,
+      data: categories
+    });
+  }
 };
 
 export const createProduct = async (req, res) => {

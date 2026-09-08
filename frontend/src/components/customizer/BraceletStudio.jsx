@@ -825,7 +825,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
               <div className="animate-revealStep space-y-4">
                 <div>
                   <h4 className="font-serif-boutique text-lg sm:text-xl font-bold text-[#26211C]">Bước 3 — Chọn Charm & Phụ Kiện Thủ Công</h4>
-                  <p className="text-xs text-[#6B6258] mt-1">Charm gốm men pastel, hoa acrylic trong suốt và phụ kiện đặc trưng KhánhVyMade</p>
+                  <p className="text-xs text-[#6B6258] mt-1">Charm gốm men pastel, hoa acrylic trong suốt và phụ kiện đặc trưng Vòng Tay Nhà Zy</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

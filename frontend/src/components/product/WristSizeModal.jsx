@@ -108,7 +108,7 @@ export default function WristSizeModal({ isOpen, onClose }) {
           <div className="flex items-start gap-2.5 p-3.5 bg-[#EDF5F0] rounded-xl border border-[#C2DEC8] text-xs text-[#2E583A]">
             <CheckCircle2 className="w-4 h-4 text-[#3A754B] mt-0.5 flex-shrink-0" />
             <p>
-              <strong>Ưu điểm vượt trội vòng tay dây KhánhVyMade:</strong> Tất cả sản phẩm vòng dây đan macrame, dây sáp, chỉ đỏ đều dùng <strong>kỹ thuật nút thắt rút đôi trượt tự do (Freesize 13cm - 19cm)</strong>. Bạn có thể tự kéo mở rộng để xỏ tay và thắt rút ôm vừa khít cổ tay mình dễ dàng chỉ bằng một tay!
+              <strong>Ưu điểm vượt trội vòng tay dây Vòng Tay Nhà Zy:</strong> Tất cả sản phẩm vòng dây đan macrame, dây sáp, chỉ đỏ đều dùng <strong>kỹ thuật nút thắt rút đôi trượt tự do (Freesize 13cm - 19cm)</strong>. Bạn có thể tự kéo mở rộng để xỏ tay và thắt rút ôm vừa khít cổ tay mình dễ dàng chỉ bằng một tay!
             </p>
           </div>
           <div className="flex items-start gap-2.5 p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-xs text-[#845339]">

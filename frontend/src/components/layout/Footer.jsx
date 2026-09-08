@@ -16,23 +16,25 @@ export default function Footer({ onOpenCustomizer, onOpenSizeGuide, onOpenTracki
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#B86244] text-white flex items-center justify-center font-serif font-bold text-xl border border-[#A05237]">
-                KV
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="Logo Vòng Tay Nhà Zy" 
+                className="w-11 h-11 rounded-full object-cover shadow-sm border-2 border-[#B86244]/60 shrink-0" 
+              />
               <span className="font-serif-boutique text-2xl font-bold tracking-wider text-white">
-                KHÁNHVYMADE
+                VÒNG TAY NHÀ ZY
               </span>
             </div>
             <p className="text-sm text-[#CFC1B0] leading-relaxed">
-              Xưởng đan vòng tay dây thủ công KhánhVyMade. Từng nút thắt Macrame, sợi chỉ sáp dệt mộc mạc và phụ kiện gốm hoa pastel đều được nghệ nhân đan tay tỉ mỉ, gửi trọn nét bình an & may mắn đến tay bạn.
+              Xưởng vòng tay dây thủ công & gương đính độc bản Vòng Tay Nhà Zy. Từng nút thắt Macrame, sợi chỉ sáp dệt mộc mạc, phụ kiện charm gốm hoa pastel và gương đính gập/đơn đều được đan kết tỉ mỉ, gửi trọn nét bình an & may mắn đến tay bạn.
             </p>
             <div className="flex items-center space-x-3 text-[#CFC1B0]">
               <a
-                href="https://www.facebook.com/nguyen.khanh.vy.522878"
+                href="https://www.facebook.com/p/V%C3%B2ng-tay-nh%C3%A0-Zy-61590196302822/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-full bg-[#3D352E] flex items-center justify-center hover:bg-[#1877F2] hover:text-white transition-colors cursor-pointer"
-                title="Ghé thăm Facebook Khánh Vy"
+                title="Ghé thăm Facebook Vòng tay nhà Zy"
               >
                 <FacebookIcon className="w-4 h-4" />
               </a>
@@ -88,17 +90,17 @@ export default function Footer({ onOpenCustomizer, onOpenSizeGuide, onOpenTracki
             <div className="space-y-3 text-sm text-[#CFC1B0]">
               <p className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-[#B86244] mt-0.5 flex-shrink-0" />
-                <span><strong>Xưởng KhánhVyMade:</strong> Tổ 15, Phường Hòa Thọ Tây, Quận Cẩm Lệ, TP. Đà Nẵng</span>
+                <span><strong>Xưởng Vòng Tay Nhà Zy:</strong> Phường Cẩm Lệ, TP. Đà Nẵng</span>
               </p>
               <p className="flex items-center gap-2.5">
                 <FacebookIcon className="w-4 h-4 text-[#1877F2] flex-shrink-0" />
                 <a 
-                  href="https://www.facebook.com/nguyen.khanh.vy.522878"
+                  href="https://www.facebook.com/p/V%C3%B2ng-tay-nh%C3%A0-Zy-61590196302822/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white hover:underline text-amber-200"
                 >
-                  facebook.com/nguyen.khanh.vy.522878
+                  facebook.com/Vòng tay nhà Zy
                 </a>
               </p>
               <p className="flex items-center gap-2.5">
@@ -116,11 +118,11 @@ export default function Footer({ onOpenCustomizer, onOpenSizeGuide, onOpenTracki
           <div className="bg-[#332C25] p-5 rounded-xl border border-[#4A3F35]">
             <div className="flex items-center gap-2 text-[#C09A58] mb-2 font-medium text-sm">
               <ShieldCheck className="w-5 h-5" />
-              <span>Cam Kết Vòng Dây Thủ Công</span>
+              <span>Cam Kết Vòng Dây & Gương Đính</span>
             </div>
             <ul className="text-xs text-[#CFC1B0] space-y-2">
               <li>✓ 100% Sợi chỉ sáp dệt Macrame dẻo dai, chống nước</li>
-              <li>✓ Kỹ thuật thắt nút đan tay tỉ mỉ từng chi tiết</li>
+              <li>✓ Gương đính gập & đơn đính thủ công hạt cườm, vỏ sò</li>
               <li>✓ Khóa rút trượt đôi thông minh vừa vặn mọi cỡ tay</li>
               <li>✓ Bảo hành thay sợi và đan lại dây trọn đời</li>
             </ul>
@@ -130,9 +132,9 @@ export default function Footer({ onOpenCustomizer, onOpenSizeGuide, onOpenTracki
 
         {/* Copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-[#8C8276] gap-4">
-          <p>© 2026 KhánhVyMade - Xưởng Đan Vòng Tay Dây Thủ Công. All rights reserved.</p>
+          <p>© 2026 Vòng Tay Nhà Zy - Xưởng Vòng Tay Thủ Công & Gương Đính. All rights reserved.</p>
           <p className="flex items-center gap-1 text-[#CFC1B0]">
-            Chế tác với tất cả sự nâng niu <Heart className="w-3.5 h-3.5 text-[#B86244] fill-[#B86244]" /> từ nghệ nhân KhánhVyMade
+            Chế tác với tất cả sự nâng niu <Heart className="w-3.5 h-3.5 text-[#B86244] fill-[#B86244]" /> từ nghệ nhân Vòng Tay Nhà Zy
           </p>
         </div>
       </div>

@@ -55,5 +55,8 @@ wheels/
 .DS_Store
 Thumbs.db
 
+# Temporary scratch
+scratch/
+
 .vercel
 .env*

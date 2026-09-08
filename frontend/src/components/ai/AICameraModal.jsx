@@ -305,7 +305,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-serif-boutique text-lg sm:text-xl font-bold tracking-wide">
-                  AI STYLIST KHÁNHVYMADE
+                  AI STYLIST VÒNG TAY NHÀ ZY
                 </h3>
                 <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider hidden sm:inline-block">
                   Gemini Flash Vision
@@ -443,7 +443,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                         <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-4">
                           <h4 className="font-serif-boutique text-lg font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2 flex items-center gap-2">
                             <Sparkles className="w-5 h-5 text-amber-500" />
-                            Lời Nhắn Từ Nghệ Nhân KhánhVyMade
+                            Lời Nhắn Từ Nghệ Nhân Vòng Tay Nhà Zy
                           </h4>
 
                           <div className="text-xs sm:text-sm text-[#26211C] leading-relaxed whitespace-pre-line bg-[#FAF7F2] p-4 rounded-xl border border-[#E8DFD3]">
@@ -866,7 +866,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F3ECE1] pb-2">
                           <div>
                             <span className="text-[10px] uppercase font-bold tracking-widest text-[#B86244] bg-[#FAF4ED] px-2.5 py-0.5 rounded-full border border-[#EADBCC]">
-                              Bản Phối Độc Quyền Xưởng KhánhVyMade
+                              Bản Phối Độc Quyền Xưởng Vòng Tay Nhà Zy
                             </span>
                             <h4 className="font-serif-boutique text-2xl font-bold text-[#26211C] mt-1">
                               {matchResult.designName}

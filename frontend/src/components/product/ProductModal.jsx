@@ -171,7 +171,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                 <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
                   <span className="bg-[#B86244] text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-amber-200" />
-                    Chính Hãng KhánhVyMade
+                    Chính Hãng Vòng Tay Nhà Zy
                   </span>
                   {product.tag && (
                     <span className="bg-[#26211C] text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs">

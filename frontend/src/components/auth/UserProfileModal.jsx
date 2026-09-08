@@ -200,7 +200,7 @@ export default function UserProfileModal({
                 {currentUser.fullName}
               </h3>
               <p className="text-[11px] text-[#CFC1B0]">
-                {currentUser.email} · {currentUser.role === 'admin' ? 'Quản Trị Viên KhánhVyMade' : 'Khách Hàng Thành Viên'}
+                {currentUser.email} · {currentUser.role === 'admin' ? 'Quản Trị Viên Vòng Tay Nhà Zy' : 'Khách Hàng Thành Viên'}
               </p>
             </div>
           </div>

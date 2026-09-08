@@ -98,7 +98,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
             </div>
             <div>
               <h3 className="font-serif-boutique text-lg font-bold tracking-wide">
-                {isLogin ? 'ĐĂNG NHẬP KHÁNHVYMADE' : 'TẠO TÀI KHOẢN KHÁNHVYMADE'}
+                {isLogin ? 'ĐĂNG NHẬP VÒNG TAY NHÀ ZY' : 'TẠO TÀI KHOẢN VÒNG TAY NHÀ ZY'}
               </h3>
               <p className="text-[11px] text-[#CFC1B0]">
                 {isLogin ? 'Truy cập đơn hàng & bảng quản trị xưởng' : 'Lưu thông tin giao hàng, voucher & mẫu vòng tự phối'}

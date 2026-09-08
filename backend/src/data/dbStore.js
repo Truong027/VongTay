@@ -7,7 +7,8 @@ import {
   categories as seedCategories,
   sampleVouchers as seedVouchers,
   sampleReviews as seedReviews,
-  sampleConsultations as seedConsultations
+  sampleConsultations as seedConsultations,
+  customizerOptions as seedCustomizerOptions
 } from './seedData.js';
 import { query, isNeonConnected, initNeonDb, ensureNeonConnected } from './neonDb.js';
 
@@ -20,9 +21,9 @@ const defaultUsers = [
     id: 'user-admin',
     email: 'admin@khanhvymade.vn',
     password: 'admin123',
-    fullName: 'Quản Trị Viên KhánhVyMade',
+    fullName: 'Quản Trị Viên Vòng Tay Nhà Zy',
     phone: '0988668899',
-    address: 'Xưởng Chế Tác KhánhVyMade, 128 Nguyễn Trãi, Hà Nội',
+    address: 'Xưởng Chế Tác Vòng Tay Nhà Zy, 128 Nguyễn Trãi, Hà Nội',
     role: 'admin',
     createdAt: '2026-09-01T08:00:00.000Z'
   },
@@ -40,15 +41,15 @@ const defaultUsers = [
     id: 'user-02',
     email: 'artisan@khanhvymade.vn',
     password: '123',
-    fullName: 'Nghệ nhân KhánhVyMade',
+    fullName: 'Nghệ nhân Vòng Tay Nhà Zy',
     phone: '0988776655',
-    address: 'Xưởng Đan Vòng KhánhVyMade',
+    address: 'Xưởng Đan Vòng Vòng Tay Nhà Zy',
     role: 'artisan',
     createdAt: '2026-09-02T14:15:00.000Z'
   }
 ];
 
-// Initialize local memory/disk store across all 10 tables
+// Initialize local memory/disk store across all 10 tables + customizerOptions
 let memoryData = {
   users: [...defaultUsers],
   categories: [...seedCategories],
@@ -59,7 +60,8 @@ let memoryData = {
   vouchers: [...seedVouchers],
   wishlists: [],
   customDesigns: [],
-  consultations: [...seedConsultations]
+  consultations: [...seedConsultations],
+  customizerOptions: JSON.parse(JSON.stringify(seedCustomizerOptions))
 };
 
 // Load existing db.json if present
@@ -81,10 +83,11 @@ try {
     if (parsed.customDesigns) memoryData.customDesigns = parsed.customDesigns;
     if (parsed.consultations) memoryData.consultations = parsed.consultations;
     if (parsed.orderItems) memoryData.orderItems = parsed.orderItems;
-    console.log('📁 Đã nạp dữ liệu từ tệp lưu trữ vật lý local db.json (10 bảng).');
+    if (parsed.customizerOptions) memoryData.customizerOptions = parsed.customizerOptions;
+    console.log('📁 Đã nạp dữ liệu từ tệp lưu trữ vật lý local db.json (11 bảng).');
   } else {
     fs.writeFileSync(DB_FILE, JSON.stringify(memoryData, null, 2), 'utf8');
-    console.log('📁 Đã khởi tạo tệp cơ sở dữ liệu vật lý db.json (10 bảng).');
+    console.log('📁 Đã khởi tạo tệp cơ sở dữ liệu vật lý db.json (11 bảng).');
   }
 } catch (e) {
   console.warn('Lỗi đọc db.json:', e.message);
@@ -374,7 +377,7 @@ export const syncAllDataToNeon = async () => {
           Boolean(p.isBestSeller), p.salesCount || 0, JSON.stringify(p.cordComposition || {}),
           p.rating || 5.0, p.reviewsCount || 0,
           p.tag || '', p.stoneType || '', p.cordType || '', p.beadSize || '8mm',
-          p.artisanName || 'Nghệ nhân KhánhVyMade', p.leadTime || 'Làm thủ công 2h',
+          p.artisanName || 'Nghệ nhân Vòng Tay Nhà Zy', p.leadTime || 'Làm thủ công 2h',
           p.description || '', p.meaning || '', p.stock || 10,
           JSON.stringify(p.images || []), new Date().toISOString()
         ]
@@ -595,7 +598,7 @@ export const dbCreateProduct = async (productData) => {
           newProduct.isBestSeller, newProduct.salesCount, JSON.stringify(newProduct.cordComposition),
           newProduct.rating, newProduct.reviewsCount,
           newProduct.tag || '', newProduct.stoneType || '', newProduct.cordType || '', newProduct.beadSize || '8mm',
-          newProduct.artisanName || 'Nghệ nhân KhánhVyMade', newProduct.leadTime || 'Làm thủ công 2h',
+          newProduct.artisanName || 'Nghệ nhân Vòng Tay Nhà Zy', newProduct.leadTime || 'Làm thủ công 2h',
           newProduct.description || '', newProduct.meaning || '', newProduct.stock || 10,
           JSON.stringify(newProduct.images || []), newProduct.isHidden, newProduct.createdAt
         ]
@@ -1642,3 +1645,41 @@ export const getDbTelemetry = async () => {
     storageType: isNeonConnected() ? 'Neon Cloud PostgreSQL + Local Disk (10 Bảng Chuẩn)' : 'Local Disk File (db.json - 10 Bảng)'
   };
 };
+
+// ==================== CUSTOMIZER OPTIONS CRUD ====================
+
+export const dbGetCustomizerOptions = () => {
+  return memoryData.customizerOptions;
+};
+
+// Generic add item to a customizer category
+export const dbAddCustomizerItem = (category, item) => {
+  if (!memoryData.customizerOptions[category]) return null;
+  // Generate ID if missing
+  if (!item.id) {
+    const prefix = category === 'beads' ? 'bead' : category === 'charms' ? 'charm' : category === 'cords' ? 'cord' : 'item';
+    item.id = `${prefix}-${Date.now()}`;
+  }
+  memoryData.customizerOptions[category].push(item);
+  saveToDisk();
+  return item;
+};
+
+export const dbUpdateCustomizerItem = (category, id, updates) => {
+  if (!memoryData.customizerOptions[category]) return null;
+  const idx = memoryData.customizerOptions[category].findIndex(i => i.id === id);
+  if (idx === -1) return null;
+  memoryData.customizerOptions[category][idx] = { ...memoryData.customizerOptions[category][idx], ...updates };
+  saveToDisk();
+  return memoryData.customizerOptions[category][idx];
+};
+
+export const dbDeleteCustomizerItem = (category, id) => {
+  if (!memoryData.customizerOptions[category]) return false;
+  const before = memoryData.customizerOptions[category].length;
+  memoryData.customizerOptions[category] = memoryData.customizerOptions[category].filter(i => i.id !== id);
+  const deleted = memoryData.customizerOptions[category].length < before;
+  if (deleted) saveToDisk();
+  return deleted;
+};
+

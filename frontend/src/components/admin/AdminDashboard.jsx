@@ -343,7 +343,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     minOrderValue: 200000,
     maxDiscount: 50000,
     usageLimit: 500,
-    description: 'Ưu đãi tri ân khách hàng KhánhVyMade',
+    description: 'Ưu đãi tri ân khách hàng Vòng Tay Nhà Zy',
     isActive: true,
     expiresAt: ''
   });
@@ -469,7 +469,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         const aiData = res.data;
         setProductFormData(prev => ({
           ...prev,
-          name: aiData.name || prev.name || 'Vòng Tay Dây Thủ Công KhánhVyMade',
+          name: aiData.name || prev.name || 'Vòng Tay Dây Thủ Công Vòng Tay Nhà Zy',
           category: aiData.category || prev.category || 'macrame-pastel',
           price: aiData.price || prev.price || 195000,
           wholesalePrice: aiData.wholesalePrice || Math.round((aiData.price || prev.price || 195000) * 0.7),
@@ -513,7 +513,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       menh: ['Tất cả'],
       tag: 'Mới ra mắt',
       images: ['/images/products/bracelet-pastel-macrame-trio.jpg'],
-      description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công KhánhVyMade.',
+      description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công Vòng Tay Nhà Zy.',
       meaning: 'Bình an, may mắn và tràn đầy năng lượng tích cực.',
       isBestSeller: false,
       salesCount: 0,
@@ -683,7 +683,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       minOrderValue: 200000,
       maxDiscount: 50000,
       usageLimit: 500,
-      description: 'Ưu đãi tri ân khách hàng thân thiết KhánhVyMade',
+      description: 'Ưu đãi tri ân khách hàng thân thiết Vòng Tay Nhà Zy',
       isActive: true,
       expiresAt: ''
     });
@@ -819,10 +819,10 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           </div>
           <div className="space-y-1.5">
             <h2 className="font-serif-boutique text-2xl font-bold text-[#26211C]">
-              Khu Vực Quản Trị Viên KhánhVyMade
+              Khu Vực Quản Trị Viên Vòng Tay Nhà Zy
             </h2>
             <p className="text-xs text-[#6B6258] leading-relaxed">
-              Bạn cần đăng nhập với tài khoản Quản trị viên (Admin) của KhánhVyMade để quản lý danh sách đơn hàng, sản phẩm, tài khoản và đồng bộ database.
+              Bạn cần đăng nhập với tài khoản Quản trị viên (Admin) của Vòng Tay Nhà Zy để quản lý danh sách đơn hàng, sản phẩm, tài khoản và đồng bộ database.
             </p>
           </div>
 
@@ -929,7 +929,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-serif-boutique text-2xl font-bold text-[#26211C]">
-                  QUẢN TRỊ XƯỞNG THỦ CÔNG KHÁNHVYMADE
+                  QUẢN TRỊ XƯỞNG THỦ CÔNG VÒNG TAY NHÀ ZY
                 </h1>
                 <span className="text-[10px] bg-[#EDF3EF] text-[#4E6857] font-bold px-2.5 py-0.5 rounded-full border border-[#D0E2D7]">
                   ADMIN
@@ -1075,7 +1075,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                 <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#26211C] mt-1 block">
                   {orders.length} đơn
                 </span>
-                <span className="text-[10px] text-[#8C8276] mt-1 block">Từ website KhánhVyMade</span>
+                <span className="text-[10px] text-[#8C8276] mt-1 block">Từ website Vòng Tay Nhà Zy</span>
               </div>
 
               <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
@@ -1372,7 +1372,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                         )}
                       </div>
                       <p className="text-xs text-[#6B6258] mt-1 leading-relaxed line-clamp-2">
-                        {v.description || 'Ưu đãi dành cho đơn hàng tại KhánhVyMade'}
+                        {v.description || 'Ưu đãi dành cho đơn hàng tại Vòng Tay Nhà Zy'}
                       </p>
                     </div>
 
@@ -1869,7 +1869,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     </h2>
                   </div>
                   <p className="text-xs text-[#D8CFBF] mt-1 max-w-2xl leading-relaxed">
-                    Mọi bảng dữ liệu trong hệ thống KhánhVyMade đều được kết nối chặt chẽ bằng Khóa ngoại (Foreign Keys) và ràng buộc toàn vẹn quan hệ (Relational Integrity) — không có bảng nào đứng độc lập rời rạc.
+                    Mọi bảng dữ liệu trong hệ thống Vòng Tay Nhà Zy đều được kết nối chặt chẽ bằng Khóa ngoại (Foreign Keys) và ràng buộc toàn vẹn quan hệ (Relational Integrity) — không có bảng nào đứng độc lập rời rạc.
                   </p>
                 </div>
 
@@ -2098,7 +2098,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                       Cơ Sở Dữ Liệu Neon Tech PostgreSQL Cloud (patient-resonance-16986828)
                     </h3>
                     <p className="text-xs text-[#6B6258]">
-                      Toàn bộ dữ liệu thực tế: Đơn hàng, Sản phẩm KhánhVyMade và Tài khoản người dùng được lưu trữ và đồng bộ
+                      Toàn bộ dữ liệu thực tế: Đơn hàng, Sản phẩm Vòng Tay Nhà Zy và Tài khoản người dùng được lưu trữ và đồng bộ
                     </p>
                   </div>
                 </div>
@@ -2215,7 +2215,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           <div className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col">
             <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-[#CFC1B0] uppercase tracking-wider block">Xưởng Chế Tác KhánhVyMade</span>
+                <span className="text-[10px] text-[#CFC1B0] uppercase tracking-wider block">Xưởng Chế Tác Vòng Tay Nhà Zy</span>
                 <h3 className="font-serif-boutique text-xl font-bold text-amber-200">
                   #{selectedOrderDetail.id}
                 </h3>
@@ -2333,7 +2333,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
             <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
               <div>
                 <h3 className="font-serif-boutique text-lg font-bold">
-                  {editingProduct ? 'CHỈNH SỬA SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI VÀO KHO KHÁNHVYMADE'}
+                  {editingProduct ? 'CHỈNH SỬA SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI VÀO KHO VÒNG TAY NHÀ ZY'}
                 </h3>
                 <p className="text-[10px] text-[#CFC1B0]">Lưu trữ trực tiếp vào cơ sở dữ liệu</p>
               </div>
@@ -2727,7 +2727,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                 <label className="font-bold text-[#26211C] block mb-1">Ý nghĩa may mắn & bảo hành thủ công:</label>
                 <input
                   type="text"
-                  placeholder="Dây rút freesize 14-18cm, bảo hành đan lại dây trọn đời tại KhánhVyMade..."
+                  placeholder="Dây rút freesize 14-18cm, bảo hành đan lại dây trọn đời tại Vòng Tay Nhà Zy..."
                   value={productFormData.meaning}
                   onChange={(e) => setProductFormData({ ...productFormData, meaning: e.target.value })}
                   className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
@@ -2764,7 +2764,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   {editingUser ? 'CHỈNH SỬA TÀI KHOẢN' : 'THÊM TÀI KHOẢN MỚI'}
                 </h3>
                 <p className="text-[10px] text-[#CFC1B0]">
-                  {editingUser ? `Cập nhật thông tin & mật khẩu cho ${editingUser.email}` : 'Tạo tài khoản quản trị hoặc khách hàng KhánhVyMade'}
+                  {editingUser ? `Cập nhật thông tin & mật khẩu cho ${editingUser.email}` : 'Tạo tài khoản quản trị hoặc khách hàng Vòng Tay Nhà Zy'}
                 </p>
               </div>
               <button onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }} className="text-white/70 hover:text-white">

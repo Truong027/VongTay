@@ -58,15 +58,17 @@ export default function Navbar({
               className="flex items-center gap-1.5 sm:gap-2.5 cursor-pointer select-none group" 
               onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
             >
-              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-[#B86244] text-white flex items-center justify-center font-serif font-bold text-xs sm:text-base shadow-xs border border-[#A05237]/40 group-hover:scale-105 transition-transform shrink-0">
-                KV
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="Logo Vòng Tay Nhà Zy" 
+                className="w-8 h-8 sm:w-11 sm:h-11 rounded-full object-cover shadow-sm border-2 border-[#B86244]/60 group-hover:scale-105 group-hover:border-[#B86244] transition-all shrink-0" 
+              />
               <div>
                 <span className="font-serif-boutique text-base sm:text-2xl font-bold tracking-tight sm:tracking-wider text-[#26211C] block leading-none group-hover:text-[#B86244] transition-colors whitespace-nowrap">
-                  KHÁNHVYMADE
+                  VÒNG TAY NHÀ ZY
                 </span>
                 <span className="text-[8px] sm:text-[9px] tracking-wider sm:tracking-[0.22em] text-[#B86244] uppercase font-semibold hidden sm:block mt-1 whitespace-nowrap">
-                  Chuyên Vòng Tay Dây Thủ Công
+                  Vòng Tay Thủ Công & Gương Đính Độc Bản
                 </span>
               </div>
             </div>
@@ -82,7 +84,19 @@ export default function Navbar({
                   : 'text-[#5A5147] hover:text-[#26211C]'
               }`}
             >
-              Tất Cả Vòng Dây
+              Tất Cả Sản Phẩm
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); }}
+              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative flex items-center gap-1.5 ${
+                !isAdminView && activeTab === 'guong-dinh'
+                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
+                  : 'text-[#5A5147] hover:text-[#26211C]'
+              }`}
+            >
+              <span>🪞 Gương Đính Gập & Đơn</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
             </button>
 
             <button
@@ -94,7 +108,6 @@ export default function Navbar({
               }`}
             >
               <span>Macrame Pastel</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
             </button>
 
             <button
@@ -412,7 +425,17 @@ export default function Navbar({
               activeTab === 'all' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
             }`}
           >
-            Tất Cả Vòng Tay Dây
+            Tất Cả Sản Phẩm
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between ${
+              activeTab === 'guong-dinh' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
+            }`}
+          >
+            <span>🪞 Gương Đính Gập & Đơn</span>
+            <span className="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-600 rounded-full font-bold">Mới</span>
           </button>
 
           <button

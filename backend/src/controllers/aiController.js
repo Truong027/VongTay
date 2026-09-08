@@ -14,7 +14,7 @@ function generateArtisanFallbackAnalysis({ birthYear, userNotes, hasImage = fals
       isValidWrist: false,
       detectedObject: 'Ảnh gửi lên qua chế độ dự phòng',
       invalidReason: 'Máy chủ phân tích thị giác AI đang bận hoặc quá tải kết nối. Để đảm bảo đo đúng kích thước và nhận diện thật cổ tay/vòng tay của bạn (thay vì đưa ra kết quả mặc định), bạn vui lòng bấm thử lại trong giây lát!',
-      analysis: 'KhánhVyMade không thể xác nhận hình ảnh cổ tay lúc này. Vui lòng bấm chụp lại hoặc tải lại ảnh rõ nét cổ tay để AI quét trực tiếp nhé!',
+      analysis: 'Vòng Tay Nhà Zy không thể xác nhận hình ảnh cổ tay lúc này. Vui lòng bấm chụp lại hoặc tải lại ảnh rõ nét cổ tay để AI quét trực tiếp nhé!',
       presetConfig: null
     };
   }
@@ -105,7 +105,7 @@ export const analyzeWristAndRecommend = async (req, res) => {
 
     const hasImage = Boolean(imageBase64);
 
-    const systemPrompt = `Bạn là Hệ thống Thị Giác AI & Nghệ Nhân Stylist Phong Thủy Cao Cấp tại Xưởng Trang Sức Thủ Công "KhánhVyMade".
+    const systemPrompt = `Bạn là Hệ thống Thị Giác AI & Nghệ Nhân Stylist Phong Thủy Cao Cấp tại Xưởng Trang Sức Thủ Công "Vòng Tay Nhà Zy".
 Nhiệm vụ: Phân tích hình ảnh người dùng gửi lên và tư vấn phối vòng tay thủ công phong thủy cá nhân hóa.
 
 BƯỚC 1: KIỂM ĐỊNH ẢNH — QUY TẮC QUAN TRỌNG (ĐỌC KỸ):
@@ -132,7 +132,7 @@ TH2 — isValidWrist: TRUE (ảnh có bất kỳ phần tay, da, hoặc vòng ta
   * "skinTone": Nhận xét làn da dựa trên màu sắc thực tế (trắng hồng, vàng sáng, bánh mật ấm, ngăm khỏe khoắn...)
   * "wristType": Ước tính size cổ tay dựa trên tỷ lệ thấy trong ảnh (thon nhỏ ~14-15cm / vừa ~15-16cm / đậm ~17-18cm)
   * "existingBracelet": Có đeo vòng/đồng hồ gì không? Nếu có mô tả, nếu không ghi "Chưa đeo trang sức"
-  * "consultation": Bài tư vấn phong thủy KhánhVyMade 4 phần:
+  * "consultation": Bài tư vấn phong thủy Vòng Tay Nhà Zy 4 phần:
      ✨ **NHẬN DIỆN CỔ TAY & TONE DA THỰC TẾ**
      🌿 **GỢI Ý ĐÁ PHONG THỦY & NĂNG LƯỢNG BẢN MỆNH**
      🌸 **PHONG CÁCH CHARM & KỸ THUẬT DÂY DỆT KHÁNHVYMADE**
@@ -252,7 +252,7 @@ Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ tuân thủ đúng cấ
         detectedObject: fallbackResult.detectedObject,
         invalidReason: fallbackResult.invalidReason,
         analysis: fallbackResult.analysis,
-        model: 'KhánhVyMade Artisan AI (Smart Offline)',
+        model: 'Vòng Tay Nhà Zy Artisan AI (Smart Offline)',
         isFallback: true,
         presetConfig: fallbackResult.presetConfig
       }
@@ -268,7 +268,7 @@ Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ tuân thủ đúng cấ
         detectedObject: fallbackResult.detectedObject,
         invalidReason: fallbackResult.invalidReason,
         analysis: fallbackResult.analysis,
-        model: 'KhánhVyMade Artisan AI (Chế Độ An Toàn)',
+        model: 'Vòng Tay Nhà Zy Artisan AI (Chế Độ An Toàn)',
         isFallback: true,
         presetConfig: fallbackResult.presetConfig
       }
@@ -290,7 +290,7 @@ export const analyzeBraceletCord = async (req, res) => {
       });
     }
 
-    const systemPrompt = `Bạn là Nghệ nhân trưởng kiêm Chuyên gia thẩm định dây đan thủ công tại Xưởng "KhánhVyMade".
+    const systemPrompt = `Bạn là Nghệ nhân trưởng kiêm Chuyên gia thẩm định dây đan thủ công tại Xưởng "Vòng Tay Nhà Zy".
 Nhiệm vụ: Soi chiếu bức ảnh và BÓC TÁCH THÀNH PHẦN CHI TIẾT CỦA VÒNG TAY THỦ CÔNG.
 
 KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
@@ -497,7 +497,7 @@ KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
 };
 
 /**
- * Gợi ý phối vòng tay từ các hạt đá, charm và dây dệt CÓ SẴN trong kho KhánhVyMade khi người dùng tải ảnh lên
+ * Gợi ý phối vòng tay từ các hạt đá, charm và dây dệt CÓ SẴN trong kho Vòng Tay Nhà Zy khi người dùng tải ảnh lên
  */
 export const matchBeadsAndCharms = async (req, res) => {
   try {
@@ -523,7 +523,7 @@ export const matchBeadsAndCharms = async (req, res) => {
       `- ${c.id}: ${c.name} (${c.description}, Màu: ${c.color}, Giá: ${c.price}đ)`
     ).join('\n');
 
-    const systemPrompt = `Bạn là Chuyên Gia Stylist Phối Trang Sức Thủ Công & Phong Thủy Cao Cấp tại "KhánhVyMade".
+    const systemPrompt = `Bạn là Chuyên Gia Stylist Phối Trang Sức Thủ Công & Phong Thủy Cao Cấp tại "Vòng Tay Nhà Zy".
 Nhiệm vụ: Xem hình ảnh người dùng tải lên (ảnh hoa lá, phụ kiện, charm mẫu, trang phục, bảng màu, hoặc trang sức truyền cảm hứng) và GỢI Ý BẢN PHỐI VÒNG TAY TƯƠNG HỢP NHẤT CHỈ ĐƯỢC PHÉP CHỌN TỪ CÁC HẠT, CHARM VÀ DÂY CÓ SẴN TRONG KHO XƯỞNG KHÁNHVYMADE DƯỚI ĐÂY:
 
 DANH MỤC HẠT ĐÁ CÓ SẴN TRONG KHO:
@@ -625,10 +625,10 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ theo đúng cấu trúc:
         secondaryBeadId: 'bead-moonstone',
         charmId: 'charm-flower-kv',
         cordId: 'cord-cream-macrame',
-        explanation: 'KhánhVyMade gợi ý sự kết hợp tinh tế giữa hạt hoa anh đào hồng pastel cùng đá mặt trăng Moonstone ánh xà cừ, điểm xuyết charm hoa cúc ngọc ngà trên nền dây Macrame kem be vintage.',
+        explanation: 'Vòng Tay Nhà Zy gợi ý sự kết hợp tinh tế giữa hạt hoa anh đào hồng pastel cùng đá mặt trăng Moonstone ánh xà cừ, điểm xuyết charm hoa cúc ngọc ngà trên nền dây Macrame kem be vintage.',
         fengShuiVibe: 'Năng lượng thuần khiết, chữa lành tâm hồn và thu hút nhân duyên hòa hợp.'
       };
-      usedModel = 'KhánhVyMade Artisan Smart Selection';
+      usedModel = 'Vòng Tay Nhà Zy Artisan Smart Selection';
     }
 
     // Tra cứu chi tiết linh kiện có sẵn trong kho

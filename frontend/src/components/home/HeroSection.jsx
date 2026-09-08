@@ -24,7 +24,7 @@ export default function HeroSection({ onExplore, onOpenCustomizer, onQuickViewFe
             </h1>
 
             <p className="text-[#6B6258] text-base sm:text-lg leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              Không đơn thuần là trang sức, mỗi chiếc vòng tay tại <strong>KhánhVyMade</strong> là một câu chuyện bình an được đan kết từ sợi chỉ sáp dệt Macrame dẻo dai, phụ kiện gốm hoa pastel ngọt ngào và sự tỉ mỉ của đôi bàn tay nghệ nhân.
+              Không đơn thuần là trang sức, mỗi chiếc vòng tay tại <strong>Vòng Tay Nhà Zy</strong> là một câu chuyện bình an được đan kết từ sợi chỉ sáp dệt Macrame dẻo dai, phụ kiện gốm hoa pastel ngọt ngào và sự tỉ mỉ của đôi bàn tay nghệ nhân.
             </p>
 
             {/* CTAs */}
@@ -70,8 +70,8 @@ export default function HeroSection({ onExplore, onOpenCustomizer, onQuickViewFe
               {/* Main Image Frame with Luxury Border */}
               <div className="relative rounded-2xl overflow-hidden shadow-artisan-lg border-8 border-white bg-[#F3ECE1] group">
                 <img
-                  src="/images/products/bracelet-whale-ceramic.jpg"
-                  alt="Vòng Tay Dây Macrame Cá Voi Men Gốm KhánhVyMade"
+                  src="/images/products/vong-dia-chuon-chuon-logo.jpg"
+                  alt="Vòng Tay Dây Đĩa Hoa Chuồn Chuồn Men Sứ Vòng Tay Nhà Zy"
                   className="w-full h-[400px] sm:h-[460px] object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 />
 
@@ -79,19 +79,19 @@ export default function HeroSection({ onExplore, onOpenCustomizer, onQuickViewFe
                 <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-white/95 backdrop-blur-md border border-[#E8DFD3] shadow-lg flex items-center justify-between">
                   <div className="space-y-1">
                     <span className="text-[10px] tracking-wider uppercase font-semibold text-[#B86244] bg-[#FBEFEA] px-2 py-0.5 rounded-full inline-block">
-                      Signature Macrame 2026
+                      Signature Logo 2026
                     </span>
                     <h4 className="font-serif-boutique text-base font-bold text-[#26211C] leading-snug">
-                      Vòng Dây Macrame Cá Voi Gốm & Sao Pha Lê
+                      Vòng Dây Đĩa Men Sứ Chuồn Chuồn
                     </h4>
                     <p className="text-xs text-[#6B6258] flex items-center gap-1">
                       <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                      <span className="font-semibold text-[#26211C]">5.0</span> (64 đánh giá nghệ nhân)
+                      <span className="font-semibold text-[#26211C]">5.0</span> (98 đánh giá xưởng Nhà Zy)
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-[#8C8276] line-through">220.000₫</p>
-                    <p className="text-base font-bold text-[#B86244]">185.000₫</p>
+                    <p className="text-xs text-[#8C8276] line-through">235.000₫</p>
+                    <p className="text-base font-bold text-[#B86244]">195.000₫</p>
                   </div>
                 </div>
               </div>
