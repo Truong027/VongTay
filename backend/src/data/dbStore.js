@@ -399,7 +399,7 @@ export const syncAllDataToNeon = async () => {
           payment_status = EXCLUDED.payment_status,
           timeline = EXCLUDED.timeline`,
         [
-          o.id, o.userId || 'user-01', o.customerName, o.phone, o.address, JSON.stringify(o.items || []),
+          o.id, o.userId || null, o.customerName, o.phone, o.address, JSON.stringify(o.items || []),
           o.subtotal || o.totalAmount, o.wholesaleDiscount || 0, o.voucherDiscount || 0,
           o.shippingFee || 25000, o.totalAmount, o.paymentMethod || 'VietQR',
           o.paymentStatus || 'Chờ thanh toán', o.orderStatus || 'Chờ xác nhận',
@@ -797,6 +797,45 @@ export const dbCreateUser = async (userData) => {
   };
 };
 
+export const dbUpdateUserProfile = async (id, updates = {}) => {
+  const user = memoryData.users.find(u => u.id === id);
+  if (!user) return null;
+
+  if (updates.fullName !== undefined) user.fullName = updates.fullName.trim();
+  if (updates.phone !== undefined) user.phone = updates.phone.trim();
+  if (updates.address !== undefined) user.address = updates.address.trim();
+  if (updates.password) user.password = updates.password;
+  saveToDisk();
+
+  if (isNeonConnected()) {
+    try {
+      if (updates.password) {
+        await query(
+          'UPDATE users SET full_name = $1, phone = $2, address = $3, password_hash = $4 WHERE id = $5',
+          [user.fullName, user.phone, user.address, user.password, id]
+        );
+      } else {
+        await query(
+          'UPDATE users SET full_name = $1, phone = $2, address = $3 WHERE id = $4',
+          [user.fullName, user.phone, user.address, id]
+        );
+      }
+    } catch (err) {
+      console.warn('Lỗi update user profile Neon:', err.message);
+    }
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    phone: user.phone || '',
+    address: user.address || '',
+    role: user.role,
+    createdAt: user.createdAt
+  };
+};
+
 export const dbUpdateUserRole = async (id, newRole) => {
   const user = memoryData.users.find(u => u.id === id);
   if (!user) return null;
@@ -866,6 +905,7 @@ export const dbGetOrders = async () => {
       if (res && Array.isArray(res.rows)) {
         const mapped = res.rows.map(r => ({
           id: r.id,
+          userId: r.user_id || null,
           customerName: r.customer_name,
           phone: r.phone,
           address: r.address,
@@ -875,6 +915,7 @@ export const dbGetOrders = async () => {
           paymentMethod: r.payment_method,
           paymentStatus: r.payment_status,
           orderStatus: r.order_status,
+          trackingCode: r.tracking_code || null,
           note: r.note,
           timeline: r.timeline,
           createdAt: r.created_at
@@ -898,15 +939,16 @@ export const dbSaveOrder = async (order) => {
     try {
       await query(
         `INSERT INTO orders (
-          id, customer_name, phone, address, items, total_amount, shipping_fee,
+          id, user_id, customer_name, phone, address, items, total_amount, shipping_fee,
           payment_method, payment_status, order_status, note, timeline, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT (id) DO UPDATE SET
+          user_id = EXCLUDED.user_id,
           order_status = EXCLUDED.order_status,
           payment_status = EXCLUDED.payment_status,
           timeline = EXCLUDED.timeline`,
         [
-          order.id, order.customerName, order.phone, order.address, JSON.stringify(order.items),
+          order.id, order.userId || null, order.customerName, order.phone, order.address, JSON.stringify(order.items),
           order.totalAmount, order.shippingFee || 25000, order.paymentMethod || 'VietQR',
           order.paymentStatus || 'Chờ thanh toán', order.orderStatus || 'Chờ xác nhận',
           order.note || '', JSON.stringify(order.timeline || []), order.createdAt

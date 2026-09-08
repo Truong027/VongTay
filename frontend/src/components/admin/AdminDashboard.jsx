@@ -320,6 +320,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const [userFormData, setUserFormData] = useState({
     fullName: '',
     email: '',
@@ -607,18 +608,42 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   };
 
   // ================= USER HANDLERS =================
-  const handleCreateUser = async (e) => {
+  const handleSaveUser = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.createUser(userFormData);
-      if (res.success) {
-        setUsers(prev => [res.data, ...prev]);
-        setIsUserModalOpen(false);
-        setUserFormData({ fullName: '', email: '', password: '', phone: '', address: '', role: 'customer' });
-        triggerToast(`Tạo tài khoản ${res.data.fullName} thành công!`);
+      if (editingUser) {
+        const payload = {
+          id: editingUser.id,
+          email: editingUser.email,
+          fullName: userFormData.fullName,
+          phone: userFormData.phone,
+          address: userFormData.address
+        };
+        if (userFormData.password && userFormData.password.trim()) {
+          payload.newPassword = userFormData.password.trim();
+        }
+        const res = await api.updateProfile(payload);
+        if (userFormData.role !== editingUser.role) {
+          await api.updateUserRole(editingUser.id, userFormData.role);
+        }
+        if (res.success) {
+          setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...res.data, role: userFormData.role } : u));
+          setIsUserModalOpen(false);
+          setEditingUser(null);
+          setUserFormData({ fullName: '', email: '', password: '', phone: '', address: '', role: 'customer' });
+          triggerToast(`Cập nhật thông tin tài khoản ${userFormData.fullName} thành công!`);
+        }
+      } else {
+        const res = await api.createUser(userFormData);
+        if (res.success) {
+          setUsers(prev => [res.data, ...prev]);
+          setIsUserModalOpen(false);
+          setUserFormData({ fullName: '', email: '', password: '', phone: '', address: '', role: 'customer' });
+          triggerToast(`Tạo tài khoản ${res.data.fullName} thành công!`);
+        }
       }
     } catch (err) {
-      alert('Lỗi tạo tài khoản: ' + err.message);
+      alert('Lỗi lưu tài khoản: ' + err.message);
     }
   };
 
@@ -1624,7 +1649,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           <div className="space-y-6">
             <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
               <button
-                onClick={() => setIsUserModalOpen(true)}
+                onClick={() => {
+                  setEditingUser(null);
+                  setUserFormData({ fullName: '', email: '', password: '', phone: '', address: '', role: 'customer' });
+                  setIsUserModalOpen(true);
+                }}
                 className="px-4 py-2.5 rounded-xl bg-[#4E6857] hover:bg-[#3D5244] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
               >
                 <Plus className="w-4 h-4" />
@@ -1653,7 +1682,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                       <th className="py-3.5 px-4">Địa Chỉ Mặc Định</th>
                       <th className="py-3.5 px-4">Vai Trò</th>
                       <th className="py-3.5 px-4">Ngày Tạo</th>
-                      <th className="py-3.5 px-4 text-right">Phân Quyền / Xóa</th>
+                      <th className="py-3.5 px-4 text-right">Thao Tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F0EAE1]">
@@ -1693,6 +1722,24 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setEditingUser(u);
+                                setUserFormData({
+                                  fullName: u.fullName || '',
+                                  email: u.email || '',
+                                  password: '',
+                                  phone: u.phone || '',
+                                  address: u.address || '',
+                                  role: u.role || 'customer'
+                                });
+                                setIsUserModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg border border-[#E8DFD3] bg-[#FAF7F2] text-[#B86244] hover:bg-[#F3ECE1]"
+                              title="Sửa thông tin & đổi mật khẩu"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={() => handleToggleUserRole(u)}
                               className="px-2 py-1 rounded-lg border border-[#E8DFD3] bg-[#FAF7F2] text-[11px] font-semibold text-[#26211C] hover:bg-[#F3ECE1]"
@@ -2713,15 +2760,19 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           <div className="bg-white w-full max-w-md rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6">
             <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
               <div>
-                <h3 className="font-serif-boutique text-lg font-bold">THÊM TÀI KHOẢN MỚI</h3>
-                <p className="text-[10px] text-[#CFC1B0]">Tạo tài khoản quản trị hoặc khách hàng KhánhVyMade</p>
+                <h3 className="font-serif-boutique text-lg font-bold">
+                  {editingUser ? 'CHỈNH SỬA TÀI KHOẢN' : 'THÊM TÀI KHOẢN MỚI'}
+                </h3>
+                <p className="text-[10px] text-[#CFC1B0]">
+                  {editingUser ? `Cập nhật thông tin & mật khẩu cho ${editingUser.email}` : 'Tạo tài khoản quản trị hoặc khách hàng KhánhVyMade'}
+                </p>
               </div>
-              <button onClick={() => setIsUserModalOpen(false)} className="text-white/70 hover:text-white">
+              <button onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }} className="text-white/70 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-6 space-y-3.5 text-xs">
+            <form onSubmit={handleSaveUser} className="p-6 space-y-3.5 text-xs">
               <div>
                 <label className="font-bold text-[#26211C] block mb-1">Họ và tên: *</label>
                 <input
@@ -2739,21 +2790,25 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                 <input
                   type="email"
                   required
+                  disabled={Boolean(editingUser)}
                   placeholder="email@khanhvymade.vn"
                   value={userFormData.email}
                   onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
+                  className={`w-full p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none ${
+                    editingUser ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : 'bg-[#FAF7F2]'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="font-bold text-[#26211C] block mb-1">Số điện thoại:</label>
+                <label className="font-bold text-[#26211C] block mb-1">Số điện thoại: *</label>
                 <input
                   type="tel"
+                  required
                   placeholder="0988668899"
                   value={userFormData.phone}
                   onChange={(e) => setUserFormData({ ...userFormData, phone: e.target.value })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
+                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-mono"
                 />
               </div>
 
@@ -2769,11 +2824,13 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
               </div>
 
               <div>
-                <label className="font-bold text-[#26211C] block mb-1">Mật khẩu: *</label>
+                <label className="font-bold text-[#26211C] block mb-1">
+                  {editingUser ? 'Mật khẩu mới (bỏ trống nếu không đổi):' : 'Mật khẩu: *'}
+                </label>
                 <input
                   type="password"
-                  required
-                  placeholder="Mật khẩu khởi tạo"
+                  required={!editingUser}
+                  placeholder={editingUser ? 'Để trống nếu giữ nguyên mật khẩu cũ' : 'Mật khẩu khởi tạo'}
                   value={userFormData.password}
                   onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
                   className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
@@ -2796,7 +2853,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
               <div className="pt-3 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsUserModalOpen(false)}
+                  onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }}
                   className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-[#6B6258] font-semibold"
                 >
                   Hủy
@@ -2805,7 +2862,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-[#4E6857] hover:bg-[#3D5244] text-white font-bold"
                 >
-                  Tạo Tài Khoản
+                  {editingUser ? 'Lưu Thay Đổi' : 'Tạo Tài Khoản'}
                 </button>
               </div>
             </form>

@@ -108,9 +108,10 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
 
     try {
       const orderPayload = {
-        customerName: fullName,
-        phone,
-        address,
+        userId: currentUser?.id || null,
+        customerName: fullName.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
         note: isGiftBox 
           ? `[HỘP QUÀ GẤM & THIỆP TAY: "${giftCardMessage || 'Thương gửi'}"]. ${note}`.trim()
           : note,

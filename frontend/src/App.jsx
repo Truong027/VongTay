@@ -488,6 +488,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
+        onUpdateUser={(updatedUser) => setCurrentUser(updatedUser)}
         defaultTab={profileDefaultTab}
         products={allProductsMaster.length > 0 ? allProductsMaster : products}
         onOpenProduct={(prod) => {

@@ -1,5 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, MapPin, Mail, ShoppingBag, Shield, Clock, LogOut, Package, Heart, Trash2, ArrowRight } from 'lucide-react';
+import { 
+  X, 
+  User, 
+  Phone, 
+  MapPin, 
+  Mail, 
+  ShoppingBag, 
+  Shield, 
+  Clock, 
+  LogOut, 
+  Package, 
+  Heart, 
+  Trash2, 
+  ArrowRight,
+  Lock,
+  Edit2,
+  Save,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import { api } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 
@@ -7,6 +26,7 @@ export default function UserProfileModal({
   isOpen, 
   onClose, 
   currentUser, 
+  onUpdateUser,
   products = [], 
   onOpenProduct, 
   onLogout, 
@@ -20,6 +40,25 @@ export default function UserProfileModal({
   const [userOrders, setUserOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [modalProducts, setModalProducts] = useState(products || []);
+
+  // Chỉnh sửa thông tin tài khoản & mật khẩu
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFullName, setEditFullName] = useState(currentUser?.fullName || '');
+  const [editPhone, setEditPhone] = useState(currentUser?.phone || '');
+  const [editAddress, setEditAddress] = useState(currentUser?.address || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
+
+  useEffect(() => {
+    if (currentUser) {
+      setEditFullName(currentUser.fullName || '');
+      setEditPhone(currentUser.phone || '');
+      setEditAddress(currentUser.address || '');
+    }
+  }, [currentUser]);
 
   // Cập nhật tab khi mở modal với tab chỉ định
   useEffect(() => {
@@ -42,21 +81,39 @@ export default function UserProfileModal({
   // Danh sách sản phẩm yêu thích của riêng tài khoản này
   const wishlistedProducts = (modalProducts || []).filter(p => isWishlisted(p.id));
 
+  // Yêu cầu 1: Tài khoản nào chỉ nhìn thấy đơn tài khoản đó, không thấy đơn admin/người khác
   useEffect(() => {
     const fetchUserOrders = async () => {
+      if (!currentUser) {
+        setUserOrders([]);
+        setLoadingOrders(false);
+        return;
+      }
       setLoadingOrders(true);
       try {
-        const res = await api.getOrders();
+        const params = {};
+        if (currentUser.id) params.userId = currentUser.id;
+        else if (currentUser.phone) params.phone = currentUser.phone;
+
+        const res = await api.getOrders(params);
         if (res.success && res.data) {
-          // Filter orders matching customer name, phone or email
-          const filtered = res.data.filter(o => 
-            (currentUser.fullName && o.customerName?.toLowerCase().includes(currentUser.fullName.toLowerCase())) ||
-            (currentUser.phone && o.phone === currentUser.phone)
-          );
-          setUserOrders(filtered.length > 0 ? filtered : res.data.slice(0, 3));
+          // Lọc chính xác: chỉ đơn của tài khoản hiện tại
+          const filtered = res.data.filter(o => {
+            if (currentUser.id && o.userId) {
+              return String(o.userId) === String(currentUser.id);
+            }
+            if (currentUser.phone && o.phone) {
+              return String(o.phone).trim() === String(currentUser.phone).trim();
+            }
+            return false;
+          });
+          setUserOrders(filtered);
+        } else {
+          setUserOrders([]);
         }
       } catch (err) {
         console.warn('Lỗi nạp đơn hàng của người dùng:', err);
+        setUserOrders([]);
       } finally {
         setLoadingOrders(false);
       }
@@ -64,6 +121,67 @@ export default function UserProfileModal({
 
     fetchUserOrders();
   }, [currentUser]);
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setProfileMsg({ type: '', text: '' });
+
+    if (!editFullName.trim()) {
+      setProfileMsg({ type: 'error', text: 'Họ và tên không được để trống.' });
+      return;
+    }
+
+    if (!editPhone.trim()) {
+      setProfileMsg({ type: 'error', text: 'Vui lòng nhập số điện thoại nhận hàng.' });
+      return;
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 3) {
+        setProfileMsg({ type: 'error', text: 'Mật khẩu mới phải có ít nhất 3 ký tự.' });
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setProfileMsg({ type: 'error', text: 'Mật khẩu mới và xác nhận mật khẩu không trùng khớp.' });
+        return;
+      }
+    }
+
+    setSavingProfile(true);
+    try {
+      const payload = {
+        id: currentUser.id,
+        email: currentUser.email,
+        fullName: editFullName.trim(),
+        phone: editPhone.trim(),
+        address: editAddress.trim()
+      };
+
+      if (newPassword) {
+        payload.currentPassword = currentPassword;
+        payload.newPassword = newPassword;
+      }
+
+      const res = await api.updateProfile(payload);
+      if (res.success && res.data) {
+        const updatedUser = {
+          ...currentUser,
+          ...res.data
+        };
+        localStorage.setItem('viban_user', JSON.stringify(updatedUser));
+        if (onUpdateUser) onUpdateUser(updatedUser);
+        setProfileMsg({ type: 'success', text: res.message || 'Cập nhật thông tin thành công!' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setIsEditing(false);
+      }
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.message || 'Lỗi cập nhật thông tin tài khoản.' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm animate-fadeIn">
@@ -290,48 +408,217 @@ export default function UserProfileModal({
           )}
 
           {activeTab === 'profile' && (
-            <div className="space-y-3 bg-white p-5 rounded-2xl border border-[#E8DFD3]">
-              <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
-                <User className="w-4 h-4 text-[#B86244]" />
-                <div>
-                  <span className="text-[10px] text-[#8C8276] block">Họ và tên</span>
-                  <strong className="text-sm text-[#26211C]">{currentUser.fullName}</strong>
+            <div className="space-y-4">
+              {profileMsg.text && (
+                <div className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+                  profileMsg.type === 'error'
+                    ? 'bg-rose-50 border border-rose-200 text-rose-700'
+                    : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                }`}>
+                  {profileMsg.type === 'error' ? (
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>{profileMsg.text}</span>
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
-                <Mail className="w-4 h-4 text-[#B86244]" />
-                <div>
-                  <span className="text-[10px] text-[#8C8276] block">Email đăng nhập</span>
-                  <strong className="text-xs text-[#26211C] font-mono">{currentUser.email}</strong>
-                </div>
-              </div>
+              {!isEditing ? (
+                <div className="bg-white p-5 rounded-2xl border border-[#E8DFD3] space-y-3.5 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-3">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-[#B86244]" />
+                      <div>
+                        <span className="text-[10px] text-[#8C8276] block">Họ và tên</span>
+                        <strong className="text-sm text-[#26211C]">{currentUser.fullName}</strong>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(true);
+                        setProfileMsg({ type: '', text: '' });
+                      }}
+                      className="px-3 py-1.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] text-[#B86244] font-semibold text-xs hover:bg-[#F3ECE1] flex items-center gap-1.5 transition-colors shadow-2xs"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Chỉnh sửa thông tin</span>
+                    </button>
+                  </div>
 
-              <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
-                <Phone className="w-4 h-4 text-[#B86244]" />
-                <div>
-                  <span className="text-[10px] text-[#8C8276] block">Số điện thoại</span>
-                  <strong className="text-xs text-[#26211C]">{currentUser.phone || 'Chưa cập nhật'}</strong>
-                </div>
-              </div>
+                  <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
+                    <Mail className="w-4 h-4 text-[#B86244]" />
+                    <div>
+                      <span className="text-[10px] text-[#8C8276] block">Email tài khoản</span>
+                      <strong className="text-xs text-[#26211C] font-mono">{currentUser.email}</strong>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
-                <MapPin className="w-4 h-4 text-[#B86244]" />
-                <div>
-                  <span className="text-[10px] text-[#8C8276] block">Địa chỉ giao hàng mặc định</span>
-                  <strong className="text-xs text-[#26211C]">{currentUser.address || 'Chưa cập nhật'}</strong>
-                </div>
-              </div>
+                  <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
+                    <Phone className="w-4 h-4 text-[#B86244]" />
+                    <div>
+                      <span className="text-[10px] text-[#8C8276] block">Số điện thoại liên hệ</span>
+                      <strong className="text-xs text-[#26211C]">
+                        {currentUser.phone ? (
+                          <span className="font-mono text-[#26211C]">{currentUser.phone}</span>
+                        ) : (
+                          <span className="text-amber-600 font-medium">Chưa cập nhật SĐT</span>
+                        )}
+                      </strong>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <Shield className="w-4 h-4 text-[#4E6857]" />
-                <div>
-                  <span className="text-[10px] text-[#8C8276] block">Vai trò trong hệ thống</span>
-                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EDF3EF] text-[#4E6857] uppercase">
-                    {currentUser.role}
-                  </span>
+                  <div className="flex items-center gap-2 border-b border-[#F0EAE1] pb-3">
+                    <MapPin className="w-4 h-4 text-[#B86244]" />
+                    <div>
+                      <span className="text-[10px] text-[#8C8276] block">Địa chỉ giao hàng mặc định</span>
+                      <strong className="text-xs text-[#26211C]">
+                        {currentUser.address || <span className="text-[#8C8276] font-normal">Chưa cập nhật địa chỉ</span>}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-[#4E6857]" />
+                      <div>
+                        <span className="text-[10px] text-[#8C8276] block">Vai trò hệ thống</span>
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EDF3EF] text-[#4E6857] uppercase">
+                          {currentUser.role === 'admin' ? 'Quản Trị Viên (Admin)' : 'Khách Hàng Mua Sắm'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(true);
+                        setProfileMsg({ type: '', text: '' });
+                      }}
+                      className="text-[11px] text-[#B86244] hover:underline font-semibold flex items-center gap-1"
+                    >
+                      <Lock className="w-3 h-3" />
+                      <span>Đổi mật khẩu</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <form onSubmit={handleSaveProfile} className="bg-white p-5 rounded-2xl border border-[#E8DFD3] space-y-3.5 shadow-sm animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-2.5">
+                    <h4 className="font-bold text-sm text-[#26211C] flex items-center gap-1.5">
+                      <Edit2 className="w-4 h-4 text-[#B86244]" />
+                      <span>CẬP NHẬT THÔNG TIN & MẬT KHẨU</span>
+                    </h4>
+                    <span className="text-[10px] text-[#8C8276]">Tài khoản: {currentUser.email}</span>
+                  </div>
+
+                  {/* Họ tên */}
+                  <div>
+                    <label className="text-[11px] font-bold text-[#26211C] block mb-1">
+                      Họ và tên khách hàng: *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      placeholder="Nhập họ và tên đầy đủ..."
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                    />
+                  </div>
+
+                  {/* Số điện thoại */}
+                  <div>
+                    <label className="text-[11px] font-bold text-[#26211C] block mb-1">
+                      Số điện thoại nhận hàng: *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="Ví dụ: 0988668899"
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244] font-mono"
+                    />
+                  </div>
+
+                  {/* Địa chỉ giao hàng */}
+                  <div>
+                    <label className="text-[11px] font-bold text-[#26211C] block mb-1">
+                      Địa chỉ nhận hàng mặc định:
+                    </label>
+                    <input
+                      type="text"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder="Số nhà, tên đường, phường/xã, quận/huyện..."
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                    />
+                  </div>
+
+                  {/* Đổi mật khẩu */}
+                  <div className="pt-2 border-t border-[#F0EAE1] space-y-2.5">
+                    <span className="text-[11px] font-bold text-[#B86244] flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Đổi Mật Khẩu (Để trống nếu giữ nguyên mật khẩu cũ)</span>
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[10px] text-[#6B6258] block mb-0.5">Mật khẩu mới:</label>
+                        <input
+                          type="password"
+                          placeholder="Nhập mật khẩu mới..."
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-[#6B6258] block mb-0.5">Xác nhận mật khẩu mới:</label>
+                        <input
+                          type="password"
+                          placeholder="Nhập lại mật khẩu mới..."
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nút hành động */}
+                  <div className="flex justify-end gap-2 pt-2 border-t border-[#F0EAE1]">
+                    <button
+                      type="button"
+                      disabled={savingProfile}
+                      onClick={() => {
+                        setIsEditing(false);
+                        setProfileMsg({ type: '', text: '' });
+                      }}
+                      className="px-4 py-2 rounded-xl border border-[#E8DFD3] text-[#6B6258] hover:bg-[#FAF7F2] font-semibold text-xs transition-colors"
+                    >
+                      Hủy Bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingProfile}
+                      className="px-5 py-2 rounded-xl bg-[#4E6857] hover:bg-[#3D5244] text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                    >
+                      {savingProfile ? (
+                        <span>Đang lưu...</span>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Lưu Thông Tin Mới</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 

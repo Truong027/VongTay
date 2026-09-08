@@ -7,9 +7,20 @@ import { isNeonConnected } from '../data/neonDb.js';
 
 export const getOrders = async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, userId, phone } = req.query;
     const allOrders = await dbGetOrders();
     let result = [...allOrders];
+
+    // Yêu cầu 1: Tài khoản nào chỉ nhìn được đơn tài khoản đó, không nhìn thấy đơn của admin/người khác
+    if (userId) {
+      result = result.filter(o => {
+        if (o.userId && String(o.userId) === String(userId)) return true;
+        if (phone && o.phone && String(o.phone).trim() === String(phone).trim()) return true;
+        return false;
+      });
+    } else if (phone) {
+      result = result.filter(o => o.phone && String(o.phone).trim() === String(phone).trim());
+    }
 
     if (status && status !== 'all') {
       result = result.filter(o => o.orderStatus === status);
@@ -53,7 +64,7 @@ export const getOrderById = async (req, res) => {
 
 export const createOrder = async (req, res) => {
   try {
-    const { customerName, phone, address, items, totalAmount, shippingFee, paymentMethod, note } = req.body;
+    const { customerName, phone, address, items, totalAmount, shippingFee, paymentMethod, note, userId } = req.body;
 
     if (!customerName || !phone || !address || !items || !items.length) {
       return res.status(400).json({ 
@@ -70,9 +81,10 @@ export const createOrder = async (req, res) => {
 
     const newOrder = {
       id: newId,
-      customerName,
-      phone,
-      address,
+      userId: userId || null,
+      customerName: customerName.trim(),
+      phone: phone.trim(),
+      address: address.trim(),
       items,
       totalAmount: calculatedTotal,
       shippingFee: shippingFee || 25000,

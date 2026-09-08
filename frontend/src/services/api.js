@@ -111,6 +111,17 @@ export const api = {
     return data;
   },
 
+  async updateProfile(profileData) {
+    const res = await fetch(`${BASE_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật thông tin tài khoản');
+    return data;
+  },
+
   async getMe() {
     const res = await fetch(`${BASE_URL}/auth/me`);
     return res.json();

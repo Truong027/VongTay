@@ -25,7 +25,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [role, setRole] = useState('customer'); // customer | admin
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -48,17 +47,22 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           }, 600);
         }
       } else {
+        if (!phone.trim()) {
+          setErrorMsg('Vui lòng nhập số điện thoại nhận hàng.');
+          setLoading(false);
+          return;
+        }
+
         const res = await api.register({
-          email,
+          email: email.trim(),
           password,
-          fullName,
-          phone,
-          address,
-          role
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          address: address.trim()
         });
         if (res.success && res.data) {
           localStorage.setItem('viban_user', JSON.stringify(res.data.user));
-          setSuccessMsg('Đăng ký tài khoản thành công và đã lưu vào cơ sở dữ liệu!');
+          setSuccessMsg('Đăng ký tài khoản khách hàng thành công và đã lưu vào cơ sở dữ liệu!');
           setTimeout(() => {
             if (onAuthSuccess) onAuthSuccess(res.data.user);
             onClose();
@@ -242,39 +246,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
             </div>
           </div>
 
-          {/* Role selector (for register) */}
-          {!isLogin && (
-            <div>
-              <label className="text-xs font-semibold text-[#26211C] block mb-1">
-                Vai trò tài khoản:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRole('customer')}
-                  className={`p-2 rounded-xl text-xs font-medium border text-center transition-all ${
-                    role === 'customer'
-                      ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244] font-bold'
-                      : 'border-[#E8DFD3] bg-white text-[#6B6258]'
-                  }`}
-                >
-                  Khách Hàng Mua Sắm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('admin')}
-                  className={`p-2 rounded-xl text-xs font-medium border text-center transition-all ${
-                    role === 'admin'
-                      ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244] font-bold'
-                      : 'border-[#E8DFD3] bg-white text-[#6B6258]'
-                  }`}
-                >
-                  Quản Trị Viên Shop
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Submit Button */}
           <button
             type="submit"
@@ -285,7 +256,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
               <span>Đang lưu vào cơ sở dữ liệu...</span>
             ) : (
               <>
-                <span>{isLogin ? 'Đăng Nhập Ngay' : 'Hoàn Tất Đăng Ký Tài Khoản'}</span>
+                <span>{isLogin ? 'Đăng Nhập Ngay' : 'Hoàn Tất Đăng Ký Tài Khoản Khách Hàng'}</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
