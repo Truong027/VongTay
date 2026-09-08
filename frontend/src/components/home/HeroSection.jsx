@@ -3,22 +3,22 @@ import { Sparkles, ArrowRight, ShieldCheck, HeartHandshake, Feather, Star } from
 
 export default function HeroSection({ onExplore, onOpenCustomizer, onQuickViewFeatured }) {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-[#F3ECE1] via-[#FAF7F2] to-[#FAF7F2] py-16 sm:py-24 border-b border-[#E8DFD3]">
+    <section className="relative overflow-hidden bg-gradient-to-b from-[#F3ECE1] via-[#FAF7F2] to-[#FAF7F2] py-10 sm:py-24 border-b border-[#E8DFD3] w-full max-w-full">
       {/* Decorative subtle background accents */}
       <div className="absolute top-0 right-0 -translate-y-12 translate-x-12 w-96 h-96 bg-[#B86244]/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 translate-y-12 -translate-x-12 w-96 h-96 bg-[#4E6857]/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10 w-full max-w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center">
           
           {/* Left Hero Text */}
-          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#FAF7F2] border border-[#E8DFD3] text-xs font-medium text-[#B86244] shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-[#C09A58]" />
-              <span>Chế Tác Thủ Công 100% · Độc Bản Cho Riêng Bạn</span>
+          <div className="lg:col-span-7 space-y-5 sm:space-y-6 text-center lg:text-left">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full bg-[#FAF7F2] border border-[#E8DFD3] text-[11px] sm:text-xs font-medium text-[#B86244] shadow-sm max-w-full">
+              <Sparkles className="w-3.5 h-3.5 text-[#C09A58] shrink-0" />
+              <span className="truncate">Chế Tác Thủ Công 100% · Độc Bản Cho Riêng Bạn</span>
             </div>
 
-            <h1 className="font-serif-boutique text-4xl sm:text-5xl lg:text-6xl font-bold text-[#26211C] tracking-tight leading-[1.15]">
+            <h1 className="font-serif-boutique text-3xl sm:text-5xl lg:text-6xl font-bold text-[#26211C] tracking-tight leading-[1.18]">
               Từng mối đan tỉ mỉ, <br className="hidden sm:inline" />
               <span className="text-[#B86244] italic font-normal">vạn ý niệm bình an</span> gửi gắm nơi cổ tay.
             </h1>

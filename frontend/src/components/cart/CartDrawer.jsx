@@ -48,8 +48,8 @@ export default function CartDrawer({ onProceedToCheckout }) {
         onClick={closeCart}
       />
 
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-md bg-[#FAF7F2] shadow-2xl flex flex-col justify-between border-l border-[#E8DFD3]">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+        <div className="w-full sm:w-screen max-w-md bg-[#FAF7F2] shadow-2xl flex flex-col justify-between border-l border-[#E8DFD3]">
           
           {/* Header */}
           <div className="p-5 bg-white border-b border-[#E8DFD3] flex items-center justify-between">

@@ -235,7 +235,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
             </div>
 
             {/* Bracelet SVG Ring Simulation */}
-            <div className="relative w-[320px] h-[320px] sm:w-[350px] sm:h-[350px] flex items-center justify-center">
+            <div className="relative w-full max-w-[300px] sm:max-w-[350px] aspect-square flex items-center justify-center mx-auto">
               <svg viewBox="0 0 350 350" className="w-full h-full drop-shadow-lg">
                 <defs>
                   {/* Cord gradient */}

@@ -93,20 +93,20 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="bg-gradient-to-b from-[#FAF4ED] via-white to-[#FAF7F2] py-10 px-4 sm:px-6 lg:px-8 border-y border-[#EADBCC] relative overflow-hidden">
+    <section className="bg-gradient-to-b from-[#FAF4ED] via-white to-[#FAF7F2] py-8 sm:py-10 px-3 sm:px-6 lg:px-8 border-y border-[#EADBCC] relative overflow-hidden w-full max-w-full">
       {/* Decorative background blurs */}
       <div className="absolute -top-12 left-1/4 w-72 h-72 bg-[#B86244]/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-12 right-1/4 w-72 h-72 bg-[#4E6857]/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto relative z-10 space-y-6">
+      <div className="max-w-7xl mx-auto relative z-10 space-y-5 sm:space-y-6 w-full max-w-full">
         
         {/* Section Header with Personal Badge */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 bg-[#26211C] text-white px-3.5 py-1 rounded-full text-xs font-semibold shadow-sm mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>GỢI Ý THIẾT KẾ RIÊNG CHO {currentUser?.fullName ? currentUser.fullName.toUpperCase() : 'BẠN'}</span>
-              <span className="text-[10px] bg-[#B86244] px-1.5 py-0.2 rounded font-mono">AI Tự Động</span>
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#26211C] text-white px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm mb-2.5 max-w-full">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
+              <span className="truncate">GỢI Ý THIẾT KẾ RIÊNG CHO {currentUser?.fullName ? currentUser.fullName.toUpperCase() : 'BẠN'}</span>
+              <span className="text-[9px] sm:text-[10px] bg-[#B86244] px-1.5 py-0.2 rounded font-mono shrink-0">AI</span>
             </div>
 
             <h2 className="font-serif-boutique text-2xl sm:text-3xl font-bold text-[#26211C] tracking-tight">
@@ -228,15 +228,15 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
         )}
 
         {/* Current Active Gu Pill */}
-        <div className="flex items-center gap-2 text-xs text-[#6B6258] bg-white/70 backdrop-blur-xs px-3.5 py-2 rounded-2xl border border-[#EADBCC] w-fit">
-          <span className="font-bold text-[#26211C]">Gu hiện tại của bạn:</span>
-          <span className="bg-[#FAF4ED] text-[#B86244] font-semibold px-2 py-0.5 rounded-lg border border-[#EADBCC]">
-            {preferences.styleCategory === 'macrame-pastel' ? '🌸 Macrame Pastel' : preferences.styleCategory === 'vong-doi' ? '💑 Vòng Đôi' : preferences.styleCategory === 'day-do-may-man' ? '🧧 Chỉ Đỏ Hộ Thân' : '🌿 Dây Lụa & Dây Da'}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-[#6B6258] bg-white/80 backdrop-blur-xs px-3 sm:px-3.5 py-2 rounded-2xl border border-[#EADBCC] w-full sm:w-fit max-w-full">
+          <span className="font-bold text-[#26211C] whitespace-nowrap">Gu của bạn:</span>
+          <span className="bg-[#FAF4ED] text-[#B86244] font-semibold px-2 py-0.5 rounded-lg border border-[#EADBCC] whitespace-nowrap">
+            {preferences.styleCategory === 'macrame-pastel' ? '🌸 Macrame Pastel' : preferences.styleCategory === 'vong-doi' ? '💑 Vòng Đôi' : preferences.styleCategory === 'day-do-may-man' ? '🧧 Chỉ Đỏ' : '🌿 Dây Lụa'}
           </span>
-          <span>·</span>
-          <span>Cổ tay: <strong>{preferences.wristSize}</strong></span>
-          <span>·</span>
-          <span className="text-[#4E6857] font-semibold">Tự động đề xuất 3 mẫu khớp nhất</span>
+          <span className="hidden sm:inline">·</span>
+          <span className="whitespace-nowrap">Cổ tay: <strong>{preferences.wristSize}</strong></span>
+          <span className="hidden sm:inline">·</span>
+          <span className="text-[#4E6857] font-semibold text-[11px] sm:text-xs">Tự động đề xuất 3 mẫu khớp nhất</span>
         </div>
 
         {/* Top 3 Personalized Product Cards */}
@@ -245,10 +245,10 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
             <div 
               key={prod.id}
               onClick={() => onQuickView(prod)}
-              className="group bg-white rounded-3xl p-4 border border-[#E8DFD3] shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between cursor-pointer relative overflow-hidden"
+              className="group bg-white rounded-3xl p-3.5 sm:p-4 border border-[#E8DFD3] shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between cursor-pointer relative overflow-hidden"
             >
               {/* Match Score Badge */}
-              <div className="absolute top-6 left-6 z-20 flex flex-col gap-1 items-start">
+              <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex flex-col gap-1 items-start">
                 <span className="bg-[#26211C] text-[#FAF7F2] text-[10px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 border border-amber-400/40">
                   <Sparkles className="w-3 h-3 text-amber-300" />
                   <span>{prod.matchScore}% PHÙ HỢP GU BẠN</span>
@@ -294,7 +294,7 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
                 </div>
 
                 {/* Price & Add */}
-                <div className="pt-3 border-t border-[#F0EAE1] mt-2 flex items-center justify-between">
+                <div className="pt-3 border-t border-[#F0EAE1] mt-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-base font-bold text-[#B86244]">
@@ -309,7 +309,7 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

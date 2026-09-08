@@ -39,15 +39,15 @@ export default function Navbar({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8DFD3] shadow-xs transition-all">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 gap-3">
+    <header className="sticky top-0 z-40 bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8DFD3] shadow-xs transition-all w-full max-w-full">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-1.5 sm:gap-3">
           
           {/* 1. LEFT: Brand Logo & Mobile Menu Toggle */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="p-2 rounded-xl text-[#26211C] hover:bg-[#EFE6DA] transition-colors lg:hidden"
+              className="p-1.5 sm:p-2 rounded-xl text-[#26211C] hover:bg-[#EFE6DA] transition-colors lg:hidden"
               aria-label="Menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -55,17 +55,17 @@ export default function Navbar({
 
             {/* Brand Monogram & Title */}
             <div 
-              className="flex items-center gap-2.5 cursor-pointer select-none group" 
+              className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none group" 
               onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
             >
-              <div className="w-10 h-10 rounded-full bg-[#B86244] text-white flex items-center justify-center font-serif font-bold text-lg shadow-sm border border-[#A05237]/40 group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#B86244] text-white flex items-center justify-center font-serif font-bold text-sm sm:text-lg shadow-sm border border-[#A05237]/40 group-hover:scale-105 transition-transform shrink-0">
                 KV
               </div>
               <div>
-                <span className="font-serif-boutique text-xl sm:text-2xl font-bold tracking-wider text-[#26211C] block leading-none group-hover:text-[#B86244] transition-colors whitespace-nowrap">
+                <span className="font-serif-boutique text-lg sm:text-2xl font-bold tracking-wide sm:tracking-wider text-[#26211C] block leading-none group-hover:text-[#B86244] transition-colors whitespace-nowrap">
                   KHÁNHVYMADE
                 </span>
-                <span className="text-[9px] tracking-[0.22em] text-[#B86244] uppercase font-semibold block mt-1 whitespace-nowrap">
+                <span className="text-[8px] sm:text-[9px] tracking-wider sm:tracking-[0.22em] text-[#B86244] uppercase font-semibold hidden sm:block mt-1 whitespace-nowrap">
                   Chuyên Vòng Tay Dây Thủ Công
                 </span>
               </div>
@@ -142,19 +142,19 @@ export default function Navbar({
           </nav>
 
           {/* 3. RIGHT: Actions (Search, Wishlist, ĐĂNG NHẬP, QUẢN TRỊ, GIỎ HÀNG) */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0 ml-auto">
             
             {/* Search Icon Trigger */}
             <button
               onClick={() => setShowSearchInput(!showSearchInput)}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all ${
                 showSearchInput 
                   ? 'bg-[#26211C] text-white' 
                   : 'text-[#5A5147] hover:text-[#26211C] hover:bg-[#EFE6DA]'
               }`}
               title="Tìm kiếm vòng tay dây"
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             {/* Wishlist Button */}
@@ -163,14 +163,14 @@ export default function Navbar({
                 openWishlist();
                 setActiveTab('wishlist');
               }}
-              className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+              className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all ${
                 activeTab === 'wishlist' 
                   ? 'bg-[#FAF4ED] text-[#B86244]' 
                   : 'text-[#5A5147] hover:text-[#B86244] hover:bg-[#EFE6DA]'
               }`}
               title="Bộ sưu tập yêu thích của bạn"
             >
-              <Heart className={`w-4 h-4 ${wishlist.length > 0 ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
+              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${wishlist.length > 0 ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
               {wishlist.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-[#B86244] text-white text-[9px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-[#FAF7F2] shadow-2xs">
                   {wishlist.length}
@@ -183,7 +183,7 @@ export default function Navbar({
               <div className="relative shrink-0">
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className="flex items-center gap-1.5 bg-[#FAF4ED] pl-1.5 pr-2.5 py-1 rounded-full border border-[#E8DFD3] text-xs font-semibold text-[#26211C] hover:bg-[#F0E6D8] transition-all shadow-2xs whitespace-nowrap"
+                  className="flex items-center gap-1 sm:gap-1.5 bg-[#FAF4ED] p-1 sm:pl-1.5 sm:pr-2.5 sm:py-1 rounded-full border border-[#E8DFD3] text-xs font-semibold text-[#26211C] hover:bg-[#F0E6D8] transition-all shadow-2xs whitespace-nowrap"
                 >
                   <div className="w-6 h-6 rounded-full bg-[#B86244] text-white flex items-center justify-center text-[10px] font-bold shrink-0">
                     {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
@@ -280,11 +280,11 @@ export default function Navbar({
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0 hover:shadow-sm"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0 hover:shadow-sm"
                 title="Đăng nhập hoặc đăng ký tài khoản"
               >
                 <User className="w-3.5 h-3.5" />
-                <span>Đăng Nhập</span>
+                <span className="hidden sm:inline">Đăng Nhập</span>
               </button>
             )}
 
@@ -292,7 +292,7 @@ export default function Navbar({
             {currentUser?.role === 'admin' && (
               <button
                 onClick={() => onOpenAdmin(!isAdminView)}
-                className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ${
+                className={`px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ${
                   isAdminView 
                     ? 'bg-[#4E6857] text-white shadow-xs' 
                     : 'bg-[#EDF3EF] text-[#4E6857] hover:bg-[#D8E6DE]'
@@ -307,12 +307,12 @@ export default function Navbar({
             {/* Shopping Cart Button */}
             <button
               onClick={openCart}
-              className="relative w-9 h-9 bg-[#26211C] text-[#FAF7F2] rounded-full hover:bg-[#3D352E] transition-all shadow-xs flex items-center justify-center shrink-0"
+              className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#26211C] text-[#FAF7F2] rounded-full hover:bg-[#3D352E] transition-all shadow-xs flex items-center justify-center shrink-0"
               aria-label="Giỏ hàng"
             >
-              <ShoppingBag className="w-4 h-4" />
+              <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               {totalCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#B86244] text-white text-[9px] font-bold min-w-4.5 h-4.5 px-1 rounded-full flex items-center justify-center border-2 border-[#FAF7F2] shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-[#B86244] text-white text-[9px] font-bold min-w-4 h-4 px-1 rounded-full flex items-center justify-center border-2 border-[#FAF7F2] shadow-xs">
                   {totalCount}
                 </span>
               )}

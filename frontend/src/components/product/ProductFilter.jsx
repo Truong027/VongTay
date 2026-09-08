@@ -21,10 +21,10 @@ export default function ProductFilter({
   ];
 
   return (
-    <div className="space-y-4 mb-8">
+    <div className="space-y-4 mb-8 w-full max-w-full">
       
       {/* Category Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none max-w-full w-full touch-pan-x">
         {categories.map((cat) => (
           <button
             key={cat.id}
@@ -48,10 +48,10 @@ export default function ProductFilter({
       </div>
 
       {/* Secondary Bar: Feng Shui Mệnh Filter & Sort */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#E8DFD3]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#E8DFD3] w-full max-w-full">
         
         {/* Mệnh Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs max-w-full w-full touch-pan-x">
           <span className="text-[#8C8276] font-medium mr-1 flex items-center gap-1 flex-shrink-0">
             <Sparkles className="w-3.5 h-3.5 text-[#C09A58]" /> Mệnh:
           </span>
@@ -71,7 +71,7 @@ export default function ProductFilter({
         </div>
 
         {/* Total count & Sort Dropdown */}
-        <div className="flex items-center justify-between sm:justify-end gap-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 text-xs w-full sm:w-auto">
           <span className="text-[#8C8276]">
             Hiển thị <strong>{totalResults}</strong> mẫu vòng
           </span>

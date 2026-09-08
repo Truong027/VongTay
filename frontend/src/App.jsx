@@ -210,7 +210,7 @@ function MainShop({ currentUser, setCurrentUser }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF7F2]">
+    <div className="min-h-screen flex flex-col bg-[#FAF7F2] w-full max-w-full overflow-x-hidden">
       {/* Main Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -265,7 +265,7 @@ function MainShop({ currentUser, setCurrentUser }) {
       )}
 
       {/* Main Products Content */}
-      <main id="products-section" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full">
+      <main id="products-section" className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-8 sm:py-16 w-full max-w-full">
         
         {/* Section Header */}
         <div className="mb-8 text-center sm:text-left">
@@ -274,7 +274,7 @@ function MainShop({ currentUser, setCurrentUser }) {
               <span className="text-[11px] uppercase tracking-widest text-[#B86244] font-bold">
                 {activeTab === 'wishlist' ? 'Bộ Sưu Tập Của Bạn' : activeTab === 'best-seller' ? 'Được Yêu Thích Nhất' : 'Nghệ Thuật Đan Tay'}
               </span>
-              <h2 className="font-serif-boutique text-3xl sm:text-4xl font-bold text-[#26211C]">
+              <h2 className="font-serif-boutique text-2xl sm:text-4xl font-bold text-[#26211C]">
                 {activeTab === 'wishlist' ? (
                   `Vòng Dây Yêu Thích (${products.length})`
                 ) : activeTab === 'best-seller' ? (
@@ -294,10 +294,10 @@ function MainShop({ currentUser, setCurrentUser }) {
             </div>
 
             {/* AI Camera & Customizer Quick Triggers */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-0">
               <button
                 onClick={handleOpenAiWrist}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-amber-600 to-[#B86244] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-amber-600 to-[#B86244] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
               >
                 <Camera className="w-3.5 h-3.5 text-amber-200" />
                 <span>AI Quét Cổ Tay</span>
@@ -305,10 +305,11 @@ function MainShop({ currentUser, setCurrentUser }) {
 
               <button
                 onClick={handleOpenAiMatch}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-gradient-to-r from-[#B86244] to-[#C09A58] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-[#B86244] to-[#C09A58] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
               >
                 <Palette className="w-3.5 h-3.5 text-amber-200" />
-                <span>Tải Ảnh Gợi Ý Hạt & Charm Có Sẵn</span>
+                <span className="hidden sm:inline">Tải Ảnh Gợi Ý Hạt & Charm Có Sẵn</span>
+                <span className="sm:hidden">Gợi Ý Hạt & Charm</span>
               </button>
 
               <button
@@ -316,10 +317,11 @@ function MainShop({ currentUser, setCurrentUser }) {
                   setAiCustomPreset(null);
                   setIsCustomizerOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] text-xs font-semibold hover:bg-[#B86244] hover:text-white transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] text-xs font-semibold hover:bg-[#B86244] hover:text-white transition-all shadow-sm"
               >
                 <Flower2 className="w-3.5 h-3.5 text-amber-500" />
-                <span>Tự phối vòng thủ công</span>
+                <span className="hidden sm:inline">Tự phối vòng thủ công</span>
+                <span className="sm:hidden">Tự phối vòng</span>
               </button>
             </div>
           </div>
