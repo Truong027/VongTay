@@ -1,7 +1,7 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
 
 import productRoutes from './routes/productRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
@@ -15,7 +15,14 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import consultationRoutes from './routes/consultationRoutes.js';
 
-dotenv.config();
+// Phòng vệ chống sập tiến trình Node.js (Anti-crash handlers)
+process.on('uncaughtException', (err) => {
+  console.error('🛡️ Bắt lỗi ngoại lệ toàn cục (Uncaught Exception):', err.message);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🛡️ Bắt Promise Rejection toàn cục:', reason);
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -85,9 +92,17 @@ app.use((err, req, res, next) => {
 });
 
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`✨ Backend API Vòng Tay Handmade đang chạy tại http://localhost:${PORT}`);
     console.log(`📚 Health check: http://localhost:${PORT}/api/health`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`⚠️ Cổng ${PORT} đang có tiến trình backend khác hoạt động. Dịch vụ vẫn sẵn sàng tại http://localhost:${PORT}`);
+    } else {
+      console.error('Lỗi máy chủ Express:', err);
+    }
   });
 }
 

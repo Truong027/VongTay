@@ -162,7 +162,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset }) 
                 </span>
               </div>
               <p className="text-[11px] text-[#CFC1B0]">
-                Nhận diện màu da, chu vi cổ tay và đề xuất mẫu vòng phong thủy, charm hoa Nàng Handmade tương hợp
+                Nhận diện màu da, chu vi cổ tay và đề xuất mẫu vòng phong thủy, charm hoa KhánhVyMade tương hợp
               </p>
             </div>
           </div>
@@ -215,7 +215,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset }) 
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] text-[11px] text-[#6B6258] space-y-1">
                     <p>✓ Phân tích bởi mô hình: <strong>{analysisResult.model || 'Gemini 3.6 Flash'}</strong></p>
-                    <p>✓ Cảm hứng phối đá: <strong>KhánhVyMade x Nàng Handmade</strong></p>
+                    <p>✓ Cảm hứng phối đá: <strong>KhánhVyMade Thủ Công Độc Bản</strong></p>
                   </div>
                 </div>
 
@@ -371,7 +371,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset }) 
                     </label>
                     <textarea
                       rows={3}
-                      placeholder="Ví dụ: Cầu tình duyên ngọt ngào, may mắn thi cử, cầu bình an tĩnh tâm, hoặc thích phong cách mặt hoa cúc Nàng Handmade..."
+                      placeholder="Ví dụ: Cầu tình duyên ngọt ngào, may mắn thi cử, cầu bình an tĩnh tâm, hoặc thích phong cách mặt hoa cúc KhánhVyMade..."
                       value={userNotes}
                       onChange={(e) => setUserNotes(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"

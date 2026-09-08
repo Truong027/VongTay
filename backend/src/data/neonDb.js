@@ -7,7 +7,7 @@ const { Pool } = pg;
 
 let pool = null;
 let isConnected = false;
-let currentConnectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || 'postgresql://neondb_owner:npg_dxON2tr3BCTK@ep-blue-moon-b3pc0ls7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require';
+let currentConnectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || 'postgresql://neondb_owner:npg_dxON2tr3BCTK@ep-blue-moon-b3pc0ls7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full';
 
 export const initNeonDb = async (connStr = null) => {
   const connectionString = connStr || currentConnectionString;
@@ -271,6 +271,11 @@ const createTables = async () => {
 };
 
 export const query = async (text, params) => {
+  if (!pool || !isConnected) {
+    if (currentConnectionString) {
+      await initNeonDb();
+    }
+  }
   if (!pool || !isConnected) {
     return null;
   }

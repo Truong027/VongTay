@@ -350,7 +350,7 @@ export const customizerOptions = {
     { id: 'charm-mint-flower', name: 'Charm Hoa Cúc Mint Trong Suốt & Nhụy Vàng', price: 40000, icon: 'Flower2', desc: 'Đóa hoa cúc ngọc ngà thanh khiết (Ảnh Mẫu)' },
     { id: 'charm-butterfly-hologram', name: 'Charm Bướm Pha Lê Hologram Cánh Tiên', price: 65000, icon: 'Sparkles', desc: 'Tán sắc 7 màu lung linh huyền ảo (Ảnh Mẫu)' },
     { id: 'charm-lotus', name: 'Hoa Sen Gốm Men Ngọc', price: 55000, icon: 'Flower2', desc: 'Thuần khiết và bình an' },
-    { id: 'charm-flower-nang', name: 'Mặt Hoa Cúc Nhiều Màu (KhánhVyMade)', price: 35000, icon: 'Flower2', desc: 'Hoa acrylic pastel xinh xắn dễ thương' },
+    { id: 'charm-flower-kv', name: 'Mặt Hoa Cúc Nhiều Màu (KhánhVyMade)', price: 35000, icon: 'Flower2', desc: 'Hoa acrylic pastel xinh xắn dễ thương' },
     { id: 'charm-clover', name: 'Cỏ Bốn Lá May Mắn Pastel', price: 45000, icon: 'Clover', desc: 'May mắn trọn vẹn 4 mùa' },
     { id: 'charm-initial', name: 'Khắc Chữ Cái Theo Tên (A-Z)', price: 45000, icon: 'Type', desc: 'Khắc dấu ấn cá nhân lên thẻ mộc' },
     { id: 'charm-moon-star', name: 'Vầng Trăng & Ngôi Sao Men Sứ', price: 50000, icon: 'Moon', desc: 'Mơ mộng & dẫn lối' },

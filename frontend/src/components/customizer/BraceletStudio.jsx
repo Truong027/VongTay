@@ -309,7 +309,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, initi
                           <circle cx="-8" cy="-3" r="0.5" fill="#FFFFFF" />
                           <path d="M -4 2 C -3 4 0 4 2 2" stroke="#4A7C9A" strokeWidth="1" fill="none" strokeLinecap="round" />
                         </g>
-                      ) : selectedCharm.id === 'charm-mint-flower' || selectedCharm.id === 'charm-flower-nang' ? (
+                      ) : selectedCharm.id === 'charm-mint-flower' || selectedCharm.id === 'charm-flower-kv' ? (
                         <g filter="drop-shadow(0px 3px 4px rgba(0,0,0,0.25))">
                           {/* Mint / Acrylic Flower Charm */}
                           <circle cx="-9" cy="-5" r="7" fill={selectedCharm.id === 'charm-mint-flower' ? '#A3E4D7' : '#F9D5E5'} opacity="0.9" />
