@@ -44,7 +44,8 @@ import {
   Copy,
   Heart,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  Coins
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -497,6 +498,19 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       setIsAnalyzingCord(false);
       setTimeout(() => setAiAnalysisStatus(''), 4000);
     }
+  };
+
+  // Helper: Xử lý nhập số mượt mà, tự động xóa số 0 ở đầu khi gõ và cho phép xóa trắng
+  const cleanNumberInput = (val) => {
+    if (val === undefined || val === null) return '';
+    const digits = String(val).replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    // Nếu bắt đầu bằng 0 và có chữ số tiếp theo, tự động xóa số 0 ở đầu (ví dụ: "05" -> "5", "0195000" -> "195000")
+    if (digits.length > 1 && digits.startsWith('0')) {
+      const noLeadingZeros = digits.replace(/^0+/, '');
+      return noLeadingZeros === '' ? '0' : noLeadingZeros;
+    }
+    return digits;
   };
 
   const handleOpenNewProductModal = () => {
@@ -2387,145 +2401,303 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         </div>
       )}
 
-      {/* ================= MODAL: THÊM / SỬA SẢN PHẨM (TỐI ƯU ĐIỆN THOẠI & DB) ================= */}
+      {/* ================= MODAL: THÊM / SỬA SẢN PHẨM (FULL SCREEN TRÊN MOBILE, TỐI ƯU NHẬP GIÁ) ================= */}
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full sm:max-w-2xl h-[92vh] sm:h-auto sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center bg-black/80 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:rounded-3xl border-0 sm:border border-[#E8DFD3] shadow-2xl overflow-hidden flex flex-col">
             {/* Top Fixed Header */}
-            <div className="bg-[#26211C] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
-              <div>
-                <h3 className="font-serif-boutique text-base sm:text-lg font-bold">
-                  {editingProduct ? 'CHỈNH SỬA SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI'}
-                </h3>
-                <p className="text-[10px] text-[#CFC1B0]">Lưu trữ trực tiếp vào Neon Cloud PostgreSQL & Local DB</p>
+            <div className="bg-[#26211C] text-white px-4 py-3 sm:px-6 sm:py-4 flex items-center justify-between shrink-0 shadow-sm z-30">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#B86244]/30 border border-[#B86244]/50 flex items-center justify-center text-[#E8DFD3]">
+                  {editingProduct ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                </div>
+                <div>
+                  <h3 className="font-serif-boutique text-base sm:text-lg font-bold tracking-wide">
+                    {editingProduct ? 'CHỈNH SỬA SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI'}
+                  </h3>
+                  <p className="text-[10px] text-[#CFC1B0]">Vòng Tay Nhà Zy · Đồng bộ Neon Cloud & Local DB</p>
+                </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setIsProductModalOpen(false)} 
-                className="text-white/70 hover:text-white p-1 rounded-xl hover:bg-white/10 transition-colors"
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 text-white flex items-center justify-center transition-all cursor-pointer"
+                title="Đóng cửa sổ"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Form with middle scrollable body + fixed bottom action bar */}
-            <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs overscroll-contain">
-                {/* 1. TÊN SẢN PHẨM */}
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1 text-xs">
-                    Tên sản phẩm vòng tay / gương đính: *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ví dụ: Vòng Tay Cá Voi Xanh Gốm Men Pastel"
-                    value={productFormData.name}
-                    onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none focus:border-[#B86244] font-medium text-xs"
-                  />
-                </div>
-
-                {/* 2. GIÁ CẢ & TỒN KHO (TÙY BIẾN TỰ DO, KHÔNG TỰ ĐỘNG ĐIỀN ĐÈ) */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div>
-                    <label className="font-bold text-[#B86244] block mb-1 text-[11px]">
-                      Giá bán lẻ (₫): *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      placeholder="VD: 68000"
-                      value={productFormData.price}
-                      onChange={(e) => setProductFormData({ ...productFormData, price: e.target.value })}
-                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none focus:border-[#B86244] font-bold text-[#B86244] text-xs"
-                    />
-                  </div>
-
+            <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#FAF7F2]">
+              <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-3.5 text-xs overscroll-contain">
+                
+                {/* 1. TÊN SẢN PHẨM & DANH MỤC */}
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E8DFD3] shadow-xs space-y-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-[#4E6857] block text-[11px]">Giá sỉ (₫):</label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const p = Number(productFormData.price) || 0;
-                          if (p > 0) {
-                            setProductFormData(prev => ({ ...prev, wholesalePrice: String(Math.round(p * 0.7)) }));
-                          }
-                        }}
-                        className="text-[9px] text-[#4E6857] hover:underline font-bold bg-[#E8F0EA] px-1 py-0.5 rounded cursor-pointer"
-                        title="Bấm để tự động tính gợi ý 70% giá lẻ"
-                      >
-                        ⚡ 70%
-                      </button>
+                      <label className="font-bold text-[#26211C] block text-xs">
+                        Tên sản phẩm vòng tay / gương đính: *
+                      </label>
+                      {productFormData.name && (
+                        <button
+                          type="button"
+                          onClick={() => setProductFormData({ ...productFormData, name: '' })}
+                          className="text-[10px] text-[#8C8276] hover:text-[#B86244] font-medium cursor-pointer"
+                        >
+                          Xóa tên
+                        </button>
+                      )}
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="VD: 48000"
-                      value={productFormData.wholesalePrice}
-                      onChange={(e) => setProductFormData({ ...productFormData, wholesalePrice: e.target.value })}
-                      className="w-full bg-[#F2F7F4] p-2.5 rounded-xl border border-[#B3D1BE] focus:outline-none focus:border-[#4E6857] font-bold text-[#4E6857] text-xs"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ví dụ: Vòng Tay Cá Voi Xanh Gốm Men Pastel"
+                        value={productFormData.name}
+                        onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                        className="w-full bg-[#FAF7F2] p-2.5 pr-8 rounded-xl border border-[#E8DFD3] focus:outline-none focus:border-[#B86244] font-medium text-xs text-[#26211C]"
+                      />
+                      {productFormData.name && (
+                        <button
+                          type="button"
+                          onClick={() => setProductFormData({ ...productFormData, name: '' })}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Sỉ tối thiểu:</label>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder="5"
-                      value={productFormData.wholesaleMinQty}
-                      onChange={(e) => setProductFormData({ ...productFormData, wholesaleMinQty: e.target.value })}
-                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Tồn kho:</label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="20"
-                      value={productFormData.stock}
-                      onChange={(e) => setProductFormData({ ...productFormData, stock: e.target.value })}
-                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Danh mục: *</label>
+                      <select
+                        value={productFormData.category}
+                        onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
+                        className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-medium text-xs text-[#26211C]"
+                      >
+                        <option value="macrame-pastel">🌸 Vòng Dây Macrame Pastel & Hoa Gốm</option>
+                        <option value="guong-dinh">🪞 Gương Đính Gập & Đơn (Bestseller)</option>
+                        <option value="vong-doi">💞 Vòng Đôi Dây Sáp Nam Châm</option>
+                        <option value="day-do-may-man">🧧 Vòng Chỉ Đỏ Bình An & Hộ Thân</option>
+                        <option value="day-lua-co-phong">🎋 Vòng Dây Lụa & Dây Da Mộc</option>
+                        <option value="day-chuyen-vintage">📿 Dây Chuyền Vintage</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Huy hiệu tag:</label>
+                      <input
+                        type="text"
+                        placeholder="Hot Trend, Bán chạy, Giá sỉ xưởng..."
+                        value={productFormData.tag}
+                        onChange={(e) => setProductFormData({ ...productFormData, tag: e.target.value })}
+                        className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* 3. DANH MỤC & HUY HIỆU TAG */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Danh mục sản phẩm: *</label>
-                    <select
-                      value={productFormData.category}
-                      onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
-                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-medium text-xs text-[#26211C]"
-                    >
-                      <option value="macrame-pastel">🌸 Vòng Dây Macrame Pastel & Hoa Gốm</option>
-                      <option value="guong-dinh">🪞 Gương Đính Gập & Đơn (Bestseller)</option>
-                      <option value="vong-doi">💞 Vòng Đôi Dây Sáp Nam Châm</option>
-                      <option value="day-do-may-man">🧧 Vòng Chỉ Đỏ Bình An & Hộ Thân</option>
-                      <option value="day-lua-co-phong">🎋 Vòng Dây Lụa & Dây Da Mộc</option>
-                      <option value="day-chuyen-vintage">📿 Dây Chuyền Vintage</option>
-                    </select>
+                {/* 2. GIÁ CẢ & TỒN KHO (TỰ DO NHẬP, XÓA SỐ 0 ĐẦU, CHỌN NHANH) */}
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E8DFD3] shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-2">
+                    <span className="font-bold text-[#26211C] text-xs flex items-center gap-1.5">
+                      <Coins className="w-4 h-4 text-[#B86244]" />
+                      <span>Giá Bán & Tồn Kho (Gõ Số Tự Nhiên, Không Kẹt Số 0)</span>
+                    </span>
                   </div>
-                  <div>
-                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Huy hiệu hiển thị (Tag):</label>
-                    <input
-                      type="text"
-                      placeholder="Hot Trend, Bán chạy, Giá sỉ xưởng..."
-                      value={productFormData.tag}
-                      onChange={(e) => setProductFormData({ ...productFormData, tag: e.target.value })}
-                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
-                    />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* GIÁ BÁN LẺ */}
+                    <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3]">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-[#B86244] text-xs flex items-center gap-1">
+                          <span>Giá bán lẻ (₫): *</span>
+                        </label>
+                        {productFormData.price && (
+                          <span className="text-[11px] font-bold text-[#B86244]">
+                            {new Intl.NumberFormat('vi-VN').format(Number(productFormData.price) || 0)} đ
+                          </span>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="Nhập giá lẻ (VD: 68000)"
+                          value={productFormData.price}
+                          onChange={(e) => {
+                            const clean = cleanNumberInput(e.target.value);
+                            setProductFormData(prev => ({
+                              ...prev,
+                              price: clean,
+                              wholesalePrice: (!prev.wholesalePrice && clean) ? String(Math.round(Number(clean) * 0.7)) : prev.wholesalePrice
+                            }));
+                          }}
+                          className="w-full bg-white p-2.5 pr-8 rounded-xl border border-[#E8DFD3] focus:outline-none focus:border-[#B86244] font-bold text-[#B86244] text-sm"
+                        />
+                        {productFormData.price && (
+                          <button
+                            type="button"
+                            onClick={() => setProductFormData(prev => ({ ...prev, price: '' }))}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs cursor-pointer"
+                            title="Xóa giá"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Quick Price Buttons */}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                        <span className="text-[10px] text-[#8C8276] font-semibold">Chọn nhanh:</span>
+                        {[35000, 45000, 68000, 85000, 99000, 120000, 150000, 195000].map(val => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => {
+                              setProductFormData(prev => ({
+                                ...prev,
+                                price: String(val),
+                                wholesalePrice: prev.wholesalePrice ? prev.wholesalePrice : String(Math.round(val * 0.7))
+                              }));
+                            }}
+                            className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all active:scale-95 cursor-pointer ${
+                              String(productFormData.price) === String(val)
+                                ? 'bg-[#B86244] text-white border-[#B86244]'
+                                : 'bg-white text-[#B86244] border-[#E8DFD3] hover:bg-[#FAF4ED]'
+                            }`}
+                          >
+                            {val / 1000}k
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* GIÁ BÁN SỈ XƯỞNG */}
+                    <div className="p-3 bg-[#F4F8F5] rounded-xl border border-[#B3D1BE]">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-[#4E6857] text-xs">Giá sỉ xưởng (₫):</label>
+                        <div className="flex items-center gap-1.5">
+                          {productFormData.wholesalePrice && (
+                            <span className="text-[11px] font-bold text-[#4E6857]">
+                              {new Intl.NumberFormat('vi-VN').format(Number(productFormData.wholesalePrice) || 0)} đ
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const p = Number(productFormData.price) || 0;
+                              if (p > 0) {
+                                setProductFormData(prev => ({ ...prev, wholesalePrice: String(Math.round(p * 0.7)) }));
+                              }
+                            }}
+                            className="text-[10px] text-[#4E6857] hover:bg-[#D4E8DC] font-bold bg-[#E8F0EA] px-2 py-0.5 rounded-lg border border-[#B3D1BE] transition-colors cursor-pointer"
+                            title="Tính giá sỉ = 70% giá lẻ"
+                          >
+                            ⚡ 70%
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="VD: 48000"
+                          value={productFormData.wholesalePrice}
+                          onChange={(e) => setProductFormData({ ...productFormData, wholesalePrice: cleanNumberInput(e.target.value) })}
+                          className="w-full bg-white p-2.5 pr-8 rounded-xl border border-[#B3D1BE] focus:outline-none focus:border-[#4E6857] font-bold text-[#4E6857] text-sm"
+                        />
+                        {productFormData.wholesalePrice && (
+                          <button
+                            type="button"
+                            onClick={() => setProductFormData(prev => ({ ...prev, wholesalePrice: '' }))}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-600 flex items-center justify-center text-xs cursor-pointer"
+                            title="Xóa giá sỉ"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Quick wholesale chips */}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                        <span className="text-[10px] text-[#6B8574] font-semibold">Chọn sỉ:</span>
+                        {[25000, 35000, 48000, 60000, 75000, 100000, 130000].map(val => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setProductFormData(prev => ({ ...prev, wholesalePrice: String(val) }))}
+                            className={`text-[10px] px-2 py-0.5 rounded-lg border font-bold transition-all active:scale-95 cursor-pointer ${
+                              String(productFormData.wholesalePrice) === String(val)
+                                ? 'bg-[#4E6857] text-white border-[#4E6857]'
+                                : 'bg-white text-[#4E6857] border-[#B3D1BE] hover:bg-[#E8F0EA]'
+                            }`}
+                          >
+                            {val / 1000}k
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SỈ TỐI THIỂU & TỒN KHO */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-[#26211C] text-[11px]">Sỉ tối thiểu (chiếc):</label>
+                        {productFormData.wholesaleMinQty && (
+                          <button
+                            type="button"
+                            onClick={() => setProductFormData({ ...productFormData, wholesaleMinQty: '' })}
+                            className="text-[9px] text-[#8C8276] hover:underline cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="5"
+                        value={productFormData.wholesaleMinQty}
+                        onChange={(e) => setProductFormData({ ...productFormData, wholesaleMinQty: cleanNumberInput(e.target.value) })}
+                        className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs font-semibold text-[#26211C]"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-[#26211C] text-[11px]">Tồn kho xưởng (chiếc):</label>
+                        {productFormData.stock && (
+                          <button
+                            type="button"
+                            onClick={() => setProductFormData({ ...productFormData, stock: '' })}
+                            className="text-[9px] text-[#8C8276] hover:underline cursor-pointer"
+                          >
+                            Xóa
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="20"
+                        value={productFormData.stock}
+                        onChange={(e) => setProductFormData({ ...productFormData, stock: cleanNumberInput(e.target.value) })}
+                        className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs font-semibold text-[#26211C]"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* 4. HÌNH ẢNH SẢN PHẨM & TẢI NHANH */}
-                <div className="bg-[#FAF4ED] p-3 sm:p-3.5 rounded-2xl border border-[#D9C8B4] space-y-2.5">
+                {/* 3. HÌNH ẢNH SẢN PHẨM & TẢI NHANH */}
+                <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-[#E8DFD3] shadow-xs space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="font-bold text-[#26211C] flex items-center gap-1.5 text-xs">
                       <Upload className="w-3.5 h-3.5 text-[#B86244]" />
@@ -2549,7 +2721,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                       placeholder="Dán link ảnh hoặc chọn từ máy..."
                       value={productFormData.images?.[0] || ''}
                       onChange={(e) => setProductFormData({ ...productFormData, images: [e.target.value] })}
-                      className="flex-1 bg-white p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-mono text-[11px]"
+                      className="flex-1 bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-mono text-[11px]"
                     />
                     <input
                       type="file"
@@ -2564,7 +2736,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     />
                     <label
                       htmlFor="adminCordImageInput"
-                      className="cursor-pointer px-3 py-2.5 bg-[#26211C] hover:bg-[#3D352E] text-white rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0 transition-colors shadow-xs"
+                      className="cursor-pointer px-3 py-2.5 bg-[#26211C] hover:bg-[#3D352E] active:scale-95 text-white rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0 transition-all shadow-xs"
                     >
                       <Upload className="w-3.5 h-3.5" />
                       <span className="hidden sm:inline">Tải ảnh</span>
@@ -2584,7 +2756,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                         key={sample.name}
                         type="button"
                         onClick={() => setProductFormData({ ...productFormData, images: [sample.img] })}
-                        className="text-[10px] px-2 py-0.5 bg-white rounded-lg border border-[#E8DFD3] hover:bg-[#F0EAE1] text-[#6B6258] transition-colors"
+                        className="text-[10px] px-2 py-0.5 bg-[#FAF7F2] rounded-lg border border-[#E8DFD3] hover:bg-[#F0EAE1] text-[#6B6258] transition-colors cursor-pointer"
                       >
                         {sample.name}
                       </button>
@@ -2592,18 +2764,18 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   </div>
                 </div>
 
-                {/* 5. CÀI ĐẶT NÂNG CAO (ACCORDION THU GỌN TRÊN ĐIỆN THOẠI) */}
-                <div className="border border-[#E8DFD3] rounded-2xl overflow-hidden">
+                {/* 4. CÀI ĐẶT NÂNG CAO (ACCORDION THU GỌN) */}
+                <div className="border border-[#E8DFD3] rounded-2xl overflow-hidden bg-white shadow-xs">
                   <button
                     type="button"
                     onClick={() => setIsAdvancedProductOpen(!isAdvancedProductOpen)}
-                    className="w-full p-3 bg-[#FAF7F2] hover:bg-[#F3ECE0] flex items-center justify-between text-xs font-bold text-[#4E6857] transition-all"
+                    className="w-full p-3.5 bg-[#FAF7F2] hover:bg-[#F3ECE0] flex items-center justify-between text-xs font-bold text-[#4E6857] transition-all cursor-pointer"
                   >
                     <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#B86244]" />
-                      <span>Cài Đặt Nâng Cao & Cấu Tạo Dây (Bấm Để {isAdvancedProductOpen ? 'Thu Gọn' : 'Mở Rộng'})</span>
+                      <Sparkles className="w-4 h-4 text-[#B86244]" />
+                      <span>Cài Đặt Nâng Cao (AI Bóc Tách, Cấu Tạo Dây, Best Seller, Mô Tả)</span>
                     </span>
-                    <span className="text-[10px] bg-white px-2 py-0.5 rounded-full border border-[#E8DFD3]">
+                    <span className="text-[10px] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD3] font-bold">
                       {isAdvancedProductOpen ? '▲ Thu gọn' : '▼ Mở rộng'}
                     </span>
                   </button>
@@ -2619,7 +2791,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                             placeholder="Dây chỉ sáp dệt Macrame pastel..."
                             value={productFormData.cordType || ''}
                             onChange={(e) => setProductFormData({ ...productFormData, cordType: e.target.value })}
-                            className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                            className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
                           />
                         </div>
                         <div>
@@ -2629,7 +2801,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                             placeholder="Gốm sứ men pastel nung 1200°C..."
                             value={productFormData.stoneType || ''}
                             onChange={(e) => setProductFormData({ ...productFormData, stoneType: e.target.value })}
-                            className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                            className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
                           />
                         </div>
                       </div>
@@ -2728,10 +2900,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-semibold text-amber-900">Đã bán:</span>
                           <input
-                            type="number"
-                            min="0"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             value={productFormData.salesCount}
-                            onChange={(e) => setProductFormData({ ...productFormData, salesCount: e.target.value })}
+                            onChange={(e) => setProductFormData({ ...productFormData, salesCount: cleanNumberInput(e.target.value) })}
                             className="w-20 bg-white p-1 rounded-lg border border-amber-300 text-xs font-bold text-amber-900 text-center focus:outline-none"
                           />
                         </div>
@@ -2764,7 +2937,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                           rows={2}
                           value={productFormData.description}
                           onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
-                          className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                          className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
                         />
                       </div>
 
@@ -2775,7 +2948,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                           placeholder="Dây rút freesize, bảo hành đan lại dây trọn đời..."
                           value={productFormData.meaning}
                           onChange={(e) => setProductFormData({ ...productFormData, meaning: e.target.value })}
-                          className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                          className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
                         />
                       </div>
                     </div>
@@ -2784,27 +2957,27 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
               </div>
 
               {/* Fixed Bottom Action Bar: ALWAYS VISIBLE without scrolling */}
-              <div className="p-3 sm:p-4 bg-white border-t border-[#E8DFD3] flex items-center justify-end gap-2.5 z-20 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+              <div className="shrink-0 p-3 sm:p-4 bg-white border-t border-[#E8DFD3] flex items-center gap-3 z-30 shadow-[0_-6px_25px_rgba(0,0,0,0.08)] pb-[max(12px,env(safe-area-inset-bottom))]">
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-[#6B6258] hover:bg-[#FAF7F2] font-semibold text-xs transition-colors"
+                  className="py-3 px-4 sm:px-5 rounded-xl border border-[#E8DFD3] text-[#6B6258] hover:bg-[#FAF7F2] font-bold text-xs transition-colors active:scale-95 cursor-pointer"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingProduct}
-                  className="px-5 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all active:scale-98"
+                  className="flex-1 py-3 px-5 rounded-xl bg-[#B86244] hover:bg-[#A05237] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer"
                 >
                   {isSavingProduct ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin" />
                       <span>Đang lưu vào database...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <CheckCircle2 className="w-4 h-4" />
                       <span>{editingProduct ? 'Cập Nhật Sản Phẩm' : 'Lưu Vào Cơ Sở Dữ Liệu'}</span>
                     </>
                   )}
