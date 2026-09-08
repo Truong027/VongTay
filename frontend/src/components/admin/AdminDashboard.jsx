@@ -294,24 +294,26 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const [editingProduct, setEditingProduct] = useState(null);
   const [isAnalyzingCord, setIsAnalyzingCord] = useState(false);
   const [aiAnalysisStatus, setAiAnalysisStatus] = useState('');
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [isAdvancedProductOpen, setIsAdvancedProductOpen] = useState(false);
   const [productFormData, setProductFormData] = useState({
     name: '',
     category: 'macrame-pastel',
-    price: 195000,
-    wholesalePrice: 130000,
-    wholesaleMinQty: 5,
+    price: '',
+    wholesalePrice: '',
+    wholesaleMinQty: '5',
     isBestSeller: false,
-    salesCount: 0,
+    salesCount: '0',
     cordComposition: null,
-    originalPrice: 240000,
-    stock: 25,
+    originalPrice: '',
+    stock: '20',
     stoneType: 'Gốm men & Pha lê pastel',
     cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút',
     beadSize: '8mm',
     menh: ['Tất cả'],
     tag: 'Mới ra mắt',
     images: ['/images/products/bracelet-pastel-macrame-trio.jpg'],
-    description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công.',
+    description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công Vòng Tay Nhà Zy.',
     meaning: 'Bình an, may mắn và tràn đầy năng lượng tích cực.',
     isHidden: false
   });
@@ -502,11 +504,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     setProductFormData({
       name: '',
       category: 'macrame-pastel',
-      price: 195000,
-      wholesalePrice: 130000,
-      wholesaleMinQty: 5,
-      originalPrice: 240000,
-      stock: 25,
+      price: '',
+      wholesalePrice: '',
+      wholesaleMinQty: '5',
+      originalPrice: '',
+      stock: '20',
       stoneType: 'Hạt ngọc pastel & Pha lê hologram',
       cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút',
       beadSize: '8mm',
@@ -516,7 +518,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công Vòng Tay Nhà Zy.',
       meaning: 'Bình an, may mắn và tràn đầy năng lượng tích cực.',
       isBestSeller: false,
-      salesCount: 0,
+      salesCount: '0',
       cordComposition: {
         coreMaterial: 'Sợi chỉ sáp dệt Macrame 1.0mm chống nước tắm gội',
         braidingTechnique: 'Kỹ thuật thắt nút thoi Macrame & nút rút đôi trượt tự do',
@@ -527,54 +529,98 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       },
       isHidden: false
     });
+    setIsAdvancedProductOpen(false);
     setIsProductModalOpen(true);
   };
 
   const handleEditProduct = (prod) => {
     setEditingProduct(prod);
     setProductFormData({
-      name: prod.name,
+      name: prod.name || '',
       category: prod.category || 'macrame-pastel',
-      price: prod.price,
-      wholesalePrice: prod.wholesalePrice || Math.round(prod.price * 0.7),
-      wholesaleMinQty: prod.wholesaleMinQty || 5,
-      originalPrice: prod.originalPrice || prod.price,
-      stock: prod.stock || 20,
+      price: prod.price !== undefined && prod.price !== null ? String(prod.price) : '',
+      wholesalePrice: prod.wholesalePrice !== undefined && prod.wholesalePrice !== null ? String(prod.wholesalePrice) : '',
+      wholesaleMinQty: prod.wholesaleMinQty !== undefined && prod.wholesaleMinQty !== null ? String(prod.wholesaleMinQty) : '5',
+      originalPrice: prod.originalPrice !== undefined && prod.originalPrice !== null ? String(prod.originalPrice) : '',
+      stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : '20',
       stoneType: prod.stoneType || '',
       cordType: prod.cordType || 'Dây chỉ sáp dệt Macrame màu kem be nút rút',
       beadSize: prod.beadSize || '8mm',
       menh: prod.menh || ['Tất cả'],
       tag: prod.tag || '',
-      images: prod.images || ['/images/products/bracelet-pastel-macrame-trio.jpg'],
+      images: prod.images && prod.images.length > 0 ? prod.images : ['/images/products/bracelet-pastel-macrame-trio.jpg'],
       description: prod.description || '',
       meaning: prod.meaning || '',
-      isBestSeller: prod.isBestSeller ?? prod.is_best_seller ?? false,
-      salesCount: prod.salesCount ?? prod.sales_count ?? 0,
+      isBestSeller: Boolean(prod.isBestSeller ?? prod.is_best_seller),
+      salesCount: String(prod.salesCount ?? prod.sales_count ?? 0),
       cordComposition: prod.cordComposition || prod.cord_composition || null,
       isHidden: Boolean(prod.isHidden)
     });
+    setIsAdvancedProductOpen(false);
     setIsProductModalOpen(true);
   };
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
+    if (isSavingProduct) return;
+
+    if (!productFormData.name?.trim()) {
+      alert('Vui lòng nhập tên sản phẩm.');
+      return;
+    }
+
+    const parsedPrice = Number(productFormData.price);
+    if (isNaN(parsedPrice) || parsedPrice < 0 || productFormData.price === '') {
+      alert('Vui lòng nhập giá bán lẻ hợp lệ (ví dụ: 68000).');
+      return;
+    }
+
+    setIsSavingProduct(true);
     try {
+      const payload = {
+        ...productFormData,
+        name: productFormData.name.trim(),
+        price: parsedPrice,
+        wholesalePrice: productFormData.wholesalePrice !== '' && productFormData.wholesalePrice !== undefined
+          ? Number(productFormData.wholesalePrice)
+          : Math.round(parsedPrice * 0.7),
+        wholesaleMinQty: Number(productFormData.wholesaleMinQty) || 5,
+        originalPrice: productFormData.originalPrice !== '' && productFormData.originalPrice !== undefined
+          ? Number(productFormData.originalPrice)
+          : parsedPrice,
+        stock: productFormData.stock !== '' && productFormData.stock !== undefined
+          ? Number(productFormData.stock)
+          : 20,
+        salesCount: Number(productFormData.salesCount) || 0,
+        isBestSeller: Boolean(productFormData.isBestSeller),
+        isHidden: Boolean(productFormData.isHidden)
+      };
+
       if (editingProduct) {
-        const res = await api.updateProduct(editingProduct.id, productFormData);
-        if (res.success) {
-          setProducts(prev => prev.map(p => String(p.id).trim() === String(editingProduct.id).trim() ? res.data : p));
-          triggerToast(`Đã cập nhật sản phẩm "${productFormData.name}"`);
+        const res = await api.updateProduct(editingProduct.id, payload);
+        if (res.success && res.data) {
+          setProducts(prev => prev.map(p => String(p.id).trim() === String(editingProduct.id).trim() ? { ...p, ...res.data } : p));
+          triggerToast(`Đã cập nhật sản phẩm "${payload.name}" vào cơ sở dữ liệu!`);
+          setIsProductModalOpen(false);
+        } else {
+          throw new Error(res.message || 'Lỗi cập nhật sản phẩm');
         }
       } else {
-        const res = await api.createProduct(productFormData);
+        const res = await api.createProduct(payload);
         if (res.success) {
-          setProducts(prev => [res.data, ...prev]);
-          triggerToast(`Đã thêm sản phẩm mới "${productFormData.name}" vào kho!`);
+          if (!res.isDuplicateIgnored && res.data) {
+            setProducts(prev => [res.data, ...prev]);
+            triggerToast(`Đã thêm sản phẩm mới "${payload.name}" vào cơ sở dữ liệu!`);
+          }
+          setIsProductModalOpen(false);
+        } else {
+          throw new Error(res.message || 'Lỗi thêm sản phẩm');
         }
       }
-      setIsProductModalOpen(false);
     } catch (err) {
       alert('Lỗi lưu sản phẩm: ' + err.message);
+    } finally {
+      setIsSavingProduct(false);
     }
   };
 
@@ -1501,12 +1547,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   onChange={(e) => setProductCategoryFilter(e.target.value)}
                   className="bg-[#FAF7F2] border border-[#E8DFD3] text-xs font-semibold rounded-xl px-3 py-2 text-[#26211C] focus:outline-none"
                 >
-                  <option value="all">Tất cả danh mục vòng</option>
+                  <option value="all">Tất cả danh mục sản phẩm</option>
                   <option value="best-seller">🔥 Sản Phẩm Bán Chạy Nhất (Best Sellers)</option>
-                  <option value="macrame-pastel">Vòng Dây Macrame Pastel & Hoa Gốm</option>
-                  <option value="vong-doi">Vòng Đôi Dây Sáp Nam Châm</option>
-                  <option value="day-do-may-man">Vòng Chỉ Đỏ Bình An & Hộ Thân</option>
-                  <option value="day-lua-co-phong">Vòng Dây Lụa & Dây Da Mộc</option>
+                  <option value="macrame-pastel">🌸 Vòng Dây Macrame Pastel & Hoa Gốm</option>
+                  <option value="guong-dinh">🪞 Gương Đính Gập & Đơn (Bestseller)</option>
+                  <option value="vong-doi">💞 Vòng Đôi Dây Sáp Nam Châm</option>
+                  <option value="day-do-may-man">🧧 Vòng Chỉ Đỏ Bình An & Hộ Thân</option>
+                  <option value="day-lua-co-phong">🎋 Vòng Dây Lụa & Dây Da Mộc</option>
+                  <option value="day-chuyen-vintage">📿 Dây Chuyền Vintage</option>
                 </select>
               </div>
 
@@ -1640,6 +1688,19 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Mobile Sticky Add Product Button (FAB) */}
+            <div className="fixed bottom-6 right-6 sm:hidden z-30">
+              <button
+                type="button"
+                onClick={handleOpenNewProductModal}
+                className="bg-[#B86244] hover:bg-[#A05237] text-white px-4 py-3 rounded-full shadow-2xl flex items-center gap-2 font-bold text-xs active:scale-95 transition-all border-2 border-white"
+                title="Thêm sản phẩm mới"
+              >
+                <Plus className="w-5 h-5" />
+                <span>+ Thêm Sản Phẩm</span>
+              </button>
             </div>
           </div>
         )}
@@ -2326,150 +2387,170 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         </div>
       )}
 
-      {/* ================= MODAL: THÊM / SỬA SẢN PHẨM ================= */}
+      {/* ================= MODAL: THÊM / SỬA SẢN PHẨM (TỐI ƯU ĐIỆN THOẠI & DB) ================= */}
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col">
-            <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full sm:max-w-2xl h-[92vh] sm:h-auto sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden flex flex-col">
+            {/* Top Fixed Header */}
+            <div className="bg-[#26211C] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
               <div>
-                <h3 className="font-serif-boutique text-lg font-bold">
-                  {editingProduct ? 'CHỈNH SỬA SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI VÀO KHO VÒNG TAY NHÀ ZY'}
+                <h3 className="font-serif-boutique text-base sm:text-lg font-bold">
+                  {editingProduct ? 'CHỈNH SỬA SẢN PHẨM' : 'THÊM SẢN PHẨM MỚI'}
                 </h3>
-                <p className="text-[10px] text-[#CFC1B0]">Lưu trữ trực tiếp vào cơ sở dữ liệu</p>
+                <p className="text-[10px] text-[#CFC1B0]">Lưu trữ trực tiếp vào Neon Cloud PostgreSQL & Local DB</p>
               </div>
-              <button onClick={() => setIsProductModalOpen(false)} className="text-white/70 hover:text-white">
+              <button 
+                type="button" 
+                onClick={() => setIsProductModalOpen(false)} 
+                className="text-white/70 hover:text-white p-1 rounded-xl hover:bg-white/10 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="p-6 overflow-y-auto space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-[#26211C] block mb-1">Tên sản phẩm vòng tay: *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Vòng Tay Cá Voi Xanh Gốm Men Pastel"
-                  value={productFormData.name}
-                  onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {/* Form with middle scrollable body + fixed bottom action bar */}
+            <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs overscroll-contain">
+                {/* 1. TÊN SẢN PHẨM */}
                 <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Giá bán lẻ (VNĐ): *</label>
-                  <input
-                    type="number"
-                    required
-                    value={productFormData.price}
-                    onChange={(e) => setProductFormData({ ...productFormData, price: Number(e.target.value) })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-semibold text-[#B86244]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-[#4E6857] block mb-1">Giá bán sỉ xưởng (VNĐ): *</label>
-                  <input
-                    type="number"
-                    required
-                    value={productFormData.wholesalePrice || Math.round(productFormData.price * 0.7)}
-                    onChange={(e) => setProductFormData({ ...productFormData, wholesalePrice: Number(e.target.value) })}
-                    className="w-full bg-[#F2F7F4] p-2.5 rounded-xl border border-[#B3D1BE] focus:outline-none font-bold text-[#4E6857]"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Sỉ tối thiểu (chiếc):</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={productFormData.wholesaleMinQty || 5}
-                    onChange={(e) => setProductFormData({ ...productFormData, wholesaleMinQty: Number(e.target.value) })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Tồn kho (chiếc):</label>
-                  <input
-                    type="number"
-                    value={productFormData.stock}
-                    onChange={(e) => setProductFormData({ ...productFormData, stock: Number(e.target.value) })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Danh mục vòng dây: *</label>
-                  <select
-                    value={productFormData.category}
-                    onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-medium"
-                  >
-                    <option value="macrame-pastel">Vòng Dây Macrame Pastel & Hoa Gốm</option>
-                    <option value="vong-doi">Vòng Đôi Dây Sáp Nam Châm</option>
-                    <option value="day-do-may-man">Vòng Chỉ Đỏ Bình An & Hộ Thân</option>
-                    <option value="day-lua-co-phong">Vòng Dây Lụa & Dây Da Mộc</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Huy hiệu hiển thị (Tag):</label>
-                  <input
-                    type="text"
-                    placeholder="Hot Trend, Bán chạy, Giá sỉ xưởng..."
-                    value={productFormData.tag}
-                    onChange={(e) => setProductFormData({ ...productFormData, tag: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Loại sợi / Kỹ thuật dệt dây: *</label>
-                  <input
-                    type="text"
-                    placeholder="Dây chỉ sáp dệt Macrame pastel / Chỉ đỏ Tây Tạng..."
-                    value={productFormData.cordType || ''}
-                    onChange={(e) => setProductFormData({ ...productFormData, cordType: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Charm / Hạt trang trí chính:</label>
-                  <input
-                    type="text"
-                    placeholder="Gốm sứ men pastel nung thủ công / Charm hoa acrylic..."
-                    value={productFormData.stoneType || ''}
-                    onChange={(e) => setProductFormData({ ...productFormData, stoneType: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* --- KHU VỰC TẢI ẢNH & AI TỰ ĐỘNG BÓC TÁCH THÀNH PHẦN DÂY --- */}
-              <div className="bg-[#FAF4ED] p-3.5 rounded-2xl border border-[#D9C8B4] space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-[#26211C] flex items-center gap-1.5 text-xs">
-                    <Sparkles className="w-3.5 h-3.5 text-[#B86244]" />
-                    <span>Hình ảnh sản phẩm & Tự động bóc tách (AI Vision):</span>
+                  <label className="font-bold text-[#26211C] block mb-1 text-xs">
+                    Tên sản phẩm vòng tay / gương đính: *
                   </label>
-                  {isAnalyzingCord && (
-                    <span className="text-[10px] text-[#B86244] font-semibold flex items-center gap-1 animate-pulse">
-                      <RefreshCw className="w-3 h-3 animate-spin" />
-                      <span>Đang phân tích...</span>
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
-                    placeholder="URL ảnh hoặc tải file bên phải"
-                    value={productFormData.images[0] || ''}
-                    onChange={(e) => setProductFormData({ ...productFormData, images: [e.target.value] })}
-                    className="flex-1 bg-white p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-mono text-[11px]"
+                    required
+                    placeholder="Ví dụ: Vòng Tay Cá Voi Xanh Gốm Men Pastel"
+                    value={productFormData.name}
+                    onChange={(e) => setProductFormData({ ...productFormData, name: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none focus:border-[#B86244] font-medium text-xs"
                   />
+                </div>
+
+                {/* 2. GIÁ CẢ & TỒN KHO (TÙY BIẾN TỰ DO, KHÔNG TỰ ĐỘNG ĐIỀN ĐÈ) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label className="font-bold text-[#B86244] block mb-1 text-[11px]">
+                      Giá bán lẻ (₫): *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      placeholder="VD: 68000"
+                      value={productFormData.price}
+                      onChange={(e) => setProductFormData({ ...productFormData, price: e.target.value })}
+                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none focus:border-[#B86244] font-bold text-[#B86244] text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-[#4E6857] block text-[11px]">Giá sỉ (₫):</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const p = Number(productFormData.price) || 0;
+                          if (p > 0) {
+                            setProductFormData(prev => ({ ...prev, wholesalePrice: String(Math.round(p * 0.7)) }));
+                          }
+                        }}
+                        className="text-[9px] text-[#4E6857] hover:underline font-bold bg-[#E8F0EA] px-1 py-0.5 rounded cursor-pointer"
+                        title="Bấm để tự động tính gợi ý 70% giá lẻ"
+                      >
+                        ⚡ 70%
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="VD: 48000"
+                      value={productFormData.wholesalePrice}
+                      onChange={(e) => setProductFormData({ ...productFormData, wholesalePrice: e.target.value })}
+                      className="w-full bg-[#F2F7F4] p-2.5 rounded-xl border border-[#B3D1BE] focus:outline-none focus:border-[#4E6857] font-bold text-[#4E6857] text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Sỉ tối thiểu:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="5"
+                      value={productFormData.wholesaleMinQty}
+                      onChange={(e) => setProductFormData({ ...productFormData, wholesaleMinQty: e.target.value })}
+                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Tồn kho:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="20"
+                      value={productFormData.stock}
+                      onChange={(e) => setProductFormData({ ...productFormData, stock: e.target.value })}
+                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. DANH MỤC & HUY HIỆU TAG */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Danh mục sản phẩm: *</label>
+                    <select
+                      value={productFormData.category}
+                      onChange={(e) => setProductFormData({ ...productFormData, category: e.target.value })}
+                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-medium text-xs text-[#26211C]"
+                    >
+                      <option value="macrame-pastel">🌸 Vòng Dây Macrame Pastel & Hoa Gốm</option>
+                      <option value="guong-dinh">🪞 Gương Đính Gập & Đơn (Bestseller)</option>
+                      <option value="vong-doi">💞 Vòng Đôi Dây Sáp Nam Châm</option>
+                      <option value="day-do-may-man">🧧 Vòng Chỉ Đỏ Bình An & Hộ Thân</option>
+                      <option value="day-lua-co-phong">🎋 Vòng Dây Lụa & Dây Da Mộc</option>
+                      <option value="day-chuyen-vintage">📿 Dây Chuyền Vintage</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Huy hiệu hiển thị (Tag):</label>
+                    <input
+                      type="text"
+                      placeholder="Hot Trend, Bán chạy, Giá sỉ xưởng..."
+                      value={productFormData.tag}
+                      onChange={(e) => setProductFormData({ ...productFormData, tag: e.target.value })}
+                      className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. HÌNH ẢNH SẢN PHẨM & TẢI NHANH */}
+                <div className="bg-[#FAF4ED] p-3 sm:p-3.5 rounded-2xl border border-[#D9C8B4] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-[#26211C] flex items-center gap-1.5 text-xs">
+                      <Upload className="w-3.5 h-3.5 text-[#B86244]" />
+                      <span>Hình ảnh sản phẩm: *</span>
+                    </label>
+                    {productFormData.images?.[0] && (
+                      <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Đã có ảnh
+                      </span>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-2">
+                    {productFormData.images?.[0] && (
+                      <div className="w-11 h-11 rounded-xl overflow-hidden border border-[#E8DFD3] shrink-0 bg-white shadow-xs">
+                        <img src={productFormData.images[0]} alt="preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Dán link ảnh hoặc chọn từ máy..."
+                      value={productFormData.images?.[0] || ''}
+                      onChange={(e) => setProductFormData({ ...productFormData, images: [e.target.value] })}
+                      className="flex-1 bg-white p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-mono text-[11px]"
+                    />
                     <input
                       type="file"
                       id="adminCordImageInput"
@@ -2483,270 +2564,250 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     />
                     <label
                       htmlFor="adminCordImageInput"
-                      className="cursor-pointer px-3 py-2 bg-[#26211C] hover:bg-[#3D352E] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
+                      className="cursor-pointer px-3 py-2.5 bg-[#26211C] hover:bg-[#3D352E] text-white rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0 transition-colors shadow-xs"
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      <span>Tải ảnh từ máy</span>
+                      <span className="hidden sm:inline">Tải ảnh</span>
                     </label>
+                  </div>
 
-                    <button
-                      type="button"
-                      disabled={isAnalyzingCord || !productFormData.images[0]}
-                      onClick={() => handleAutoAnalyzeImage(productFormData.images[0], false)}
-                      className="px-3 py-2 bg-[#B86244] hover:bg-[#A05237] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm whitespace-nowrap"
-                      title="AI Gemini phân tích và bóc tách các thành phần làm nên sợi dây"
-                    >
-                      <Wand2 className="w-3.5 h-3.5" />
-                      <span>AI Bóc Tách Dây</span>
-                    </button>
+                  <div className="flex gap-1.5 flex-wrap items-center pt-1">
+                    <span className="text-[10px] text-[#8C8276]">Chọn nhanh mẫu:</span>
+                    {[
+                      { name: '🪞 Gương Đính', img: '/images/products/zy-guong-01.jpg' },
+                      { name: '🐳 Cá Voi', img: '/images/products/bracelet-whale-ceramic.jpg' },
+                      { name: '🌸 Hoa Cúc', img: '/images/products/bracelet-mint-flower.jpg' },
+                      { name: '🦋 Bướm Pastel', img: '/images/products/bracelet-hologram-butterfly.jpg' },
+                      { name: '✨ Trio 3 Dây', img: '/images/products/bracelet-pastel-macrame-trio.jpg' }
+                    ].map(sample => (
+                      <button
+                        key={sample.name}
+                        type="button"
+                        onClick={() => setProductFormData({ ...productFormData, images: [sample.img] })}
+                        className="text-[10px] px-2 py-0.5 bg-white rounded-lg border border-[#E8DFD3] hover:bg-[#F0EAE1] text-[#6B6258] transition-colors"
+                      >
+                        {sample.name}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {aiAnalysisStatus && (
-                  <div className="p-2 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-center gap-2 animate-fadeIn">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="font-medium">{aiAnalysisStatus}</span>
-                  </div>
-                )}
-
-                <div className="flex gap-1.5 flex-wrap">
-                  <span className="text-[10px] text-[#8C8276] self-center">Chọn nhanh mẫu xưởng:</span>
-                  {[
-                    { name: '🐳 Cá Voi Men Ngọc', img: '/images/products/bracelet-whale-ceramic.jpg' },
-                    { name: '🌸 Hoa Cúc Pastel', img: '/images/products/bracelet-mint-flower.jpg' },
-                    { name: '🦋 Bướm Dạ Quang', img: '/images/products/bracelet-hologram-butterfly.jpg' },
-                    { name: '🧧 Chỉ Đỏ Ngũ Phúc', img: '/images/products/bracelet-red-luck.jpg' },
-                    { name: '🌙 Macrame Moonstone', img: '/images/products/bracelet-moonstone.jpg' },
-                    { name: '✨ Combo Trio 3 Vòng', img: '/images/products/bracelet-pastel-macrame-trio.jpg' }
-                  ].map(sample => (
-                    <button
-                      key={sample.name}
-                      type="button"
-                      onClick={() => {
-                        setProductFormData({ ...productFormData, images: [sample.img] });
-                        handleAutoAnalyzeImage(sample.img, false);
-                      }}
-                      className="text-[10px] px-2 py-1 bg-white rounded-lg border border-[#E8DFD3] hover:bg-[#F0EAE1] transition-colors"
-                    >
-                      {sample.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* --- CHI TIẾT CẤU TẠO THÀNH PHẦN SỢI DÂY (TỰ ĐỘNG BÓC TÁCH) --- */}
-              <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8DFD3] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-[#4E6857] flex items-center gap-1.5 text-xs">
-                    <Layers className="w-3.5 h-3.5 text-[#4E6857]" />
-                    <span>Cấu Tạo Thành Phần Sợi Dây (Tự Động Bóc Tách Khi Up Hình):</span>
-                  </h4>
-                  <span className="text-[10px] text-[#8C8276]">Tự động điền bởi AI Vision hoặc sửa tay</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="font-semibold text-[#6B6258] block mb-0.5 text-[10px]">1. Chất liệu sợi dây chính:</label>
-                    <input
-                      type="text"
-                      placeholder="Sợi chỉ sáp dệt Macrame 1.0mm chống nước tắm gội"
-                      value={productFormData.cordComposition?.coreMaterial || ''}
-                      onChange={(e) => setProductFormData({
-                        ...productFormData,
-                        cordComposition: { ...(productFormData.cordComposition || {}), coreMaterial: e.target.value }
-                      })}
-                      className="w-full bg-white p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-[#6B6258] block mb-0.5 text-[10px]">2. Kỹ thuật thắt nút:</label>
-                    <input
-                      type="text"
-                      placeholder="Kỹ thuật thắt nút thoi Macrame & nút rút trượt đôi"
-                      value={productFormData.cordComposition?.braidingTechnique || ''}
-                      onChange={(e) => setProductFormData({
-                        ...productFormData,
-                        cordComposition: { ...(productFormData.cordComposition || {}), braidingTechnique: e.target.value }
-                      })}
-                      className="w-full bg-white p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-[#6B6258] block mb-0.5 text-[10px]">3. Phụ kiện charm & hạt trang trí:</label>
-                    <input
-                      type="text"
-                      placeholder="Gốm sứ men pastel nung 1200°C phối hoa cúc pastel"
-                      value={productFormData.cordComposition?.mainCharm || ''}
-                      onChange={(e) => setProductFormData({
-                        ...productFormData,
-                        cordComposition: { ...(productFormData.cordComposition || {}), mainCharm: e.target.value }
-                      })}
-                      className="w-full bg-white p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-[#6B6258] block mb-0.5 text-[10px]">4. Màu sắc sợi dây:</label>
-                    <input
-                      type="text"
-                      placeholder="Màu kem be vintage pastel nhẹ nhàng thanh lịch"
-                      value={productFormData.cordComposition?.cordColor || ''}
-                      onChange={(e) => setProductFormData({
-                        ...productFormData,
-                        cordComposition: { ...(productFormData.cordComposition || {}), cordColor: e.target.value }
-                      })}
-                      className="w-full bg-white p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-[#6B6258] block mb-0.5 text-[10px]">5. Chu vi cổ tay phù hợp:</label>
-                    <input
-                      type="text"
-                      placeholder="Freesize 13cm - 19cm (rút trượt theo cỡ tay)"
-                      value={productFormData.cordComposition?.wristSizeRange || ''}
-                      onChange={(e) => setProductFormData({
-                        ...productFormData,
-                        cordComposition: { ...(productFormData.cordComposition || {}), wristSizeRange: e.target.value }
-                      })}
-                      className="w-full bg-white p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-semibold text-[#6B6258] block mb-0.5 text-[10px]">6. Độ bền & Bảo hành xưởng:</label>
-                    <input
-                      type="text"
-                      placeholder="Không bay màu, không xơ xù, bảo hành đan lại trọn đời"
-                      value={productFormData.cordComposition?.durability || ''}
-                      onChange={(e) => setProductFormData({
-                        ...productFormData,
-                        cordComposition: { ...(productFormData.cordComposition || {}), durability: e.target.value }
-                      })}
-                      className="w-full bg-white p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* --- CÀI ĐẶT BEST SELLER & DOANH SỐ BÁN RA --- */}
-              <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(productFormData.isBestSeller)}
-                    onChange={(e) => setProductFormData({ ...productFormData, isBestSeller: e.target.checked })}
-                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-bold text-[#26211C] text-xs flex items-center gap-1 text-amber-900">
-                      <Flame className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Đánh dấu là Sản Phẩm Bán Chạy Nhất (Best Seller)</span>
+                {/* 5. CÀI ĐẶT NÂNG CAO (ACCORDION THU GỌN TRÊN ĐIỆN THOẠI) */}
+                <div className="border border-[#E8DFD3] rounded-2xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setIsAdvancedProductOpen(!isAdvancedProductOpen)}
+                    className="w-full p-3 bg-[#FAF7F2] hover:bg-[#F3ECE0] flex items-center justify-between text-xs font-bold text-[#4E6857] transition-all"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#B86244]" />
+                      <span>Cài Đặt Nâng Cao & Cấu Tạo Dây (Bấm Để {isAdvancedProductOpen ? 'Thu Gọn' : 'Mở Rộng'})</span>
                     </span>
-                    <span className="text-[10px] text-amber-800/80 block">
-                      Hiển thị huy hiệu lửa nổi bật và ưu tiên đề xuất hàng đầu
+                    <span className="text-[10px] bg-white px-2 py-0.5 rounded-full border border-[#E8DFD3]">
+                      {isAdvancedProductOpen ? '▲ Thu gọn' : '▼ Mở rộng'}
                     </span>
-                  </div>
-                </label>
+                  </button>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <label className="text-[10px] font-bold text-amber-900">Số lượng đã bán:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="1480"
-                    value={productFormData.salesCount || 0}
-                    onChange={(e) => setProductFormData({ ...productFormData, salesCount: Number(e.target.value) })}
-                    className="w-24 bg-white p-1.5 rounded-lg border border-amber-300 text-xs font-bold text-amber-900 text-center focus:outline-none"
-                  />
-                </div>
-              </div>
+                  {isAdvancedProductOpen && (
+                    <div className="p-3.5 sm:p-4 space-y-3.5 bg-white border-t border-[#E8DFD3] animate-fadeIn">
+                      {/* Loại sợi & Charm */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Kỹ thuật sợi / dệt dây:</label>
+                          <input
+                            type="text"
+                            placeholder="Dây chỉ sáp dệt Macrame pastel..."
+                            value={productFormData.cordType || ''}
+                            onChange={(e) => setProductFormData({ ...productFormData, cordType: e.target.value })}
+                            className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Charm / Hạt trang trí:</label>
+                          <input
+                            type="text"
+                            placeholder="Gốm sứ men pastel nung 1200°C..."
+                            value={productFormData.stoneType || ''}
+                            onChange={(e) => setProductFormData({ ...productFormData, stoneType: e.target.value })}
+                            className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                          />
+                        </div>
+                      </div>
 
-              {/* --- CÀI ĐẶT TRẠNG THÁI HIỂN THỊ (ẨN / HIỆN GIAN HÀNG) --- */}
-              <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${
-                productFormData.isHidden 
-                  ? 'bg-amber-50/80 border-amber-300/80' 
-                  : 'bg-emerald-50/70 border-emerald-200/80'
-              }`}>
-                <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(productFormData.isHidden)}
-                    onChange={(e) => setProductFormData({ ...productFormData, isHidden: e.target.checked })}
-                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
-                  />
-                  <div>
-                    <span className={`font-bold text-xs flex items-center gap-1.5 ${
-                      productFormData.isHidden ? 'text-amber-900' : 'text-emerald-900'
-                    }`}>
-                      {productFormData.isHidden ? (
-                        <>
-                          <EyeOff className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Đang ẨN sản phẩm khỏi khách mua trên gian hàng</span>
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Đang HIỆN sản phẩm công khai trên gian hàng</span>
-                        </>
+                      {/* AI Vision Bóc Tách Button */}
+                      <div className="flex items-center justify-between p-2.5 bg-[#FAF4ED] rounded-xl border border-[#E8DFD3]">
+                        <span className="text-[11px] text-[#6B6258] font-medium">Bóc tách tự động 6 lớp sợi bằng AI Gemini:</span>
+                        <button
+                          type="button"
+                          disabled={isAnalyzingCord || !productFormData.images?.[0]}
+                          onClick={() => handleAutoAnalyzeImage(productFormData.images[0], false)}
+                          className="px-3 py-1.5 bg-[#B86244] hover:bg-[#A05237] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                        >
+                          {isAnalyzingCord ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                          <span>{isAnalyzingCord ? 'Đang phân tích...' : 'AI Bóc Tách Dây'}</span>
+                        </button>
+                      </div>
+
+                      {aiAnalysisStatus && (
+                        <div className="p-2 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-center gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>{aiAnalysisStatus}</span>
+                        </div>
                       )}
-                    </span>
-                    <span className="text-[10px] text-[#6B6258] block">
-                      {productFormData.isHidden 
-                        ? 'Khách hàng ngoài shop sẽ không tìm thấy sản phẩm này. Chỉ Admin mới nhìn thấy trong Dashboard.'
-                        : 'Sản phẩm sẽ xuất hiện công khai trên trang chủ và danh mục cho khách đặt mua.'}
-                    </span>
-                  </div>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setProductFormData({ ...productFormData, isHidden: !productFormData.isHidden })}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all ${
-                    productFormData.isHidden 
-                      ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' 
-                      : 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
-                  }`}
-                >
-                  {productFormData.isHidden ? 'Bấm để Hiện' : 'Bấm để Ẩn'}
-                </button>
+
+                      {/* Chi tiết cấu tạo 6 phần */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-[#6B6258] block mb-0.5">1. Chất liệu sợi dây:</label>
+                          <input
+                            type="text"
+                            placeholder="Sợi chỉ sáp dệt Macrame 1.0mm chống nước"
+                            value={productFormData.cordComposition?.coreMaterial || ''}
+                            onChange={(e) => setProductFormData({
+                              ...productFormData,
+                              cordComposition: { ...(productFormData.cordComposition || {}), coreMaterial: e.target.value }
+                            })}
+                            className="w-full bg-[#FAF7F2] p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[#6B6258] block mb-0.5">2. Kỹ thuật thắt nút:</label>
+                          <input
+                            type="text"
+                            placeholder="Kỹ thuật thắt nút thoi Macrame & nút rút đôi"
+                            value={productFormData.cordComposition?.braidingTechnique || ''}
+                            onChange={(e) => setProductFormData({
+                              ...productFormData,
+                              cordComposition: { ...(productFormData.cordComposition || {}), braidingTechnique: e.target.value }
+                            })}
+                            className="w-full bg-[#FAF7F2] p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[#6B6258] block mb-0.5">3. Phụ kiện charm:</label>
+                          <input
+                            type="text"
+                            placeholder="Gốm men nung thủ công phối hoa pastel"
+                            value={productFormData.cordComposition?.mainCharm || ''}
+                            onChange={(e) => setProductFormData({
+                              ...productFormData,
+                              cordComposition: { ...(productFormData.cordComposition || {}), mainCharm: e.target.value }
+                            })}
+                            className="w-full bg-[#FAF7F2] p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[#6B6258] block mb-0.5">4. Màu sắc sợi dây:</label>
+                          <input
+                            type="text"
+                            placeholder="Màu kem be vintage pastel thanh lịch"
+                            value={productFormData.cordComposition?.cordColor || ''}
+                            onChange={(e) => setProductFormData({
+                              ...productFormData,
+                              cordComposition: { ...(productFormData.cordComposition || {}), cordColor: e.target.value }
+                            })}
+                            className="w-full bg-[#FAF7F2] p-2 rounded-lg border border-[#E8DFD3] focus:outline-none text-[11px]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Best Seller & Doanh số */}
+                      <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(productFormData.isBestSeller)}
+                            onChange={(e) => setProductFormData({ ...productFormData, isBestSeller: e.target.checked })}
+                            className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                          />
+                          <span className="font-bold text-amber-900 text-xs flex items-center gap-1">
+                            <Flame className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Sản Phẩm Bán Chạy (Best Seller)</span>
+                          </span>
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-semibold text-amber-900">Đã bán:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={productFormData.salesCount}
+                            onChange={(e) => setProductFormData({ ...productFormData, salesCount: e.target.value })}
+                            className="w-20 bg-white p-1 rounded-lg border border-amber-300 text-xs font-bold text-amber-900 text-center focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Trạng thái Ẩn/Hiện */}
+                      <div className={`p-3 rounded-xl border flex items-center justify-between transition-colors ${
+                        productFormData.isHidden ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-200'
+                      }`}>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(productFormData.isHidden)}
+                            onChange={(e) => setProductFormData({ ...productFormData, isHidden: e.target.checked })}
+                            className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                          />
+                          <span className={`font-bold text-xs flex items-center gap-1.5 ${
+                            productFormData.isHidden ? 'text-amber-900' : 'text-emerald-900'
+                          }`}>
+                            {productFormData.isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            <span>{productFormData.isHidden ? 'Đang ẨN trên gian hàng (Chỉ Admin thấy)' : 'Đang HIỆN công khai cho khách mua'}</span>
+                          </span>
+                        </label>
+                      </div>
+
+                      {/* Mô tả & Ý nghĩa */}
+                      <div>
+                        <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Mô tả chi tiết sản phẩm:</label>
+                        <textarea
+                          rows={2}
+                          value={productFormData.description}
+                          onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
+                          className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-bold text-[#26211C] block mb-1 text-[11px]">Ý nghĩa may mắn & bảo hành:</label>
+                        <input
+                          type="text"
+                          placeholder="Dây rút freesize, bảo hành đan lại dây trọn đời..."
+                          value={productFormData.meaning}
+                          onChange={(e) => setProductFormData({ ...productFormData, meaning: e.target.value })}
+                          className="w-full bg-[#FAF7F2] p-2 rounded-xl border border-[#E8DFD3] focus:outline-none text-xs"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="font-bold text-[#26211C] block mb-1">Mô tả sản phẩm & thông số chi tiết:</label>
-                <textarea
-                  rows={2}
-                  value={productFormData.description}
-                  onChange={(e) => setProductFormData({ ...productFormData, description: e.target.value })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-[#26211C] block mb-1">Ý nghĩa may mắn & bảo hành thủ công:</label>
-                <input
-                  type="text"
-                  placeholder="Dây rút freesize 14-18cm, bảo hành đan lại dây trọn đời tại Vòng Tay Nhà Zy..."
-                  value={productFormData.meaning}
-                  onChange={(e) => setProductFormData({ ...productFormData, meaning: e.target.value })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
+              {/* Fixed Bottom Action Bar: ALWAYS VISIBLE without scrolling */}
+              <div className="p-3 sm:p-4 bg-white border-t border-[#E8DFD3] flex items-center justify-end gap-2.5 z-20 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
                 <button
                   type="button"
                   onClick={() => setIsProductModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-[#6B6258] font-semibold"
+                  className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-[#6B6258] hover:bg-[#FAF7F2] font-semibold text-xs transition-colors"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold"
+                  disabled={isSavingProduct}
+                  className="px-5 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all active:scale-98"
                 >
-                  {editingProduct ? 'Cập Nhật Sản Phẩm' : 'Lưu Vào Cơ Sở Dữ Liệu'}
+                  {isSavingProduct ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang lưu vào database...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{editingProduct ? 'Cập Nhật Sản Phẩm' : 'Lưu Vào Cơ Sở Dữ Liệu'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

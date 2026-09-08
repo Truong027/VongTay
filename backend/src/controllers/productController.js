@@ -87,11 +87,33 @@ export const getCategories = async (req, res) => {
   }
 };
 
+// Deduplication cache to prevent duplicate creations when clicked repeatedly within 3 seconds
+const recentCreations = new Map();
+
 export const createProduct = async (req, res) => {
   try {
     const { name, price, category } = req.body;
-    if (!name || !price || !category) {
+    if (!name || price === undefined || price === null || price === '' || !category) {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp tên, giá và danh mục sản phẩm.' });
+    }
+
+    const dedupeKey = `${String(name).trim().toLowerCase()}-${price}`;
+    const now = Date.now();
+    if (recentCreations.has(dedupeKey)) {
+      const lastTime = recentCreations.get(dedupeKey);
+      if (now - lastTime < 3000) {
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Yêu cầu đang được xử lý, đã bỏ qua thao tác nhấn trùng lặp.',
+          isDuplicateIgnored: true 
+        });
+      }
+    }
+    recentCreations.set(dedupeKey, now);
+    if (recentCreations.size > 100) {
+      for (const [k, v] of recentCreations.entries()) {
+        if (now - v > 10000) recentCreations.delete(k);
+      }
     }
 
     const created = await dbCreateProduct(req.body);

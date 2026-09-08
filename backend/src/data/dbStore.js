@@ -566,16 +566,45 @@ export const dbGetProducts = async (includeHidden = false) => {
 };
 
 export const dbCreateProduct = async (productData) => {
+  const parsedPrice = Number(productData.price) || 0;
+  const parsedOriginalPrice = productData.originalPrice !== undefined && productData.originalPrice !== ''
+    ? Number(productData.originalPrice)
+    : parsedPrice;
+  const parsedWholesalePrice = productData.wholesalePrice !== undefined && productData.wholesalePrice !== ''
+    ? Number(productData.wholesalePrice)
+    : Math.round(parsedPrice * 0.7);
+  const parsedWholesaleMinQty = Number(productData.wholesaleMinQty) || 5;
+  const parsedStock = productData.stock !== undefined && productData.stock !== ''
+    ? Number(productData.stock)
+    : 20;
+  const parsedSalesCount = Number(productData.salesCount) || 0;
+
   const newProduct = {
-    id: productData.id || `vt-${Date.now().toString().slice(-4)}`,
-    ...productData,
-    wholesalePrice: productData.wholesalePrice || Math.round((productData.price || 0) * 0.7),
-    wholesaleMinQty: productData.wholesaleMinQty || 5,
+    id: productData.id || `vt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    name: productData.name?.trim() || 'Vòng Tay Thủ Công',
+    category: productData.category || 'macrame-pastel',
+    menh: Array.isArray(productData.menh) ? productData.menh : ['Tất cả'],
+    price: parsedPrice,
+    originalPrice: parsedOriginalPrice,
+    wholesalePrice: parsedWholesalePrice,
+    wholesaleMinQty: parsedWholesaleMinQty,
     isBestSeller: Boolean(productData.isBestSeller),
-    salesCount: productData.salesCount || 0,
+    salesCount: parsedSalesCount,
     cordComposition: productData.cordComposition || {},
     rating: 5.0,
     reviewsCount: 0,
+    tag: productData.tag?.trim() || '',
+    stoneType: productData.stoneType?.trim() || '',
+    cordType: productData.cordType?.trim() || '',
+    beadSize: productData.beadSize?.trim() || '8mm',
+    artisanName: productData.artisanName || 'Nghệ nhân Vòng Tay Nhà Zy',
+    leadTime: productData.leadTime || 'Làm thủ công 2h',
+    description: productData.description?.trim() || '',
+    meaning: productData.meaning?.trim() || '',
+    stock: parsedStock,
+    images: Array.isArray(productData.images) && productData.images.length > 0 && productData.images[0]
+      ? productData.images
+      : ['/images/products/bracelet-pastel-macrame-trio.jpg'],
     isHidden: Boolean(productData.isHidden || false),
     createdAt: new Date().toISOString()
   };
@@ -593,14 +622,14 @@ export const dbCreateProduct = async (productData) => {
           description, meaning, stock, images, is_hidden, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
         [
-          newProduct.id, newProduct.name, newProduct.category, JSON.stringify(newProduct.menh || ['Tất cả']),
-          newProduct.price, newProduct.originalPrice || newProduct.price, newProduct.wholesalePrice, newProduct.wholesaleMinQty,
+          newProduct.id, newProduct.name, newProduct.category, JSON.stringify(newProduct.menh),
+          newProduct.price, newProduct.originalPrice, newProduct.wholesalePrice, newProduct.wholesaleMinQty,
           newProduct.isBestSeller, newProduct.salesCount, JSON.stringify(newProduct.cordComposition),
           newProduct.rating, newProduct.reviewsCount,
-          newProduct.tag || '', newProduct.stoneType || '', newProduct.cordType || '', newProduct.beadSize || '8mm',
-          newProduct.artisanName || 'Nghệ nhân Vòng Tay Nhà Zy', newProduct.leadTime || 'Làm thủ công 2h',
-          newProduct.description || '', newProduct.meaning || '', newProduct.stock || 10,
-          JSON.stringify(newProduct.images || []), newProduct.isHidden, newProduct.createdAt
+          newProduct.tag, newProduct.stoneType, newProduct.cordType, newProduct.beadSize,
+          newProduct.artisanName, newProduct.leadTime,
+          newProduct.description, newProduct.meaning, newProduct.stock,
+          JSON.stringify(newProduct.images), newProduct.isHidden, newProduct.createdAt
         ]
       );
     } catch (err) {
@@ -615,8 +644,18 @@ export const dbUpdateProduct = async (id, updates) => {
   const cleanId = String(id).trim();
   const idx = memoryData.products.findIndex(p => String(p.id).trim() === cleanId);
   
+  const formattedUpdates = { ...updates };
+  if (updates.price !== undefined && updates.price !== '') formattedUpdates.price = Number(updates.price);
+  if (updates.originalPrice !== undefined && updates.originalPrice !== '') formattedUpdates.originalPrice = Number(updates.originalPrice);
+  if (updates.wholesalePrice !== undefined && updates.wholesalePrice !== '') formattedUpdates.wholesalePrice = Number(updates.wholesalePrice);
+  if (updates.wholesaleMinQty !== undefined && updates.wholesaleMinQty !== '') formattedUpdates.wholesaleMinQty = Number(updates.wholesaleMinQty);
+  if (updates.stock !== undefined && updates.stock !== '') formattedUpdates.stock = Number(updates.stock);
+  if (updates.salesCount !== undefined && updates.salesCount !== '') formattedUpdates.salesCount = Number(updates.salesCount);
+  if (updates.isBestSeller !== undefined) formattedUpdates.isBestSeller = Boolean(updates.isBestSeller);
+  if (updates.isHidden !== undefined) formattedUpdates.isHidden = Boolean(updates.isHidden);
+
   if (idx !== -1) {
-    memoryData.products[idx] = { ...memoryData.products[idx], ...updates };
+    memoryData.products[idx] = { ...memoryData.products[idx], ...formattedUpdates };
     saveToDisk();
   }
 
@@ -630,19 +669,39 @@ export const dbUpdateProduct = async (id, updates) => {
           price = COALESCE($2, price),
           wholesale_price = COALESCE($3, wholesale_price),
           wholesale_min_qty = COALESCE($4, wholesale_min_qty),
-          is_best_seller = COALESCE($5, is_best_seller),
-          sales_count = COALESCE($6, sales_count),
-          stock = COALESCE($7, stock),
-          category = COALESCE($8, category),
-          description = COALESCE($9, description),
-          is_hidden = COALESCE($10, is_hidden)
-         WHERE id = $11
+          original_price = COALESCE($5, original_price),
+          is_best_seller = COALESCE($6, is_best_seller),
+          sales_count = COALESCE($7, sales_count),
+          stock = COALESCE($8, stock),
+          category = COALESCE($9, category),
+          description = COALESCE($10, description),
+          meaning = COALESCE($11, meaning),
+          tag = COALESCE($12, tag),
+          stone_type = COALESCE($13, stone_type),
+          cord_type = COALESCE($14, cord_type),
+          cord_composition = COALESCE($15, cord_composition),
+          images = COALESCE($16, images),
+          is_hidden = COALESCE($17, is_hidden)
+         WHERE id = $18
          RETURNING *`,
         [
-          updates.name, updates.price, updates.wholesalePrice, updates.wholesaleMinQty,
-          updates.isBestSeller, updates.salesCount,
-          updates.stock, updates.category, updates.description,
-          updates.isHidden !== undefined ? updates.isHidden : null,
+          formattedUpdates.name !== undefined ? formattedUpdates.name : null,
+          formattedUpdates.price !== undefined ? formattedUpdates.price : null,
+          formattedUpdates.wholesalePrice !== undefined ? formattedUpdates.wholesalePrice : null,
+          formattedUpdates.wholesaleMinQty !== undefined ? formattedUpdates.wholesaleMinQty : null,
+          formattedUpdates.originalPrice !== undefined ? formattedUpdates.originalPrice : null,
+          formattedUpdates.isBestSeller !== undefined ? formattedUpdates.isBestSeller : null,
+          formattedUpdates.salesCount !== undefined ? formattedUpdates.salesCount : null,
+          formattedUpdates.stock !== undefined ? formattedUpdates.stock : null,
+          formattedUpdates.category !== undefined ? formattedUpdates.category : null,
+          formattedUpdates.description !== undefined ? formattedUpdates.description : null,
+          formattedUpdates.meaning !== undefined ? formattedUpdates.meaning : null,
+          formattedUpdates.tag !== undefined ? formattedUpdates.tag : null,
+          formattedUpdates.stoneType !== undefined ? formattedUpdates.stoneType : null,
+          formattedUpdates.cordType !== undefined ? formattedUpdates.cordType : null,
+          formattedUpdates.cordComposition !== undefined ? JSON.stringify(formattedUpdates.cordComposition) : null,
+          formattedUpdates.images !== undefined ? JSON.stringify(formattedUpdates.images) : null,
+          formattedUpdates.isHidden !== undefined ? formattedUpdates.isHidden : null,
           cleanId
         ]
       );
@@ -654,11 +713,18 @@ export const dbUpdateProduct = async (id, updates) => {
           name: r.name,
           category: r.category,
           price: Number(r.price),
+          originalPrice: Number(r.original_price || r.price),
           wholesalePrice: Number(r.wholesale_price || 0),
           wholesaleMinQty: Number(r.wholesale_min_qty || 5),
           isBestSeller: Boolean(r.is_best_seller),
           salesCount: Number(r.sales_count || 0),
           stock: r.stock,
+          tag: r.tag,
+          stoneType: r.stone_type,
+          cordType: r.cord_type,
+          cordComposition: r.cord_composition,
+          images: r.images,
+          meaning: r.meaning,
           isHidden: Boolean(r.is_hidden),
           description: r.description
         };
