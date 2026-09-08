@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -12,7 +12,9 @@ import {
   QrCode,
   Check,
   Gift,
-  Tag
+  Tag,
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
@@ -35,13 +37,19 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
   const [paymentMethod, setPaymentMethod] = useState('VietQR');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({ fullName: '', phone: '', address: '' });
   const [completedOrder, setCompletedOrder] = useState(null);
   const [copiedField, setCopiedField] = useState('');
+
+  const fullNameRef = useRef(null);
+  const phoneRef = useRef(null);
+  const addressRef = useRef(null);
 
   // Auto-sync profile info from currentUser whenever checkout opens or user changes
   useEffect(() => {
     if (isOpen) {
       setErrorMsg('');
+      setFieldErrors({ fullName: '', phone: '', address: '' });
       setCompletedOrder(null);
       if (currentUser) {
         if (currentUser.fullName) setFullName(currentUser.fullName);
@@ -116,8 +124,33 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
     e.preventDefault();
     setErrorMsg('');
 
-    if (!fullName.trim() || !phone.trim() || !address.trim()) {
-      setErrorMsg('Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ nhận hàng.');
+    const errors = {};
+    if (!fullName.trim()) {
+      errors.fullName = 'Vui lòng nhập họ và tên người nhận hàng.';
+    }
+    const cleanPhone = phone.trim().replace(/[\s.-]/g, '');
+    if (!cleanPhone) {
+      errors.phone = 'Vui lòng nhập số điện thoại để bưu tá liên hệ giao hàng.';
+    } else if (!/^[0-9]{9,11}$/.test(cleanPhone)) {
+      errors.phone = 'Số điện thoại không hợp lệ (cần đủ 10 số di động).';
+    }
+    if (!address.trim()) {
+      errors.address = 'Vui lòng nhập địa chỉ nhận hàng chi tiết (số nhà, ngõ/đường, phường/xã, tỉnh/thành).';
+    } else if (address.trim().length < 5) {
+      errors.address = 'Địa chỉ nhận hàng quá ngắn, vui lòng ghi rõ địa chỉ để bưu tá giao.';
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setErrorMsg('Vui lòng kiểm tra và điền đầy đủ các thông tin được báo đỏ bên dưới để hoàn tất đặt hàng.');
+      if (errors.fullName && fullNameRef.current) {
+        fullNameRef.current.focus();
+      } else if (errors.phone && phoneRef.current) {
+        phoneRef.current.focus();
+      } else if (errors.address && addressRef.current) {
+        addressRef.current.focus();
+      }
       return;
     }
 
@@ -260,11 +293,13 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
           </div>
         ) : (
           /* CHECKOUT FORM */
-          <form onSubmit={handleSubmitOrder} className="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+          /* CHECKOUT FORM */
+          <form onSubmit={handleSubmitOrder} noValidate className="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto">
             
             {errorMsg && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
-                {errorMsg}
+              <div className="p-3.5 bg-rose-50 border-2 border-rose-400 text-rose-800 text-xs font-semibold rounded-2xl flex items-center gap-2.5 shadow-xs animate-fadeIn">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                <p>{errorMsg}</p>
               </div>
             )}
 
@@ -281,13 +316,26 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     Họ và tên của bạn: *
                   </label>
                   <input
+                    ref={fullNameRef}
                     type="text"
-                    required
                     placeholder="Ví dụ: Nguyễn Minh Anh"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (fieldErrors.fullName) setFieldErrors(p => ({ ...p, fullName: '' }));
+                    }}
+                    className={`w-full text-xs p-3 rounded-xl transition-all focus:outline-none ${
+                      fieldErrors.fullName
+                        ? 'border-2 border-rose-500 bg-rose-50/70 text-rose-950 ring-2 ring-rose-200/80 focus:border-rose-600 focus:ring-rose-300'
+                        : 'border border-[#E8DFD3] bg-white text-[#26211C] focus:ring-1 focus:ring-[#B86244]'
+                    }`}
                   />
+                  {fieldErrors.fullName && (
+                    <div className="flex items-center gap-1.5 text-rose-600 text-xs font-semibold mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{fieldErrors.fullName}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -295,13 +343,26 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     Số điện thoại nhận hàng: *
                   </label>
                   <input
+                    ref={phoneRef}
                     type="tel"
-                    required
                     placeholder="Ví dụ: 0988234567"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (fieldErrors.phone) setFieldErrors(p => ({ ...p, phone: '' }));
+                    }}
+                    className={`w-full text-xs p-3 rounded-xl transition-all focus:outline-none ${
+                      fieldErrors.phone
+                        ? 'border-2 border-rose-500 bg-rose-50/70 text-rose-950 ring-2 ring-rose-200/80 focus:border-rose-600 focus:ring-rose-300'
+                        : 'border border-[#E8DFD3] bg-white text-[#26211C] focus:ring-1 focus:ring-[#B86244]'
+                    }`}
                   />
+                  {fieldErrors.phone && (
+                    <div className="flex items-center gap-1.5 text-rose-600 text-xs font-semibold mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{fieldErrors.phone}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -309,13 +370,26 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     Địa chỉ nhận hàng chi tiết: *
                   </label>
                   <textarea
+                    ref={addressRef}
                     rows={2}
-                    required
                     placeholder="Số nhà, tên ngõ/đường, phường/xã, quận/huyện, tỉnh/thành phố..."
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      if (fieldErrors.address) setFieldErrors(p => ({ ...p, address: '' }));
+                    }}
+                    className={`w-full text-xs p-3 rounded-xl transition-all focus:outline-none ${
+                      fieldErrors.address
+                        ? 'border-2 border-rose-500 bg-rose-50/70 text-rose-950 ring-2 ring-rose-200/80 focus:border-rose-600 focus:ring-rose-300'
+                        : 'border border-[#E8DFD3] bg-white text-[#26211C] focus:ring-1 focus:ring-[#B86244]'
+                    }`}
                   />
+                  {fieldErrors.address && (
+                    <div className="flex items-center gap-1.5 text-rose-600 text-xs font-semibold mt-1.5 animate-fadeIn">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{fieldErrors.address}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -327,7 +401,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     placeholder="Giao giờ hành chính, gọi trước 15p..."
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                    className="w-full text-xs p-3 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
                   />
                 </div>
 

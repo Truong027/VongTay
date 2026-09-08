@@ -17,6 +17,7 @@ import { CartProvider, useCart } from './context/CartContext';
 import { api } from './services/api';
 
 import Navbar from './components/layout/Navbar';
+import MobileBottomBar from './components/layout/MobileBottomBar';
 import Footer from './components/layout/Footer';
 import HeroSection from './components/home/HeroSection';
 import ProductCard from './components/product/ProductCard';
@@ -210,7 +211,7 @@ function MainShop({ currentUser, setCurrentUser }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF7F2] w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-[#FAF7F2] w-full max-w-full overflow-x-clip pb-16 lg:pb-0">
       {/* Main Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -406,6 +407,23 @@ function MainShop({ currentUser, setCurrentUser }) {
         }}
         onOpenSizeGuide={() => setIsSizeGuideOpen(true)}
         onOpenTracking={() => setIsTrackingOpen(true)}
+      />
+
+      {/* Shopee-style Mobile Bottom Navigation Bar */}
+      <MobileBottomBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenCustomizer={() => {
+          setAiCustomPreset(null);
+          setIsCustomizerOpen(true);
+        }}
+        onOpenAICamera={handleOpenAiWrist}
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenProfile={handleOpenProfile}
+        isAdminView={isAdminView}
+        onOpenAdmin={setIsAdminView}
+        onScrollToProducts={handleScrollToProducts}
       />
 
       {/* Modals & Drawers */}

@@ -99,17 +99,16 @@ export const login = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { id, fullName, phone, address, currentPassword, newPassword } = req.body;
+    const { id, email, fullName, phone, address, currentPassword, newPassword } = req.body;
 
-    if (!id) {
-      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã tài khoản (id).' });
+    if (!id && !email) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp mã tài khoản hoặc email.' });
     }
 
-    const allUsers = await dbGetUsers();
-    // Also check raw memoryData for password checking
-    const existing = await dbFindUserByEmail(req.body.email || '') || allUsers.find(u => u.id === id);
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const existing = (cleanEmail ? await dbFindUserByEmail(cleanEmail) : null) || (id ? (await dbGetUsers()).find(u => u.id === id) : null);
 
-    const updates = {};
+    const updates = { email: cleanEmail };
     if (fullName !== undefined) updates.fullName = fullName.trim();
     if (phone !== undefined) updates.phone = phone.trim();
     if (address !== undefined) updates.address = address.trim();
@@ -125,7 +124,8 @@ export const updateProfile = async (req, res) => {
       updates.password = newPassword.trim();
     }
 
-    const updated = await dbUpdateUserProfile(id, updates);
+    const targetId = id || (existing ? existing.id : null);
+    const updated = await dbUpdateUserProfile(targetId, updates);
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy tài khoản để cập nhật.' });
     }

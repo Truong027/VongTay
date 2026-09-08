@@ -28,7 +28,7 @@
 html {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   box-sizing: border-box;
 }
@@ -45,7 +45,7 @@ body {
   padding: 0;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   position: relative;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -54,7 +54,6 @@ body {
 #root {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

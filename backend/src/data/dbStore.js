@@ -761,6 +761,7 @@ export const dbGetUsers = async () => {
 };
 
 export const dbCreateUser = async (userData) => {
+  await ensureNeonConnected();
   const newUser = {
     id: userData.id || `user-${Date.now()}`,
     email: userData.email.trim().toLowerCase(),
@@ -772,13 +773,21 @@ export const dbCreateUser = async (userData) => {
     createdAt: new Date().toISOString()
   };
 
-  memoryData.users.push(newUser);
+  const existingIdx = memoryData.users.findIndex(u => u.email.toLowerCase() === newUser.email);
+  if (existingIdx >= 0) {
+    memoryData.users[existingIdx] = { ...memoryData.users[existingIdx], ...newUser };
+  } else {
+    memoryData.users.push(newUser);
+  }
   saveToDisk();
 
   if (isNeonConnected()) {
     try {
       await query(
-        'INSERT INTO users (id, email, password_hash, full_name, phone, address, role, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        `INSERT INTO users (id, email, password_hash, full_name, phone, address, role, created_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (email) DO UPDATE 
+         SET full_name = EXCLUDED.full_name, phone = EXCLUDED.phone, address = EXCLUDED.address, password_hash = EXCLUDED.password_hash`,
         [newUser.id, newUser.email, newUser.password, newUser.fullName, newUser.phone, newUser.address, newUser.role, newUser.createdAt]
       );
     } catch (err) {
@@ -798,7 +807,63 @@ export const dbCreateUser = async (userData) => {
 };
 
 export const dbUpdateUserProfile = async (id, updates = {}) => {
-  const user = memoryData.users.find(u => u.id === id);
+  await ensureNeonConnected();
+
+  const cleanEmail = (updates.email || '').trim().toLowerCase();
+  let user = memoryData.users.find(u => u.id === id || (cleanEmail && u.email.toLowerCase() === cleanEmail));
+
+  if (isNeonConnected()) {
+    try {
+      // Find in Neon by id or email
+      const checkRes = await query(
+        'SELECT * FROM users WHERE id = $1 OR (LOWER(email) = LOWER($2) AND $2 != \'\') LIMIT 1',
+        [id || '', cleanEmail]
+      );
+
+      if (checkRes && checkRes.rows && checkRes.rows.length > 0) {
+        const neonUser = checkRes.rows[0];
+        const newFullName = updates.fullName !== undefined ? updates.fullName.trim() : neonUser.full_name;
+        const newPhone = updates.phone !== undefined ? updates.phone.trim() : (neonUser.phone || '');
+        const newAddress = updates.address !== undefined ? updates.address.trim() : (neonUser.address || '');
+        const newPass = updates.password ? updates.password : neonUser.password_hash;
+
+        const updateRes = await query(
+          `UPDATE users 
+           SET full_name = $1, phone = $2, address = $3, password_hash = $4 
+           WHERE id = $5 
+           RETURNING id, email, full_name, phone, address, role, created_at`,
+          [newFullName, newPhone, newAddress, newPass, neonUser.id]
+        );
+
+        if (updateRes && updateRes.rows && updateRes.rows.length > 0) {
+          const r = updateRes.rows[0];
+          const resultUser = {
+            id: r.id,
+            email: r.email,
+            fullName: r.full_name,
+            phone: r.phone || '',
+            address: r.address || '',
+            role: r.role,
+            createdAt: r.created_at
+          };
+
+          // Synchronize in memory
+          const memIdx = memoryData.users.findIndex(u => u.id === r.id || u.email.toLowerCase() === r.email.toLowerCase());
+          if (memIdx >= 0) {
+            memoryData.users[memIdx] = { ...memoryData.users[memIdx], ...resultUser, password: newPass };
+          } else {
+            memoryData.users.push({ ...resultUser, password: newPass });
+          }
+          saveToDisk();
+          return resultUser;
+        }
+      }
+    } catch (err) {
+      console.warn('Lỗi update user profile Neon:', err.message);
+    }
+  }
+
+  // Fallback in-memory
   if (!user) return null;
 
   if (updates.fullName !== undefined) user.fullName = updates.fullName.trim();
@@ -806,24 +871,6 @@ export const dbUpdateUserProfile = async (id, updates = {}) => {
   if (updates.address !== undefined) user.address = updates.address.trim();
   if (updates.password) user.password = updates.password;
   saveToDisk();
-
-  if (isNeonConnected()) {
-    try {
-      if (updates.password) {
-        await query(
-          'UPDATE users SET full_name = $1, phone = $2, address = $3, password_hash = $4 WHERE id = $5',
-          [user.fullName, user.phone, user.address, user.password, id]
-        );
-      } else {
-        await query(
-          'UPDATE users SET full_name = $1, phone = $2, address = $3 WHERE id = $4',
-          [user.fullName, user.phone, user.address, id]
-        );
-      }
-    } catch (err) {
-      console.warn('Lỗi update user profile Neon:', err.message);
-    }
-  }
 
   return {
     id: user.id,
@@ -837,11 +884,12 @@ export const dbUpdateUserProfile = async (id, updates = {}) => {
 };
 
 export const dbUpdateUserRole = async (id, newRole) => {
+  await ensureNeonConnected();
   const user = memoryData.users.find(u => u.id === id);
-  if (!user) return null;
-
-  user.role = newRole;
-  saveToDisk();
+  if (user) {
+    user.role = newRole;
+    saveToDisk();
+  }
 
   if (isNeonConnected()) {
     try {
@@ -850,13 +898,13 @@ export const dbUpdateUserRole = async (id, newRole) => {
       console.warn('Lỗi update role Neon:', err.message);
     }
   }
-  return user;
+  return user || { id, role: newRole };
 };
 
 export const dbDeleteUser = async (id) => {
+  await ensureNeonConnected();
   const initialLen = memoryData.users.length;
   memoryData.users = memoryData.users.filter(u => u.id !== id);
-  if (memoryData.users.length === initialLen) return false;
 
   saveToDisk();
 
@@ -871,13 +919,16 @@ export const dbDeleteUser = async (id) => {
 };
 
 export const dbFindUserByEmail = async (email) => {
+  if (!email) return null;
+  await ensureNeonConnected();
   const cleanEmail = email.trim().toLowerCase();
+
   if (isNeonConnected()) {
     try {
-      const res = await query('SELECT * FROM users WHERE email = $1', [cleanEmail]);
+      const res = await query('SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [cleanEmail]);
       if (res && res.rows && res.rows.length > 0) {
         const r = res.rows[0];
-        return {
+        const userObj = {
           id: r.id,
           email: r.email,
           password: r.password_hash,
@@ -887,12 +938,20 @@ export const dbFindUserByEmail = async (email) => {
           role: r.role,
           createdAt: r.created_at
         };
+        // sync to memoryData if missing
+        const idx = memoryData.users.findIndex(u => u.id === r.id || u.email.toLowerCase() === cleanEmail);
+        if (idx >= 0) {
+          memoryData.users[idx] = { ...memoryData.users[idx], ...userObj };
+        } else {
+          memoryData.users.push(userObj);
+        }
+        return userObj;
       }
     } catch (err) {
       console.warn('Lỗi tìm user Neon DB:', err.message);
     }
   }
-  return memoryData.users.find(u => u.email === cleanEmail);
+  return memoryData.users.find(u => u.email.toLowerCase() === cleanEmail);
 };
 
 // ==================== ORDERS REPOSITORY ====================

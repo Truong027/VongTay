@@ -1,5 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { X, Star, Heart, ShoppingBag, ShieldCheck, Ruler, Truck, Sparkles, Check, Gift, Zap, MessageSquarePlus } from 'lucide-react';
+import { 
+  X, 
+  Star, 
+  Heart, 
+  ShoppingBag, 
+  ShieldCheck, 
+  Ruler, 
+  Truck, 
+  Sparkles, 
+  Check, 
+  Gift, 
+  Zap, 
+  MessageSquarePlus, 
+  Tag, 
+  ChevronRight, 
+  MessageCircle, 
+  Layers, 
+  Award,
+  ChevronLeft
+} from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
 
@@ -11,6 +30,13 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   const [quantity, setQuantity] = useState(1);
   const [giftNote, setGiftNote] = useState('');
   const [isAdded, setIsAdded] = useState(false);
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'specs' | 'reviews'
+
+  // Image Gallery selection
+  const galleryImages = (product.images && product.images.length > 0) 
+    ? product.images 
+    : [product.image || 'https://images.unsplash.com/photo-1611591475836-8a3d4638a162?w=800&q=80'];
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Reviews from Database
   const [reviewsList, setReviewsList] = useState([]);
@@ -59,16 +85,18 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   const liked = isWishlisted(product.id);
 
   const sizeOptions = [
-    { value: '14 - 15 cm', label: '14 - 15 cm (Cổ tay rất nhỏ)' },
+    { value: '14 - 15 cm', label: '14 - 15 cm (Cổ tay nhỏ)' },
     { value: '15 - 16 cm (Chuẩn Nữ)', label: '15 - 16 cm (Chuẩn Nữ)' },
     { value: '16 - 17 cm (Vừa tay)', label: '16 - 17 cm (Vừa tay)' },
     { value: '17 - 18 cm (Chuẩn Nam)', label: '17 - 18 cm (Chuẩn Nam)' },
     { value: '18 - 19 cm (Tay đậm)', label: '18 - 19 cm (Tay đậm)' },
   ];
 
+  const originalPrice = Math.round(product.price * 1.25 / 1000) * 1000;
+  const isWholesale = quantity >= (product.wholesaleMinQty || 5);
+  const effectivePrice = isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price;
+
   const handleQuickBuy = () => {
-    const isWholesale = quantity >= (product.wholesaleMinQty || 5);
-    const effectivePrice = isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price;
     const item = {
       ...product,
       quantity,
@@ -110,428 +138,529 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn">
       <div 
-        className="relative w-full max-w-4xl bg-[#FAF7F2] rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-8"
+        className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-auto max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
+        {/* Floating Top Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-white/80 hover:bg-white text-[#26211C] transition-all shadow-sm"
+          className="absolute top-3 right-3 z-30 p-2 rounded-full bg-white/90 hover:bg-white text-[#26211C] transition-all shadow-md hover:scale-105 border border-[#E8DFD3]"
           aria-label="Đóng"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2">
-          
-          {/* Left: Product Image */}
-          <div className="relative bg-[#F3ECE1] p-6 sm:p-8 flex items-center justify-center">
-            <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-artisan border border-[#E8DFD3]">
-              <img
-                src={product.images[0]}
-                alt={product.name}
-                className="w-full h-full object-cover object-center"
-              />
-              {product.tag && (
-                <span className="absolute top-3 left-3 bg-[#26211C] text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  {product.tag}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Details & Options */}
-          <div className="p-6 sm:p-8 flex flex-col justify-between space-y-6 max-h-[85vh] overflow-y-auto">
-            <div className="space-y-4">
+        {/* Modal Scrollable Body */}
+        <div className="overflow-y-auto flex-1 pb-24 sm:pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-0 md:gap-6">
+            
+            {/* 1. LEFT COLUMN: Shopee-Style Image Gallery (5 cols) */}
+            <div className="md:col-span-5 bg-[#FAF7F2] p-4 sm:p-6 flex flex-col justify-start border-b md:border-b-0 md:border-r border-[#E8DFD3]">
               
-              {/* Category & Mệnh tags */}
-              <div className="flex flex-wrap items-center gap-2">
-                {product.menh && product.menh.map((m, idx) => (
-                  <span key={idx} className="text-xs px-2.5 py-0.5 rounded-full bg-[#FBEFEA] text-[#B86244] font-medium border border-[#E8DFD3]">
-                    Hợp Mệnh: {m}
-                  </span>
-                ))}
-                <span className="text-xs text-[#6B6258] ml-auto italic">
-                  Chế tác: {product.artisanName}
-                </span>
-              </div>
+              {/* Main Photo Card */}
+              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-artisan border border-[#E8DFD3] bg-white group">
+                <img
+                  src={galleryImages[activeImageIndex] || galleryImages[0]}
+                  alt={product.name}
+                  className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                />
 
-              {/* Best Seller highlight */}
-              {product.isBestSeller && (
-                <div className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-600 via-[#B86244] to-rose-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-yellow-200 animate-pulse" />
-                  <span>SẢN PHẨM BÁN CHẠY NHẤT (BEST SELLER)</span>
-                  {product.salesCount && (
-                    <span className="font-normal opacity-90">· Đã bán {product.salesCount.toLocaleString('vi-VN')}+ chiếc</span>
+                {/* Badges Overlay */}
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                  <span className="bg-[#B86244] text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-200" />
+                    Chính Hãng KhánhVyMade
+                  </span>
+                  {product.tag && (
+                    <span className="bg-[#26211C] text-white text-[10px] font-semibold px-2 py-0.5 rounded-md shadow-xs">
+                      {product.tag}
+                    </span>
                   )}
                 </div>
-              )}
 
-              {/* Title */}
-              <h2 className="font-serif-boutique text-2xl sm:text-3xl font-bold text-[#26211C] leading-snug">
-                {product.name}
-              </h2>
-
-              {/* Ratings */}
-              <div className="flex items-center gap-2 text-sm text-[#6B6258]">
-                <div className="flex items-center text-amber-500">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-500" />
-                  ))}
+                {/* Shopee FreeShip Xtra Ribbon */}
+                <div className="absolute bottom-3 left-3 bg-gradient-to-r from-emerald-700 to-[#3A754B] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1">
+                  <Truck className="w-3 h-3" />
+                  <span>Freeship Đơn Từ 400k</span>
                 </div>
-                <span className="font-semibold text-[#26211C]">{product.rating}</span>
-                <span>·</span>
-                <span>{product.reviewsCount} khách hàng hài lòng</span>
+
+                {/* Photo indicator */}
+                <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                  {activeImageIndex + 1}/{galleryImages.length}
+                </span>
               </div>
 
-              {/* Pricing breakdown: Retail & Wholesale */}
-              <div className="p-3.5 bg-[#FAF7F2] rounded-2xl border border-[#E8DFD3] space-y-2">
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <span className="text-2xl sm:text-3xl font-bold text-[#B86244]">
-                      {product.price.toLocaleString('vi-VN')}₫
+              {/* Shopee Thumbnails Row */}
+              {galleryImages.length > 1 && (
+                <div className="flex items-center gap-2 mt-3 overflow-x-auto py-1">
+                  {galleryImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImageIndex(idx)}
+                      className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border-2 transition-all shrink-0 ${
+                        activeImageIndex === idx
+                          ? 'border-[#B86244] ring-2 ring-[#B86244]/30 scale-105 shadow-sm'
+                          : 'border-[#E8DFD3] opacity-70 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={img} alt={`Góc chụp ${idx + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Service Badges Bar under image */}
+              <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-[#E8DFD3] text-[11px] text-[#6B6258]">
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-[#B86244] shrink-0" />
+                  <span>Đan tay thủ công 100%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#4E6857] shrink-0" />
+                  <span>Bảo hành dây trọn đời</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Truck className="w-4 h-4 text-[#C09A58] shrink-0" />
+                  <span>Đóng gói chống sốc kỹ</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#B86244] shrink-0" />
+                  <span>Kèm túi gấm thương hiệu</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 2. RIGHT COLUMN: Shopee Details, Variations & Tabs (7 cols) */}
+            <div className="md:col-span-7 p-4 sm:p-6 space-y-4">
+              
+              {/* Product Title & Brand */}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  {product.menh && product.menh.map((m, idx) => (
+                    <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC]">
+                      Hợp Mệnh {m}
                     </span>
-                    <span className="text-xs text-[#8C8276] ml-1.5 font-medium">/ Giá bán lẻ</span>
-                  </div>
-                  <span className="text-xs text-[#4E6857] bg-[#EDF3EF] px-2.5 py-1 rounded-full font-semibold">
-                    {product.leadTime || 'Làm thủ công 2h'}
+                  ))}
+                  <span className="text-xs text-[#8C8276] ml-auto">
+                    Nghệ nhân: <strong className="text-[#26211C]">{product.artisanName || 'Khánh Vy'}</strong>
                   </span>
                 </div>
 
+                <h1 className="font-serif-boutique text-xl sm:text-2xl md:text-3xl font-bold text-[#26211C] leading-snug">
+                  {product.name}
+                </h1>
+              </div>
+
+              {/* Shopee Social Proof Ribbon: Rating | Reviews | Sold */}
+              <div className="flex items-center gap-3 text-xs text-[#6B6258] pb-1 border-b border-[#F0EAE1]">
+                <div className="flex items-center gap-1">
+                  <div className="flex text-amber-500">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-amber-500" />
+                    ))}
+                  </div>
+                  <span className="font-bold text-[#26211C] ml-1">{product.rating || '5.0'}</span>
+                </div>
+                <span className="text-[#E8DFD3]">|</span>
+                <span className="underline cursor-pointer hover:text-[#B86244]" onClick={() => setActiveTab('reviews')}>
+                  {reviewsList.length > 0 ? reviewsList.length : (product.reviewsCount || 48)} Đánh Giá
+                </span>
+                <span className="text-[#E8DFD3]">|</span>
+                <span className="font-medium text-[#26211C]">
+                  Đã bán {(product.salesCount || 1200).toLocaleString('vi-VN')}
+                </span>
+              </div>
+
+              {/* Shopee Price Banner */}
+              <div className="p-3.5 bg-[#FAF4ED] rounded-2xl border border-[#EADBCC] space-y-2 shadow-xs">
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-2xl sm:text-3xl font-extrabold text-[#B86244]">
+                    {product.price.toLocaleString('vi-VN')}₫
+                  </span>
+                  <span className="text-xs sm:text-sm text-[#8C8276] line-through">
+                    {originalPrice.toLocaleString('vi-VN')}₫
+                  </span>
+                  <span className="text-[10px] font-bold bg-[#B86244] text-white px-2 py-0.5 rounded uppercase">
+                    -20% GIẢM
+                  </span>
+                </div>
+
+                {/* Wholesale Tier Highlight */}
                 {product.wholesalePrice && (
-                  <div className="pt-2 border-t border-[#E8DFD3] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#4E6857] bg-[#EDF3EF] px-2 py-0.5 rounded">
-                        Giá Sỉ Xưởng
+                  <div className="pt-2 border-t border-[#EADBCC]/80 flex items-center justify-between flex-wrap gap-1 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-[#3A754B] bg-[#EDF5F0] px-2 py-0.5 rounded text-[11px]">
+                        🏷️ Giá Sỉ Xưởng
                       </span>
-                      <span className="font-bold text-base text-[#4E6857]">
-                        {product.wholesalePrice.toLocaleString('vi-VN')}₫
-                      </span>
-                      <span className="text-[#6B6258] text-[11px]">
-                        (Tiết kiệm {(product.price - product.wholesalePrice).toLocaleString('vi-VN')}₫/c)
+                      <span className="font-bold text-sm text-[#3A754B]">
+                        {product.wholesalePrice.toLocaleString('vi-VN')}₫/chiếc
                       </span>
                     </div>
+                    <span className="text-[11px] text-[#845339] italic">
+                      (Tự động áp dụng khi mua từ {product.wholesaleMinQty || 5} chiếc)
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Detailed Cord Composition Breakdown */}
-              <div className="bg-white p-3.5 rounded-2xl border border-[#E8DFD3] space-y-2 text-xs shadow-xs">
-                <div className="flex items-center justify-between border-b border-[#F0EAE1] pb-2">
-                  <span className="font-bold text-[#26211C] flex items-center gap-1.5">
-                    <span className="text-sm">🪢</span> Cấu Tạo Thành Phần Sợi Dây Thủ Công
+              {/* Shopee Voucher & Shipping Promo Bar */}
+              <div className="space-y-2 bg-[#FAF7F2] p-3 rounded-xl border border-[#E8DFD3] text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#8C8276] w-20 shrink-0 font-medium">Mã Giảm Giá:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="bg-[#FAF4ED] text-[#B86244] border border-[#B86244]/40 px-2 py-0.5 rounded text-[10px] font-bold">
+                      Giảm 20k
+                    </span>
+                    <span className="bg-[#FAF4ED] text-[#B86244] border border-[#B86244]/40 px-2 py-0.5 rounded text-[10px] font-bold">
+                      Giảm 50k
+                    </span>
+                    <span className="bg-[#EDF5F0] text-[#3A754B] border border-[#3A754B]/40 px-2 py-0.5 rounded text-[10px] font-bold">
+                      Freeship
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#8C8276] w-20 shrink-0 font-medium">Vận Chuyển:</span>
+                  <span className="text-[#26211C] font-medium flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5 text-[#3A754B]" />
+                    Miễn phí vận chuyển cho đơn từ 400.000₫
                   </span>
-                  <span className="text-[10px] text-[#4E6857] font-semibold bg-[#EDF5F0] px-2 py-0.5 rounded">
-                    Xưởng KhánhVyMade
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#6B6258] leading-relaxed">
-                  <p>🧵 <strong>Sợi dây chính:</strong> {product.cordComposition?.coreMaterial || product.cordType}</p>
-                  <p>🪢 <strong>Kiểu đan:</strong> {product.cordComposition?.braidingTechnique || 'Đan thoi Square Knot thủ công'}</p>
-                  <p>💎 <strong>Charm & Hạt:</strong> {product.cordComposition?.mainCharm || product.stoneType}</p>
-                  <p>🎨 <strong>Màu sắc dây:</strong> {product.cordComposition?.cordColor || 'Kem Be Vintage'}</p>
-                  <p className="col-span-full">📏 <strong>Khóa hoàn thiện:</strong> {product.cordComposition?.wristSizeRange || '13cm - 19cm (Khóa trượt tự do ôm khít tay)'}</p>
-                  <p className="col-span-full text-[#4E6857] font-semibold">🛡️ <strong>Độ bền & Bảo hành:</strong> {product.cordComposition?.durability || 'Chống nước tắm giặt, bảo hành đan lại dây trọn đời'}</p>
                 </div>
               </div>
 
-              {/* Specifications */}
-              <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-[#E8DFD3]">
-                <div>
-                  <span className="text-[#8C8276] block">Chất liệu đá:</span>
-                  <span className="font-semibold text-[#26211C]">{product.stoneType}</span>
-                </div>
-                <div>
-                  <span className="text-[#8C8276] block">Kích thước hạt:</span>
-                  <span className="font-semibold text-[#26211C]">{product.beadSize}</span>
-                </div>
-                <div className="col-span-2 pt-1 border-t border-[#F3ECE1]">
-                  <span className="text-[#8C8276] block">Loại dây kết:</span>
-                  <span className="font-semibold text-[#26211C]">{product.cordType}</span>
-                </div>
-              </div>
-
-              {/* Spiritual Energy & Description */}
-              <div className="space-y-2 text-xs sm:text-sm text-[#6B6258] leading-relaxed">
-                <p><strong>Mô tả:</strong> {product.description}</p>
-                <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-[#845339]">
-                  <strong className="flex items-center gap-1 mb-1 text-[#B86244]">
-                    <Sparkles className="w-4 h-4" /> Năng lượng & Ý nghĩa:
-                  </strong>
-                  {product.meaning}
-                </div>
-              </div>
-
-              {/* Wrist Size Selection */}
-              <div className="space-y-2">
+              {/* Variation 1: Wrist Size Selection (Pill style) */}
+              <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between text-xs">
-                  <label className="font-semibold text-[#26211C]">
-                    Chọn Kích Thước Cổ Tay (Size):
-                  </label>
+                  <span className="font-bold text-[#26211C]">
+                    Kích Thước Cổ Tay (Size):
+                  </span>
                   <button
                     type="button"
                     onClick={onOpenSizeGuide}
-                    className="text-[#B86244] hover:underline flex items-center gap-1 font-medium"
+                    className="text-[#B86244] hover:underline flex items-center gap-1 font-semibold text-[11px]"
                   >
                     <Ruler className="w-3.5 h-3.5" />
                     Chưa biết size tay?
                   </button>
                 </div>
+                
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {sizeOptions.map(opt => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setSelectedSize(opt.value)}
-                      className={`p-2 rounded-lg text-xs font-medium border text-center transition-all ${
+                      className={`p-2 rounded-xl text-xs font-semibold border text-center transition-all flex items-center justify-center gap-1 ${
                         selectedSize === opt.value
-                          ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244] font-semibold'
-                          : 'border-[#E8DFD3] bg-white text-[#26211C] hover:bg-[#F3ECE1]'
+                          ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244] ring-1 ring-[#B86244]'
+                          : 'border-[#E8DFD3] bg-white text-[#5A5147] hover:border-[#B86244]/50'
                       }`}
                     >
-                      {opt.label}
+                      {selectedSize === opt.value && <Check className="w-3 h-3 text-[#B86244] shrink-0" />}
+                      <span className="truncate">{opt.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Gift Note Input */}
+              {/* Variation 2: Gift Note / Custom Name Request */}
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-[#26211C] flex items-center gap-1">
                   <Gift className="w-3.5 h-3.5 text-[#B86244]" />
-                  Ghi chú cho nghệ nhân / Yêu cầu khắc tên:
+                  Ghi chú cho nghệ nhân (khắc chữ cái, phối charm riêng):
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Khắc chữ T&H, gói kèm túi gấm đỏ mừng thọ..."
+                  placeholder="Ví dụ: Khắc chữ T&H, gói kèm thiệp chúc mừng..."
                   value={giftNote}
                   onChange={(e) => setGiftNote(e.target.value)}
                   className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
                 />
               </div>
 
-              {/* Verified Customer Reviews Section (Database Synced) */}
-              <div className="pt-3 border-t border-[#E8DFD3] space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex items-center text-amber-500">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-amber-500" />
-                      ))}
-                    </div>
-                    <span className="text-xs font-bold text-[#26211C]">5.0 / 5</span>
-                    <span className="text-[11px] text-[#8C8276]">({(reviewsList.length > 0 ? reviewsList.length : 2)} đánh giá thực tế)</span>
-                  </div>
+              {/* Variation 3: Quantity Stepper */}
+              <div className="flex items-center gap-4 text-xs pt-1">
+                <span className="font-bold text-[#26211C] w-16">Số lượng:</span>
+                <div className="flex items-center border border-[#E8DFD3] rounded-xl bg-white overflow-hidden shadow-xs">
                   <button
                     type="button"
-                    onClick={() => setIsReviewFormOpen(!isReviewFormOpen)}
-                    className="text-[11px] text-[#B86244] hover:text-[#A05237] font-semibold flex items-center gap-1 hover:underline"
-                  >
-                    <MessageSquarePlus className="w-3.5 h-3.5" />
-                    {isReviewFormOpen ? 'Đóng form' : 'Viết đánh giá'}
-                  </button>
-                </div>
-
-                {/* Review submission form */}
-                {isReviewFormOpen && (
-                  <form onSubmit={handleSubmitReview} className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] space-y-2.5 animate-fadeIn">
-                    <div className="text-xs font-bold text-[#26211C]">Chia sẻ cảm nhận về vòng tay:</div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Họ tên của bạn..."
-                        value={newReviewerName}
-                        onChange={(e) => setNewReviewerName(e.target.value)}
-                        className="flex-1 text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                      />
-                      <select
-                        value={newWristFit}
-                        onChange={(e) => setNewWristFit(e.target.value)}
-                        className="text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                      >
-                        <option value="Vừa vặn ôm tay chuẩn">Vừa vặn ôm tay</option>
-                        <option value="Dễ co rút linh hoạt">Dễ co rút linh hoạt</option>
-                        <option value="Khuyên chọn size lớn hơn">Hơi ôm nhẹ</option>
-                      </select>
-                    </div>
-                    <textarea
-                      rows={2}
-                      placeholder="Chất lượng dây, charm gốm/pha lê, cảm giác đeo..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      required
-                      className="w-full text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsReviewFormOpen(false)}
-                        className="px-3 py-1.5 text-xs text-[#6B6258] hover:bg-[#EADBCC] rounded-lg transition-colors"
-                      >
-                        Hủy
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmittingReview || !newComment.trim()}
-                        className="px-3 py-1.5 bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {isSubmittingReview ? 'Đang gửi...' : 'Gửi Nhận Xét'}
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* Reviews List */}
-                <div className="space-y-2 text-xs max-h-48 overflow-y-auto pr-1">
-                  {(reviewsList.length > 0 ? reviewsList : [
-                    {
-                      id: 'default-1',
-                      customerName: 'Trần Mai Linh · Hà Nội',
-                      wristFit: 'Vừa vặn (15cm)',
-                      comment: 'Vòng đan tay cực kỳ tỉ mỉ và chắc chắn, chỉ sáp Macrame mịn đeo tắm rửa thoải mái không sợ ướt hay xơ sợi.'
-                    },
-                    {
-                      id: 'default-2',
-                      customerName: 'Lê Hoàng Nam · Đà Nẵng',
-                      wristFit: 'Dễ đeo một mình',
-                      comment: 'Mình mua tặng bạn gái, mặt charm nung bóng đẹp hơn trong ảnh nhiều. Khóa rút trượt hai bên rất dễ đeo.'
-                    }
-                  ]).map(rev => (
-                    <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3]">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-[#26211C] flex items-center gap-1.5">
-                          {rev.customerName}
-                          <span className="text-[10px] text-[#3A754B] bg-[#EDF5F0] px-1.5 py-0.2 rounded font-normal">
-                            ✓ Đã mua
-                          </span>
-                        </span>
-                        {rev.wristFit && (
-                          <span className="text-[10px] text-[#8C8276] bg-white px-2 py-0.5 rounded border border-[#E8DFD3]">
-                            {rev.wristFit}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[#6B6258] text-[11px] leading-relaxed">
-                        "{rev.comment}"
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Actions: Quantity & Add to Cart */}
-            <div className="space-y-3 pt-4 border-t border-[#E8DFD3]">
-              {/* Wholesale notification trigger */}
-              {product.wholesalePrice && (
-                <div>
-                  {quantity >= (product.wholesaleMinQty || 5) ? (
-                    <div className="p-2.5 bg-[#EDF5F0] border border-[#C2DEC8] rounded-xl flex items-center justify-between text-xs text-[#2E583A]">
-                      <span className="font-bold flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-[#3A754B]" />
-                        Đã kích hoạt Giá Sỉ Xưởng ({quantity} chiếc)
-                      </span>
-                      <span className="font-bold bg-[#3A754B] text-white px-2 py-0.5 rounded-full text-[10px]">
-                        Tiết kiệm {((product.price - product.wholesalePrice) * quantity).toLocaleString('vi-VN')}₫
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="p-2 bg-[#FAF4ED] border border-[#EADBCC] rounded-xl text-xs text-[#845339] flex items-center justify-between">
-                      <span>💡 Mua thêm <strong>{(product.wholesaleMinQty || 5) - quantity} chiếc</strong> nữa để nhận giá sỉ</span>
-                      <button 
-                        type="button" 
-                        onClick={() => setQuantity(product.wholesaleMinQty || 5)}
-                        className="text-[10px] font-bold text-[#B86244] underline hover:text-[#A05237]"
-                      >
-                        Chọn nhanh {(product.wholesaleMinQty || 5)}c
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2.5">
-                {/* Quantity adjuster */}
-                <div className="flex items-center border border-[#E8DFD3] rounded-xl bg-white overflow-hidden">
-                  <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-3 py-2 text-sm text-[#26211C] hover:bg-[#F3ECE1] transition-colors"
+                    className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#26211C] hover:bg-[#FAF7F2] transition-colors border-r border-[#E8DFD3]"
                   >
                     -
                   </button>
-                  <span className="px-3 text-sm font-semibold text-[#26211C]">
+                  <span className="w-12 text-center text-xs font-bold text-[#26211C]">
                     {quantity}
                   </span>
                   <button
+                    type="button"
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-3 py-2 text-sm text-[#26211C] hover:bg-[#F3ECE1] transition-colors"
+                    className="w-8 h-8 flex items-center justify-center text-sm font-bold text-[#26211C] hover:bg-[#FAF7F2] transition-colors border-l border-[#E8DFD3]"
                   >
                     +
                   </button>
                 </div>
-
-                {/* Main Add Button */}
-                <button
-                  onClick={handleAddToCart}
-                  disabled={isAdded}
-                  className={`flex-1 py-3 px-4 rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-                    isAdded 
-                      ? 'bg-[#4E6857] text-white' 
-                      : 'bg-[#B86244] hover:bg-[#A05237] text-white shadow-artisan-hover'
-                  }`}
-                >
-                  {isAdded ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Đã Thêm Vào Giỏ!</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>
-                        Thêm Giỏ · {((quantity >= (product.wholesaleMinQty || 5) && product.wholesalePrice ? product.wholesalePrice : product.price) * quantity).toLocaleString('vi-VN')}₫
-                      </span>
-                    </>
-                  )}
-                </button>
-
-                {/* 1-Click Quick Buy Button */}
-                <button
-                  onClick={handleQuickBuy}
-                  className="py-3 px-4 rounded-xl font-bold text-xs sm:text-sm bg-[#26211C] hover:bg-[#3D352E] text-white flex items-center justify-center gap-1.5 transition-all shadow-md whitespace-nowrap"
-                  title="Mua ngay và thanh toán nhanh 1-Click"
-                >
-                  <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-                  <span>Mua Ngay</span>
-                </button>
-
-                {/* Wishlist toggle */}
-                <button
-                  onClick={() => toggleWishlist(product.id)}
-                  className="p-3 rounded-xl border border-[#E8DFD3] bg-white hover:bg-[#FBEFEA] text-[#6B6258] hover:text-[#B86244] transition-colors"
-                  title="Yêu thích"
-                >
-                  <Heart className={`w-5 h-5 ${liked ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
-                </button>
-              </div>
-
-              {/* Guarantees */}
-              <div className="flex items-center justify-between text-[11px] text-[#6B6258] pt-1">
-                <span className="flex items-center gap-1">
-                  <Truck className="w-3.5 h-3.5 text-[#4E6857]" /> Giao hàng toàn quốc
-                </span>
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#C09A58]" /> Miễn phí thay dây trọn đời
+                <span className="text-[#8C8276] text-[11px]">
+                  Còn 48 sản phẩm có sẵn
                 </span>
               </div>
+
+              {/* Wholesale Active Banner */}
+              {product.wholesalePrice && quantity >= (product.wholesaleMinQty || 5) && (
+                <div className="p-2.5 bg-[#EDF5F0] border border-[#C2DEC8] rounded-xl flex items-center justify-between text-xs text-[#2E583A] animate-fadeIn">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#3A754B]" />
+                    Đã kích hoạt Giá Sỉ Xưởng ({quantity} chiếc)
+                  </span>
+                  <span className="font-bold bg-[#3A754B] text-white px-2 py-0.5 rounded-full text-[10px]">
+                    Tiết kiệm {((product.price - product.wholesalePrice) * quantity).toLocaleString('vi-VN')}₫
+                  </span>
+                </div>
+              )}
+
+              {/* Shopee-style Tabs for Clean Neat Organization */}
+              <div className="pt-2 border-t border-[#E8DFD3]">
+                <div className="flex items-center gap-1 border-b border-[#E8DFD3] text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('details')}
+                    className={`pb-2 px-3 font-bold transition-all relative ${
+                      activeTab === 'details'
+                        ? 'text-[#B86244] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#B86244]'
+                        : 'text-[#6B6258] hover:text-[#26211C]'
+                    }`}
+                  >
+                    Chi Tiết & Mệnh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('specs')}
+                    className={`pb-2 px-3 font-bold transition-all relative ${
+                      activeTab === 'specs'
+                        ? 'text-[#B86244] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#B86244]'
+                        : 'text-[#6B6258] hover:text-[#26211C]'
+                    }`}
+                  >
+                    Cấu Tạo Sợi Dây
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('reviews')}
+                    className={`pb-2 px-3 font-bold transition-all relative ${
+                      activeTab === 'reviews'
+                        ? 'text-[#B86244] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#B86244]'
+                        : 'text-[#6B6258] hover:text-[#26211C]'
+                    }`}
+                  >
+                    Đánh Giá ({reviewsList.length > 0 ? reviewsList.length : 2})
+                  </button>
+                </div>
+
+                {/* Tab 1: Details & Energy */}
+                {activeTab === 'details' && (
+                  <div className="py-3 space-y-2.5 text-xs text-[#5A5147] animate-fadeIn">
+                    <p className="leading-relaxed">
+                      {product.description}
+                    </p>
+                    {product.meaning && (
+                      <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-[#845339]">
+                        <strong className="flex items-center gap-1 mb-1 text-[#B86244] font-bold">
+                          <Sparkles className="w-3.5 h-3.5" /> Năng lượng & Ý nghĩa phong thủy:
+                        </strong>
+                        {product.meaning}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab 2: Specs & Cord Composition */}
+                {activeTab === 'specs' && (
+                  <div className="py-3 space-y-2.5 text-xs animate-fadeIn">
+                    <div className="bg-[#FAF7F2] p-3 rounded-xl border border-[#E8DFD3] grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#6B6258]">
+                      <p>🧵 <strong>Sợi chỉ sáp:</strong> {product.cordComposition?.coreMaterial || product.cordType}</p>
+                      <p>🪢 <strong>Kiểu đan:</strong> {product.cordComposition?.braidingTechnique || 'Đan thoi Square Knot thủ công'}</p>
+                      <p>💎 <strong>Charm & Đá:</strong> {product.cordComposition?.mainCharm || product.stoneType}</p>
+                      <p>📏 <strong>Kích thước hạt:</strong> {product.beadSize || '8mm'}</p>
+                      <p className="col-span-full">🔒 <strong>Khóa hoàn thiện:</strong> {product.cordComposition?.wristSizeRange || 'Khóa rút điều chỉnh ôm sát cổ tay'}</p>
+                      <p className="col-span-full text-[#3A754B] font-semibold">🛡️ <strong>Chống nước:</strong> Đeo tắm giặt thoải mái, không xơ, không kích ứng da.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 3: Customer Reviews */}
+                {activeTab === 'reviews' && (
+                  <div className="py-3 space-y-3 text-xs animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex text-amber-500">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="w-3.5 h-3.5 fill-amber-500" />
+                          ))}
+                        </div>
+                        <span className="font-bold text-[#26211C]">5.0 / 5</span>
+                        <span className="text-[11px] text-[#8C8276]">({reviewsList.length > 0 ? reviewsList.length : 2} lượt phản hồi)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsReviewFormOpen(!isReviewFormOpen)}
+                        className="text-[11px] text-[#B86244] font-bold hover:underline flex items-center gap-1"
+                      >
+                        <MessageSquarePlus className="w-3.5 h-3.5" />
+                        {isReviewFormOpen ? 'Đóng' : 'Viết đánh giá'}
+                      </button>
+                    </div>
+
+                    {/* Review Form */}
+                    {isReviewFormOpen && (
+                      <form onSubmit={handleSubmitReview} className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] space-y-2 animate-fadeIn">
+                        <input
+                          type="text"
+                          placeholder="Họ tên của bạn..."
+                          value={newReviewerName}
+                          onChange={(e) => setNewReviewerName(e.target.value)}
+                          className="w-full text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                        />
+                        <textarea
+                          rows={2}
+                          placeholder="Cảm nhận về vòng tay, chỉ đan, charm..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          required
+                          className="w-full text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsReviewFormOpen(false)}
+                            className="px-3 py-1 text-xs text-[#6B6258] hover:bg-[#EADBCC] rounded-lg"
+                          >
+                            Hủy
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={isSubmittingReview || !newComment.trim()}
+                            className="px-3 py-1 bg-[#B86244] text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                          >
+                            {isSubmittingReview ? 'Đang gửi...' : 'Gửi Nhận Xét'}
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Review List */}
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {(reviewsList.length > 0 ? reviewsList : [
+                        {
+                          id: 'default-1',
+                          customerName: 'Trần Mai Linh · Hà Nội',
+                          wristFit: 'Vừa vặn (15cm)',
+                          comment: 'Vòng đan tay cực kỳ tỉ mỉ và chắc chắn, chỉ sáp Macrame mịn đeo tắm rửa thoải mái không sợ ướt hay xơ sợi.'
+                        },
+                        {
+                          id: 'default-2',
+                          customerName: 'Lê Hoàng Nam · Đà Nẵng',
+                          wristFit: 'Dễ đeo một mình',
+                          comment: 'Mình mua tặng bạn gái, mặt charm nung bóng đẹp hơn trong ảnh nhiều. Khóa rút trượt hai bên rất dễ đeo.'
+                        }
+                      ]).map(rev => (
+                        <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3]">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-[#26211C] text-xs">
+                              {rev.customerName}
+                              <span className="text-[9px] text-[#3A754B] bg-[#EDF5F0] px-1.5 py-0.2 rounded ml-1 font-normal">
+                                ✓ Đã mua hàng
+                              </span>
+                            </span>
+                            {rev.wristFit && (
+                              <span className="text-[10px] text-[#8C8276] bg-white px-2 py-0.5 rounded border border-[#E8DFD3]">
+                                {rev.wristFit}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[#6B6258] text-[11px] leading-relaxed">
+                            "{rev.comment}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
 
           </div>
-
         </div>
+
+        {/* 3. SHOPEE STICKY BOTTOM ACTION BAR (Docked neatly at bottom on all devices) */}
+        <div className="sticky bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E8DFD3] p-3 sm:p-4 px-4 sm:px-6 shadow-lg">
+          <div className="flex items-center gap-2 sm:gap-3">
+            
+            {/* Shopee Chat / Tư Vấn Icon Button */}
+            <a
+              href="https://zalo.me"
+              target="_blank"
+              rel="noreferrer"
+              className="flex flex-col items-center justify-center p-2 rounded-xl text-[#6B6258] hover:text-[#B86244] hover:bg-[#FAF4ED] transition-colors shrink-0"
+              title="Tư vấn nghệ nhân"
+            >
+              <MessageCircle className="w-5 h-5 text-[#B86244]" />
+              <span className="text-[9px] font-semibold mt-0.5">Tư Vấn</span>
+            </a>
+
+            {/* Shopee Wishlist Heart Icon Button */}
+            <button
+              type="button"
+              onClick={() => toggleWishlist(product.id)}
+              className="flex flex-col items-center justify-center p-2 rounded-xl text-[#6B6258] hover:text-[#B86244] hover:bg-[#FAF4ED] transition-colors shrink-0"
+              title="Yêu thích sản phẩm"
+            >
+              <Heart className={`w-5 h-5 ${liked ? 'fill-[#B86244] text-[#B86244]' : ''}`} />
+              <span className="text-[9px] font-semibold mt-0.5">{liked ? 'Đã Thích' : 'Yêu Thích'}</span>
+            </button>
+
+            {/* Shopee Button 1: Thêm Vào Giỏ Hàng (Outline Terracotta) */}
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isAdded}
+              className={`flex-1 py-3 px-2 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all border ${
+                isAdded 
+                  ? 'bg-[#3A754B] text-white border-[#3A754B]' 
+                  : 'bg-[#FBEFEA] text-[#B86244] border-[#B86244] hover:bg-[#B86244] hover:text-white shadow-xs'
+              }`}
+            >
+              {isAdded ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Đã Thêm!</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="w-4 h-4" />
+                  <span className="truncate">Thêm Giỏ Hàng</span>
+                </>
+              )}
+            </button>
+
+            {/* Shopee Button 2: Mua Ngay (Solid Terracotta) */}
+            <button
+              type="button"
+              onClick={handleQuickBuy}
+              className="flex-1 py-3 px-3 sm:px-5 rounded-xl font-bold text-xs sm:text-sm bg-[#B86244] hover:bg-[#A05237] text-white flex items-center justify-center gap-1.5 transition-all shadow-md hover:shadow-lg whitespace-nowrap"
+            >
+              <Zap className="w-4 h-4 text-amber-200 fill-amber-200" />
+              <span>
+                Mua Ngay ({((isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price) * quantity).toLocaleString('vi-VN')}₫)
+              </span>
+            </button>
+
+          </div>
+        </div>
+
       </div>
     </div>
   );
