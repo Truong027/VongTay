@@ -169,6 +169,7 @@ function MainShop({ currentUser, setCurrentUser }) {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('viban_user');
     localStorage.removeItem('viban_user');
     setCurrentUser(null);
     setIsAdminView(false);
@@ -181,12 +182,7 @@ function MainShop({ currentUser, setCurrentUser }) {
   };
 
   // Chỉ tài khoản có quyền admin mới được mở trang quản trị
-  if (isAdminView) {
-    if (currentUser?.role !== 'admin') {
-      setIsAdminView(false);
-      return null;
-    }
-
+  if (isAdminView && currentUser?.role === 'admin') {
     return (
       <>
         <AdminDashboard
@@ -456,6 +452,7 @@ function MainShop({ currentUser, setCurrentUser }) {
       <OrderTrackingModal
         isOpen={isTrackingOpen}
         onClose={() => setIsTrackingOpen(false)}
+        currentUser={currentUser}
       />
 
       <CartDrawer
@@ -529,16 +526,36 @@ function MainShop({ currentUser, setCurrentUser }) {
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('viban_user');
-      return saved ? JSON.parse(saved) : null;
+      // 1. Kiểm tra session riêng của tab hiện tại (mỗi tab/cửa sổ là một luồng độc lập)
+      const sessionSaved = sessionStorage.getItem('viban_user');
+      if (sessionSaved) return JSON.parse(sessionSaved);
+      // Khi mở link mới trong tab mới, bắt đầu là khách, KHÔNG tự động ép đăng nhập
+      return null;
     } catch {
       return null;
     }
   });
 
+  const handleUpdateUser = (user) => {
+    setCurrentUser(user);
+    if (user) {
+      sessionStorage.setItem('viban_user', JSON.stringify(user));
+      if (user.role === 'admin') {
+        sessionStorage.setItem('viban_admin_user', JSON.stringify(user));
+      } else {
+        sessionStorage.setItem('viban_customer_user', JSON.stringify(user));
+      }
+    } else {
+      sessionStorage.removeItem('viban_user');
+      sessionStorage.removeItem('viban_admin_user');
+      sessionStorage.removeItem('viban_customer_user');
+      localStorage.removeItem('viban_user');
+    }
+  };
+
   return (
     <CartProvider currentUser={currentUser}>
-      <MainShop currentUser={currentUser} setCurrentUser={setCurrentUser} />
+      <MainShop currentUser={currentUser} setCurrentUser={handleUpdateUser} />
     </CartProvider>
   );
 }

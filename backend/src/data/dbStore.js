@@ -956,6 +956,19 @@ export const dbFindUserByEmail = async (email) => {
 
 // ==================== ORDERS REPOSITORY ====================
 
+const safeParseArray = (val) => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const p = JSON.parse(val);
+      return Array.isArray(p) ? p : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export const dbGetOrders = async () => {
   await ensureNeonConnected();
   if (isNeonConnected()) {
@@ -968,7 +981,7 @@ export const dbGetOrders = async () => {
           customerName: r.customer_name,
           phone: r.phone,
           address: r.address,
-          items: r.items,
+          items: safeParseArray(r.items),
           totalAmount: Number(r.total_amount),
           shippingFee: Number(r.shipping_fee),
           paymentMethod: r.payment_method,
@@ -976,7 +989,7 @@ export const dbGetOrders = async () => {
           orderStatus: r.order_status,
           trackingCode: r.tracking_code || null,
           note: r.note,
-          timeline: r.timeline,
+          timeline: safeParseArray(r.timeline),
           createdAt: r.created_at
         }));
         memoryData.orders = mapped;
@@ -987,7 +1000,11 @@ export const dbGetOrders = async () => {
       console.warn('Lỗi đọc orders Neon DB:', err.message);
     }
   }
-  return memoryData.orders;
+  return memoryData.orders.map(o => ({
+    ...o,
+    items: safeParseArray(o.items),
+    timeline: safeParseArray(o.timeline)
+  }));
 };
 
 export const dbSaveOrder = async (order) => {

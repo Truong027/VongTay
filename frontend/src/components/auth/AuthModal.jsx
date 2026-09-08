@@ -39,6 +39,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
       if (isLogin) {
         const res = await api.login(email, password);
         if (res.success && res.data) {
+          sessionStorage.setItem('viban_user', JSON.stringify(res.data.user));
+          if (res.data.user.role === 'admin') {
+            sessionStorage.setItem('viban_admin_user', JSON.stringify(res.data.user));
+          } else {
+            sessionStorage.setItem('viban_customer_user', JSON.stringify(res.data.user));
+          }
           localStorage.setItem('viban_user', JSON.stringify(res.data.user));
           setSuccessMsg('Đăng nhập thành công!');
           setTimeout(() => {
@@ -61,6 +67,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           address: address.trim()
         });
         if (res.success && res.data) {
+          sessionStorage.setItem('viban_user', JSON.stringify(res.data.user));
+          sessionStorage.setItem('viban_customer_user', JSON.stringify(res.data.user));
           localStorage.setItem('viban_user', JSON.stringify(res.data.user));
           setSuccessMsg('Đăng ký tài khoản khách hàng thành công và đã lưu vào cơ sở dữ liệu!');
           setTimeout(() => {

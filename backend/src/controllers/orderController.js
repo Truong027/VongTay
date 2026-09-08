@@ -27,12 +27,23 @@ export const getOrders = async (req, res) => {
     }
 
     if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(o => 
-        (o.id && o.id.toLowerCase().includes(q)) ||
-        (o.customerName && o.customerName.toLowerCase().includes(q)) ||
-        (o.phone && o.phone.includes(q))
-      );
+      const q = search.toLowerCase().trim();
+      const qDigits = q.replace(/[^0-9]/g, '');
+      const qCleanPhone = q.replace(/[\s.-]/g, '');
+      result = result.filter(o => {
+        if (!o) return false;
+        const oId = (o.id || '').toLowerCase();
+        const oIdDigits = oId.replace(/[^0-9]/g, '');
+        const oName = (o.customerName || '').toLowerCase();
+        const oPhone = (o.phone || '').replace(/[\s.-]/g, '');
+
+        return (
+          oId.includes(q) ||
+          (qDigits && oIdDigits && oIdDigits.includes(qDigits)) ||
+          oName.includes(q) ||
+          (qCleanPhone && oPhone && oPhone.includes(qCleanPhone))
+        );
+      });
     }
 
     result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -52,7 +63,22 @@ export const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
     const allOrders = await dbGetOrders();
-    const order = allOrders.find(o => o.id === id);
+    const cleanId = (id || '').trim().toLowerCase();
+    const cleanDigits = cleanId.replace(/[^0-9]/g, '');
+    const cleanPhone = cleanId.replace(/[\s.-]/g, '');
+
+    const order = allOrders.find(o => {
+      if (!o) return false;
+      const oId = (o.id || '').toLowerCase();
+      const oIdDigits = oId.replace(/[^0-9]/g, '');
+      const oPhone = (o.phone || '').replace(/[\s.-]/g, '');
+
+      if (oId === cleanId) return true;
+      if (cleanDigits && oIdDigits === cleanDigits) return true;
+      if (cleanPhone && oPhone === cleanPhone) return true;
+      return false;
+    });
+
     if (!order) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
     }

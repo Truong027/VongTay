@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { X, Search, Truck, Clock, CheckCircle2, Package, Sparkles, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Search, Truck, Clock, CheckCircle2, Package, Sparkles, MapPin, AlertCircle, Phone, Hash } from 'lucide-react';
 import { api } from '../../services/api';
 
-export default function OrderTrackingModal({ isOpen, onClose }) {
+export default function OrderTrackingModal({ isOpen, onClose, currentUser }) {
   if (!isOpen) return null;
 
   const [query, setQuery] = useState('');
@@ -10,39 +10,85 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
   const [order, setOrder] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  // Reset or pre-fill phone if available
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMsg('');
+      if (!order && currentUser?.phone) {
+        setQuery(currentUser.phone);
+      }
+    }
+  }, [isOpen, currentUser]);
+
+  const executeSearch = async (searchTerm) => {
+    const rawKey = (searchTerm || query).trim();
+    if (!rawKey) {
+      setErrorMsg('Vui lòng nhập mã đơn hàng (ví dụ: DH-8921) hoặc số điện thoại nhận hàng để tra cứu.');
+      return;
+    }
 
     setLoading(true);
     setErrorMsg('');
     setOrder(null);
 
     try {
-      // First try by ID
+      // 1. Normalize query
+      let candidateId = rawKey.toUpperCase();
+      if (/^\d{4,5}$/.test(candidateId) && !candidateId.startsWith('DH-')) {
+        candidateId = `DH-${candidateId}`;
+      }
+
+      // 2. Try direct ID lookup
       try {
-        const res = await api.getOrderById(query.trim().toUpperCase());
-        if (res.success && res.data) {
-          setOrder(res.data);
+        const resId = await api.getOrderById(candidateId);
+        if (resId.success && resId.data) {
+          setOrder(resId.data);
           setLoading(false);
           return;
         }
       } catch {
-        // Fall back to query by search params (phone or ID)
+        // Fall back to general search
       }
 
-      const resList = await api.getOrders({ search: query.trim() });
-      if (resList.success && resList.data && resList.data.length > 0) {
+      // 3. Try search by phone or text
+      const cleanPhoneOrText = rawKey.replace(/[\s.-]/g, '');
+      const resList = await api.getOrders({ search: cleanPhoneOrText });
+
+      if (resList.success && Array.isArray(resList.data) && resList.data.length > 0) {
         setOrder(resList.data[0]);
       } else {
-        setErrorMsg('Không tìm thấy đơn hàng với mã hoặc số điện thoại này. Vui lòng kiểm tra lại.');
+        // 4. Try raw query fallback
+        const resRaw = await api.getOrders({ search: rawKey });
+        if (resRaw.success && Array.isArray(resRaw.data) && resRaw.data.length > 0) {
+          setOrder(resRaw.data[0]);
+        } else {
+          setErrorMsg(`Không tìm thấy đơn hàng nào khớp với "${rawKey}". Vui lòng kiểm tra lại mã đơn hoặc số điện thoại.`);
+        }
       }
     } catch (err) {
-      setErrorMsg('Lỗi kết nối máy chủ, vui lòng thử lại.');
+      setErrorMsg('Lỗi kết nối máy chủ khi tra cứu, vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    executeSearch(query);
+  };
+
+  const handleQuickSearch = (code) => {
+    setQuery(code);
+    executeSearch(code);
+  };
+
+  const safeItems = order?.items 
+    ? (Array.isArray(order.items) ? order.items : (typeof order.items === 'string' ? JSON.parse(order.items || '[]') : []))
+    : [];
+
+  const safeTimeline = order?.timeline
+    ? (Array.isArray(order.timeline) ? order.timeline : (typeof order.timeline === 'string' ? JSON.parse(order.timeline || '[]') : []))
+    : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn">
@@ -77,7 +123,7 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
         <div className="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto">
           
           {/* Search Input Box */}
-          <form onSubmit={handleSearch} className="space-y-2">
+          <form onSubmit={handleSearch} className="space-y-3">
             <label className="text-xs font-bold text-[#26211C] block">
               Nhập mã đơn hàng (ví dụ: DH-8921) hoặc số điện thoại đặt hàng:
             </label>
@@ -88,26 +134,59 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
                   type="text"
                   placeholder="Ví dụ: DH-8921 hoặc 0982345678"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full text-xs sm:text-sm pl-10 pr-4 py-3 rounded-xl border border-[#E8DFD3] bg-white focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    if (errorMsg) setErrorMsg('');
+                  }}
+                  className={`w-full text-xs sm:text-sm pl-10 pr-4 py-3 rounded-xl border transition-all focus:outline-none ${
+                    errorMsg 
+                      ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200/70' 
+                      : 'border-[#E8DFD3] bg-white focus:ring-1 focus:ring-[#B86244]'
+                  }`}
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-semibold text-xs sm:text-sm transition-colors shadow-sm"
+                className="px-6 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs sm:text-sm transition-colors shadow-sm disabled:opacity-50"
               >
-                {loading ? 'Đang tìm...' : 'Tra Cứu'}
+                {loading ? 'Đang tra...' : 'Tra Cứu'}
               </button>
             </div>
-            <p className="text-[11px] text-[#8C8276]">
-              Gợi ý thử: Mã có sẵn trong hệ thống <strong>DH-8921</strong> hoặc <strong>DH-8922</strong>
-            </p>
+
+            {/* Quick Clickable Suggestions */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap text-xs">
+              <span className="text-[11px] text-[#8C8276]">Gợi ý tra nhanh:</span>
+              <button
+                type="button"
+                onClick={() => handleQuickSearch('DH-8921')}
+                className="px-2.5 py-1 rounded-lg bg-white text-[#B86244] border border-[#EADBCC] text-xs font-bold hover:bg-[#B86244] hover:text-white transition-all shadow-2xs"
+              >
+                🏷️ DH-8921
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickSearch('DH-8922')}
+                className="px-2.5 py-1 rounded-lg bg-white text-[#B86244] border border-[#EADBCC] text-xs font-bold hover:bg-[#B86244] hover:text-white transition-all shadow-2xs"
+              >
+                🏷️ DH-8922
+              </button>
+              {currentUser?.phone && (
+                <button
+                  type="button"
+                  onClick={() => handleQuickSearch(currentUser.phone)}
+                  className="px-2.5 py-1 rounded-lg bg-[#FAF4ED] text-[#26211C] border border-[#E8DFD3] text-xs font-semibold hover:bg-[#B86244] hover:text-white transition-all shadow-2xs"
+                >
+                  📱 SĐT của tôi ({currentUser.phone})
+                </button>
+              )}
+            </div>
           </form>
 
           {errorMsg && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
-              {errorMsg}
+            <div className="p-3 bg-rose-50 border-2 border-rose-300 text-rose-800 text-xs font-medium rounded-xl flex items-center gap-2 animate-fadeIn">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
             </div>
           )}
 
@@ -135,7 +214,7 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
                 <div className="text-right sm:border-l sm:border-[#F3ECE1] sm:pl-4">
                   <p className="text-xs text-[#8C8276]">Tổng thanh toán:</p>
                   <p className="font-bold text-lg text-[#B86244]">
-                    {order.totalAmount.toLocaleString('vi-VN')}₫
+                    {Number(order.totalAmount || 0).toLocaleString('vi-VN')}₫
                   </p>
                   <span className="text-[10px] text-[#4E6857] font-semibold bg-[#EDF3EF] px-2 py-0.5 rounded inline-block mt-0.5">
                     {order.paymentStatus}
@@ -146,10 +225,10 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
               {/* Items in order */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-[#26211C] uppercase tracking-wider">
-                  Sản phẩm trong đơn ({order.items.length}):
+                  Sản phẩm trong đơn ({safeItems.length}):
                 </h4>
                 <div className="space-y-2">
-                  {order.items.map((item, idx) => (
+                  {safeItems.map((item, idx) => (
                     <div key={idx} className="p-3 bg-white rounded-xl border border-[#E8DFD3] flex items-center justify-between text-xs">
                       <div>
                         <p className="font-bold text-[#26211C]">{item.name}</p>
@@ -164,7 +243,7 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
                         )}
                       </div>
                       <span className="font-bold text-[#B86244] ml-2">
-                        {item.price.toLocaleString('vi-VN')}₫ x {item.quantity || 1}
+                        {Number(item.price || 0).toLocaleString('vi-VN')}₫ x {item.quantity || 1}
                       </span>
                     </div>
                   ))}
@@ -179,7 +258,10 @@ export default function OrderTrackingModal({ isOpen, onClose }) {
                 </h4>
 
                 <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#D4C3B3]">
-                  {order.timeline && order.timeline.map((step, sIdx) => (
+                  {(safeTimeline.length > 0 ? safeTimeline : [
+                    { status: 'Đã nhận đơn hàng', time: order.createdAt ? new Date(order.createdAt).toLocaleDateString('vi-VN') : 'Vừa xong' },
+                    { status: order.orderStatus || 'Đang chuẩn bị hạt và chỉ sáp', time: 'Đang thực hiện' }
+                  ]).map((step, sIdx) => (
                     <div key={sIdx} className="relative">
                       <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-[#B86244] border-2 border-white shadow-sm" />
                       <p className="text-xs font-bold text-[#26211C]">{step.status}</p>
