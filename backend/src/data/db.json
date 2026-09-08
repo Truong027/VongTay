@@ -596,60 +596,7 @@
       "createdAt": "2026-09-01T08:10:00.000Z"
     }
   ],
-  "vouchers": [
-    {
-      "id": "vouch-01",
-      "code": "KHANHVY10",
-      "discountType": "percentage",
-      "discountValue": 10,
-      "minOrderValue": 200000,
-      "maxDiscount": 50000,
-      "usageLimit": 500,
-      "usedCount": 84,
-      "description": "Giảm 10% cho đơn hàng thủ công từ 200.000₫",
-      "isActive": true,
-      "expiresAt": "2027-12-31T23:59:59.000Z"
-    },
-    {
-      "id": "vouch-02",
-      "code": "FREESHIP",
-      "discountType": "fixed",
-      "discountValue": 25000,
-      "minOrderValue": 250000,
-      "maxDiscount": 25000,
-      "usageLimit": 1000,
-      "usedCount": 312,
-      "description": "Miễn phí giao hàng toàn quốc (trừ 25.000₫) cho đơn từ 250.000₫",
-      "isActive": true,
-      "expiresAt": "2027-12-31T23:59:59.000Z"
-    },
-    {
-      "id": "vouch-03",
-      "code": "BANMOI20K",
-      "discountType": "fixed",
-      "discountValue": 20000,
-      "minOrderValue": 150000,
-      "maxDiscount": 20000,
-      "usageLimit": 200,
-      "usedCount": 45,
-      "description": "Tặng ngay 20.000₫ cho bạn mới lần đầu đặt vòng tay tại Xưởng",
-      "isActive": true,
-      "expiresAt": "2027-12-31T23:59:59.000Z"
-    },
-    {
-      "id": "vouch-04",
-      "code": "TRIANXUONG50K",
-      "discountType": "fixed",
-      "discountValue": 50000,
-      "minOrderValue": 400000,
-      "maxDiscount": 50000,
-      "usageLimit": 100,
-      "usedCount": 28,
-      "description": "Tri ân khách hàng: Giảm 50.000₫ cho đơn từ 400.000₫ hoặc mua combo",
-      "isActive": true,
-      "expiresAt": "2027-12-31T23:59:59.000Z"
-    }
-  ],
+  "vouchers": [],
   "wishlists": [
     {
       "id": "w-1470",

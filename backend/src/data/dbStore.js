@@ -512,14 +512,15 @@ export const syncAllDataToNeon = async () => {
 // ==================== PRODUCTS REPOSITORY ====================
 
 export const dbGetProducts = async (includeHidden = false) => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const sql = includeHidden
         ? 'SELECT * FROM products ORDER BY created_at DESC'
         : 'SELECT * FROM products WHERE (is_hidden IS NULL OR is_hidden = false) ORDER BY created_at DESC';
       const res = await query(sql);
-      if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+      if (res && Array.isArray(res.rows)) {
+        const mapped = res.rows.map(r => ({
           id: r.id,
           name: r.name,
           category: r.category,
@@ -546,6 +547,11 @@ export const dbGetProducts = async (includeHidden = false) => {
           isHidden: Boolean(r.is_hidden),
           createdAt: r.created_at
         }));
+        if (includeHidden) {
+          memoryData.products = mapped;
+          saveToDisk();
+        }
+        return mapped;
       }
     } catch (err) {
       console.warn('Lỗi đọc products Neon DB, fallback local:', err.message);
@@ -724,10 +730,11 @@ export const dbToggleProductVisibility = async (id) => {
 // ==================== USERS REPOSITORY ====================
 
 export const dbGetUsers = async () => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const res = await query('SELECT id, email, full_name, phone, address, role, created_at FROM users ORDER BY created_at DESC');
-      if (res && res.rows && res.rows.length > 0) {
+      if (res && Array.isArray(res.rows)) {
         return res.rows.map(r => ({
           id: r.id,
           email: r.email,
@@ -852,11 +859,12 @@ export const dbFindUserByEmail = async (email) => {
 // ==================== ORDERS REPOSITORY ====================
 
 export const dbGetOrders = async () => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const res = await query('SELECT * FROM orders ORDER BY created_at DESC');
-      if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+      if (res && Array.isArray(res.rows)) {
+        const mapped = res.rows.map(r => ({
           id: r.id,
           customerName: r.customer_name,
           phone: r.phone,
@@ -871,6 +879,9 @@ export const dbGetOrders = async () => {
           timeline: r.timeline,
           createdAt: r.created_at
         }));
+        memoryData.orders = mapped;
+        saveToDisk();
+        return mapped;
       }
     } catch (err) {
       console.warn('Lỗi đọc orders Neon DB:', err.message);
@@ -943,11 +954,12 @@ export const dbUpdateOrderStatus = async (id, statusUpdates) => {
 // ==================== CATEGORIES REPOSITORY ====================
 
 export const dbGetCategories = async () => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const res = await query('SELECT * FROM categories ORDER BY display_order ASC, name ASC');
-      if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+      if (res && Array.isArray(res.rows)) {
+        const mapped = res.rows.map(r => ({
           id: r.id,
           name: r.name,
           slug: r.slug,
@@ -956,6 +968,9 @@ export const dbGetCategories = async () => {
           bannerImage: r.banner_image,
           displayOrder: r.display_order
         }));
+        memoryData.categories = mapped;
+        saveToDisk();
+        return mapped;
       }
     } catch (e) {
       console.warn('Lỗi đọc categories Neon DB:', e.message);
@@ -967,14 +982,15 @@ export const dbGetCategories = async () => {
 // ==================== VOUCHERS REPOSITORY ====================
 
 export const dbGetVouchers = async (includeInactive = false) => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const sql = includeInactive 
         ? 'SELECT * FROM vouchers ORDER BY created_at DESC'
         : 'SELECT * FROM vouchers WHERE is_active = true ORDER BY created_at DESC';
       const res = await query(sql);
-      if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+      if (res && Array.isArray(res.rows)) {
+        const mapped = res.rows.map(r => ({
           id: r.id,
           code: r.code,
           discountType: r.discount_type,
@@ -988,6 +1004,11 @@ export const dbGetVouchers = async (includeInactive = false) => {
           expiresAt: r.expires_at,
           createdAt: r.created_at
         }));
+        if (includeInactive) {
+          memoryData.vouchers = mapped;
+          saveToDisk();
+        }
+        return mapped;
       }
     } catch (e) {
       console.warn('Lỗi đọc vouchers Neon DB:', e.message);
@@ -1120,20 +1141,25 @@ export const dbUpdateVoucher = async (id, updateData) => {
 };
 
 export const dbDeleteVoucher = async (id) => {
+  const clean = String(id).trim();
+  const cleanUpper = clean.toUpperCase();
+  await ensureNeonConnected();
+
   if (isNeonConnected()) {
     try {
-      await query('DELETE FROM vouchers WHERE id = $1 OR code = $1', [id]);
+      await query('UPDATE orders SET voucher_code = NULL WHERE voucher_code = $1 OR voucher_code = $2', [clean, cleanUpper]).catch(() => {});
+      await query('DELETE FROM vouchers WHERE id = $1 OR UPPER(code) = $2 OR code = $1', [clean, cleanUpper]);
     } catch (e) {
       console.warn('Lỗi xóa voucher Neon DB:', e.message);
     }
   }
 
   if (memoryData.vouchers) {
-    memoryData.vouchers = memoryData.vouchers.filter(v => v.id !== id && v.code !== id);
+    memoryData.vouchers = memoryData.vouchers.filter(v => v.id !== clean && v.code !== clean && v.code !== cleanUpper);
     saveToDisk();
   }
 
-  return { success: true, message: `Đã xóa mã voucher ${id} thành công` };
+  return { success: true, message: `Đã xóa mã voucher ${clean} thành công` };
 };
 
 export const dbToggleVoucherActive = async (id) => {
@@ -1205,6 +1231,7 @@ export const dbValidateAndApplyVoucher = async (code, orderTotal) => {
 // ==================== REVIEWS REPOSITORY ====================
 
 export const dbGetReviews = async (productId = null) => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const sql = productId 
@@ -1212,8 +1239,8 @@ export const dbGetReviews = async (productId = null) => {
         : 'SELECT * FROM reviews ORDER BY created_at DESC';
       const params = productId ? [productId] : [];
       const res = await query(sql, params);
-      if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+      if (res && Array.isArray(res.rows)) {
+        const mapped = res.rows.map(r => ({
           id: r.id,
           productId: r.product_id,
           userId: r.user_id,
@@ -1225,6 +1252,11 @@ export const dbGetReviews = async (productId = null) => {
           photos: r.photos || [],
           createdAt: r.created_at
         }));
+        if (!productId) {
+          memoryData.reviews = mapped;
+          saveToDisk();
+        }
+        return mapped;
       }
     } catch (e) {
       console.warn('Lỗi đọc reviews Neon DB:', e.message);
@@ -1359,11 +1391,12 @@ export const dbSyncWishlist = async (userId, productIds = []) => {
 // ==================== CONSULTATIONS REPOSITORY ====================
 
 export const dbGetConsultations = async () => {
+  await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
       const res = await query('SELECT * FROM consultations ORDER BY created_at DESC');
-      if (res && res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
+      if (res && Array.isArray(res.rows)) {
+        const mapped = res.rows.map(r => ({
           id: r.id,
           customerName: r.customer_name,
           phone: r.phone,
@@ -1374,6 +1407,9 @@ export const dbGetConsultations = async () => {
           status: r.status,
           createdAt: r.created_at
         }));
+        memoryData.consultations = mapped;
+        saveToDisk();
+        return mapped;
       }
     } catch (e) {
       console.warn('Lỗi đọc consultations Neon DB:', e.message);
