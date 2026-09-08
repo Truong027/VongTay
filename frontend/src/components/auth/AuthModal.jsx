@@ -72,18 +72,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
     }
   };
 
-  const handleQuickAdminLogin = () => {
-    setEmail('admin@khanhvymade.vn');
-    setPassword('admin123');
-    setIsLogin(true);
-  };
-
-  const handleQuickCustomerLogin = () => {
-    setEmail('khachhang@gmail.com');
-    setPassword('123');
-    setIsLogin(true);
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn">
       <div 
@@ -303,24 +291,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
             )}
           </button>
 
-          {/* Quick Demo Logins */}
-          <div className="pt-3 border-t border-[#E8DFD3] space-y-2">
-            <button
-              type="button"
-              onClick={handleQuickAdminLogin}
-              className="w-full p-2.5 rounded-xl border border-dashed border-[#B86244]/60 bg-[#FAF4ED] text-[#845339] text-xs font-medium hover:bg-[#FBEFEA] transition-all flex items-center justify-center gap-1.5"
-            >
-              <Shield className="w-3.5 h-3.5 text-[#B86244]" />
-              <span>👉 Điền Nhanh Quản Trị (admin@khanhvymade.vn / admin123)</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleQuickCustomerLogin}
-              className="w-full p-2 rounded-xl border border-dashed border-[#8C8276]/40 bg-white text-[#6B6258] text-[11px] font-medium hover:bg-[#FAF7F2] transition-all flex items-center justify-center gap-1.5"
-            >
-              <User className="w-3.5 h-3.5 text-[#6B6258]" />
-              <span>👉 Điền Nhanh Khách Hàng (khachhang@gmail.com / 123)</span>
-            </button>
+          {/* Security note */}
+          <div className="pt-3 border-t border-[#E8DFD3] text-center text-[11px] text-[#8C8276] flex items-center justify-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-[#4E6857]" />
+            <span>Hệ thống bảo mật tài khoản chuẩn mã hóa HTTPS & Neon Cloud</span>
           </div>
 
         </form>

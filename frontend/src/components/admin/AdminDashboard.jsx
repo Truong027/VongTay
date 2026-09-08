@@ -793,10 +793,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
             </p>
           </div>
 
-          <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#E8DFD3] text-left text-xs space-y-1 text-[#6B6258]">
-            <p className="font-bold text-[#26211C]">🔑 Tài khoản Quản trị viên thử nghiệm:</p>
-            <p>Email: <span className="font-mono text-[#B86244]">admin@khanhvymade.vn</span></p>
-            <p>Mật khẩu: <span className="font-mono text-[#B86244]">admin123</span></p>
+          <div className="p-3.5 bg-[#FAF4ED] rounded-2xl border border-[#E8DFD3] text-left text-xs space-y-1.5 text-[#6B6258]">
+            <p className="font-bold text-[#26211C] flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-[#B86244]" />
+              <span>Khu Vực Dành Riêng Cho Ban Quản Trị</span>
+            </p>
+            <p className="text-[11px] leading-relaxed">
+              Vui lòng sử dụng tài khoản email và mật khẩu được cấp thẩm quyền quản trị xưởng để đăng nhập vào trung tâm điều hành.
+            </p>
           </div>
 
           <div className="pt-2 flex flex-col gap-2.5">

@@ -1,12 +1,23 @@
 const DEFAULT_KEY_B64 = 'QVEuQWI4Uk42SVVqZTVkbU12aUdSaDFYbFVRWXpHRVdxcjJmSlRYY1ktSkx5S2JQVTBobmc=';
 const getGeminiApiKey = () => process.env.GEMINI_API_KEY || (typeof Buffer !== 'undefined' ? Buffer.from(DEFAULT_KEY_B64, 'base64').toString('utf-8') : '');
-const GEMINI_MODELS = ['gemini-3.7-flash', 'gemini-3.6-flash'];
+const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.7-flash'];
 
 /**
- * Hàm phân tích dự phòng thông minh chuẩn xưởng thủ công KhánhVyMade
- * Kích hoạt khi Google Gemini API bị quá tải (503), quota exceeded hoặc timeout
+ * Hàm phân tích dự phòng khi mất kết nối Google AI
+ * Nếu có ảnh chụp, TUYỆT ĐỐI không bịa đặt số đo cổ tay giả tạo
  */
-function generateArtisanFallbackAnalysis({ birthYear, userNotes, imageBase64 }) {
+function generateArtisanFallbackAnalysis({ birthYear, userNotes, hasImage = false }) {
+  if (hasImage) {
+    return {
+      isValidWrist: false,
+      detectedObject: 'Ảnh gửi lên qua chế độ dự phòng',
+      invalidReason: 'Máy chủ phân tích thị giác AI đang bận hoặc quá tải kết nối. Để đảm bảo đo đúng kích thước và nhận diện thật cổ tay/vòng tay của bạn (thay vì đưa ra kết quả mặc định), bạn vui lòng bấm thử lại trong giây lát!',
+      analysis: 'KhánhVyMade không thể xác nhận hình ảnh cổ tay lúc này. Vui lòng bấm chụp lại hoặc tải lại ảnh rõ nét cổ tay để AI quét trực tiếp nhé!',
+      presetConfig: null
+    };
+  }
+
+  // Chế độ tư vấn thuần chữ theo năm sinh và yêu cầu của khách hàng
   let element = 'Hỏa (Tương sinh Mộc - Tương hợp Hỏa)';
   let stoneName = 'Thạch anh dâu tây hồng (Strawberry Quartz) & Pha lê Pastel';
   let stoneId = 'bead-strawberry';
@@ -52,13 +63,8 @@ function generateArtisanFallbackAnalysis({ birthYear, userNotes, imageBase64 }) 
     }
   }
 
-  const analysis = `✨ **NHẬN DIỆN CỔ TAY & TONE DA (KHÁNHVYMADE ARTISAN VISION)**:
-- Tone da: Làn da sáng dịu, undertone ấm tự nhiên mang lại nét thanh lịch, nhẹ nhàng và rất tôn các chất liệu sợi dệt thủ công pastel.
-- Dáng cổ tay: Cổ tay thon thả vừa vặn (chu vi ước tính ~14.5cm - 16.0cm), cực kỳ phù hợp với kiểu đan dây rút trượt freesize ôm sát êm ái mà không gây cấn tay.
-- Phong cách: Tinh tế, yêu thích sự mộc mạc, ngọt ngào và có gu thẩm mỹ trang sức riêng.
-
-🌿 **GỢI Ý ĐÁ PHONG THỦY & BẢN MỆNH NĂNG LƯỢNG**:
-- Bản Mệnh tương sinh / tương hợp: Mệnh ${element} ${birthYear ? `(Năm sinh: ${birthYear})` : ''}.
+  const analysis = `✨ **TƯ VẤN BẢN MỆNH & NĂNG LƯỢNG (KHÁNHVYMADE ARTISAN)**:
+- Cung Mệnh: Mệnh ${element} ${birthYear ? `(Năm sinh: ${birthYear})` : ''}.
 - Loại đá / charm đề xuất: **${stoneName}**.
 - Màu sắc chủ đạo: Tông màu nhã nhặn, tôn sáng làn da và mang trường năng lượng an hòa, tích cực.
 
@@ -72,6 +78,8 @@ function generateArtisanFallbackAnalysis({ birthYear, userNotes, imageBase64 }) 
 - Ý nghĩa gửi gắm: *"Mỗi nút thắt là một lời chúc bình an, giữ cho tâm hồn luôn an nhiên, duyên lành đưa lối và mọi điều suôn sẻ."*`;
 
   return {
+    isValidWrist: true,
+    detectedObject: 'Tư vấn theo bản mệnh & năm sinh',
     analysis,
     presetConfig: {
       cordId,
@@ -93,32 +101,37 @@ export const analyzeWristAndRecommend = async (req, res) => {
       });
     }
 
-    const systemPrompt = `
-Bạn là Chuyên gia Stylist & Nghệ Nhân Phong Thủy Trang Sức Vòng Tay Thủ Công tại "KhánhVyMade".
-Nhiệm vụ của bạn là xem hình ảnh chụp cổ tay/cánh tay/trang phục của khách hàng và đưa ra bài tư vấn chi tiết, tinh tế và ấm áp.
+    const hasImage = Boolean(imageBase64);
 
-Hãy cấu trúc bài tư vấn thành các phần rõ ràng như sau:
-1. ✨ **NHẬN DIỆN CỔ TAY & TONE DA**:
-   - Tone da (Da trắng sáng, da trung tính, hay da ngăm khỏe khoắn; undertone ấm hay lạnh).
-   - Dáng cổ tay ước tính (Cổ tay mảnh mai ~14-15cm, vừa vặn ~15-16cm, hay đậm đà ~17-18cm).
-   - Nhận xét phong cách và thần thái tổng quan.
+    const systemPrompt = `Bạn là Hệ thống Thị Giác AI & Nghệ Nhân Stylist Phong Thủy Cao Cấp tại Xưởng Trang Sức Thủ Công "KhánhVyMade".
+Nhiệm vụ: Thẩm định hình ảnh người dùng cung cấp và đưa ra bài tư vấn phối vòng tay thủ công chính xác, chân thực, TUYỆT ĐỐI KHÔNG DÙNG VĂN MẪU MẶC ĐỊNH SÁO RỖNG.
 
-2. 🌿 **GỢI Ý ĐÁ PHONG THỦY & NĂNG LƯỢNG**:
-   - Cung Mệnh tương sinh / tương hợp phù hợp nhất.
-   - Loại đá quý khuyên đeo (Ví dụ: Thạch anh dâu hồng hút duyên, Đá mặt trăng Moonstone dịu dàng, Thạch anh tím bình an, Đá Mắt hổ tài lộc, Ngọc bích phú quý, hoặc Aquamarine chữa lành).
-   - Màu sắc đá tôn da người đeo nhất.
+BƯỚC 1: KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC & NGHIÊM NGẶT NHẤT):
+- Bạn hãy quan sát kỹ bức ảnh được gửi lên: Bức ảnh CÓ PHẢI là hình chụp người (cổ tay, bàn tay, cánh tay) hoặc một chiếc vòng tay/trang sức đeo tay không?
+- NẾU ẢNH KHÔNG PHẢI cổ tay/bàn tay/vòng tay (Ví dụ: hoa tươi, lá cây, cành hoa, ruy băng cắm hoa, động vật, chó mèo, phong cảnh, đồ ăn, xe cộ, đồ đạc linh tinh, bao bì, tài liệu, hoạt hình...):
+  * Đặt "isValidWrist": false
+  * "detectedObject": Nêu CHÍNH XÁC và TRUNG THỰC vật thể có trong ảnh (Ví dụ: "Bó hoa hồng kem, cúc mẫu đơn và ruy băng lụa", "Con mèo tam thể", "Đĩa thức ăn", "Cuốn sổ tay"... TUYỆT ĐỐI KHÔNG ĐƯỢC BỊA ĐẶT LÀ CỔ TAY!).
+  * "invalidReason": Nêu lý do ngắn gọn vì sao ảnh không hợp lệ (Ví dụ: "Hình ảnh bạn gửi là hoa tươi và phụ kiện trang trí, không phải hình chụp cổ tay hay vòng tay của người.").
+  * "consultation": Lời nhắn thân thiện giải thích ảnh không phải cổ tay và hướng dẫn khách hàng chụp lại rõ cận cảnh cổ tay hoặc bàn tay để được đo size và tư vấn tone da chính xác nhất.
+  * Đặt các trường đo lường (skinTone, wristType, existingBracelet, recommendedDesignName, suggestedStoneId, suggestedCharmId, suggestedCordId) = null.
 
-3. 🌸 **PHONG CÁCH CHARM & DÂY KẾT KHÁNHVYMADE**:
-   - Gợi ý phối charm: Charm hoa cúc nhiều màu dễ thương, Charm hoa sen gốm men ngọc, Charm cỏ 4 lá may mắn pastel, hoặc Charm khắc chữ cái riêng.
-   - Chất liệu dây: Dây chỉ sáp dệt Macrame chống nước mộc mạc, Dây thun tơ Nhật siêu bền, hay Chỉ đỏ may mắn Tây Tạng.
+- NẾU ẢNH ĐÚNG LÀ CỔ TAY/BÀN TAY HOẶC VÒNG TAY:
+  * Đặt "isValidWrist": true
+  * "detectedObject": Mô tả chính xác cổ tay/vòng tay trong ảnh (ví dụ: "Cổ tay nữ mộc tự nhiên" hoặc "Cổ tay nam đang đeo vòng đá mắt hổ...")
+  * "skinTone": Nhận xét làn da thực tế trên ảnh (trắng hồng, trắng vàng, da bánh mật ngăm khỏe khoắn, undertone ấm hay lạnh).
+  * "wristType": Dáng cổ tay thực tế và chu vi ước tính (ví dụ: thon thả ~14-15cm, vừa vặn ~15.5-16.5cm, đậm đà ~17-18cm).
+  * "existingBracelet": Quan sát kỹ xem trên cổ tay ĐÃ CÓ ĐEO VÒNG TAY / ĐỒNG HỒ NÀO CHƯA? Nếu có: nhận diện chính xác chất liệu (vòng đá gì, màu gì, dây chỉ sáp, kim loại, charm gì). Nếu chưa: ghi "Cổ tay mộc tự nhiên, chưa đeo trang sức".
+  * "consultation": Bài tư vấn phong thủy thủ công KhánhVyMade cá nhân hóa 4 phần:
+     ✨ **NHẬN DIỆN CỔ TAY & TONE DA THỰC TẾ**
+     🌿 **GỢI Ý ĐÁ PHONG THỦY & NĂNG LƯỢNG BẢN MỆNH**
+     🌸 **PHONG CÁCH CHARM & KỸ THUẬT DÂY DỆT KHÁNHVYMADE**
+     📿 **MẪU THIẾT KẾ ĐỀ XUẤT CHO BẠN**
+  * "recommendedDesignName": Tên mẫu vòng đề xuất độc bản (ví dụ: "Duyên An Lam Ngọc", "Hồng Phúc Mộc Lan", "Bạch Nguyệt Quang Minh"...)
+  * "suggestedStoneId": "bead-strawberry" | "bead-moonstone" | "bead-amethyst" | "bead-tigereye" | "bead-jade" | "bead-aquamarine"
+  * "suggestedCharmId": "charm-flower-kv" | "charm-lotus" | "charm-clover" | "charm-pixiu"
+  * "suggestedCordId": "cord-waxed-brown" | "cord-waxed-black" | "cord-red-lucky"
 
-4. 📿 **MẪU THIẾT KẾ ĐỀ XUẤT CHO BẠN**:
-   - Tên mẫu gợi ý: [Đặt 1 tên thật thơ mộng]
-   - Cấu hình: Loại dây + Loại hạt chính + Charm + Size tay đề xuất.
-   - Ý nghĩa gửi gắm: Một thông điệp bình an, may mắn ngắn gọn gửi tới người đeo.
-
-Hãy dùng ngôn từ nhã nhặn, tôn vinh nét đẹp thủ công mỹ nghệ Việt Nam và tạo cảm giác được chăm sóc tận tâm.
-`;
+Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ tuân thủ đúng cấu trúc trên.`;
 
     // Prepare contents payload
     const parts = [{ text: systemPrompt }];
@@ -140,103 +153,109 @@ Hãy dùng ngôn từ nhã nhặn, tôn vinh nét đẹp thủ công mỹ nghệ
       });
     }
 
-    // Try models in order of priority with strict timeout (6 seconds each)
-    let responseData = null;
+    // Call Gemini models with JSON mode
+    let parsedResult = null;
     let usedModel = null;
-    let lastError = null;
 
     for (const model of GEMINI_MODELS) {
       let timeoutId = null;
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getGeminiApiKey()}`;
-        
         const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), 12000);
+        timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const resp = await fetch(geminiUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts }]
+            contents: [{ parts }],
+            generationConfig: { responseMimeType: 'application/json' }
           }),
           signal: controller.signal
         });
 
         const data = await resp.json();
-
-        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-          responseData = data.candidates[0].content.parts[0].text;
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          const cleanText = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+          parsedResult = JSON.parse(cleanText);
           usedModel = model;
           break;
         } else if (data.error) {
-          lastError = data.error.message;
           console.warn(`Model ${model} báo lỗi:`, data.error.message);
         }
       } catch (err) {
-        lastError = err.message;
-        console.warn(`Thử model ${model} thất bại (${err.message}), thử model tiếp theo...`);
+        console.warn(`Thử model ${model} thất bại:`, err.message);
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
       }
     }
 
-    // NẾU GEMINI BỊ QUÁ TẢI (503) HOẶC TIMEOUT: DÙNG SMART ARTISAN FALLBACK KHÔNG SẬP 500
-    if (!responseData) {
-      console.warn('Gemini API đang quá tải hoặc không phản hồi. Tự động kích hoạt KhánhVyMade Artisan Expert Fallback...');
-      const fallbackResult = generateArtisanFallbackAnalysis({ birthYear, userNotes, imageBase64 });
+    if (parsedResult) {
+      // Trường hợp 1: Không phải cổ tay / vòng tay
+      if (parsedResult.isValidWrist === false) {
+        return res.json({
+          success: true,
+          data: {
+            isValidWrist: false,
+            detectedObject: parsedResult.detectedObject || 'Hình ảnh không phải cổ tay',
+            invalidReason: parsedResult.invalidReason || 'Không phát hiện cổ tay hoặc vòng tay trong bức ảnh bạn tải lên.',
+            analysis: parsedResult.consultation || 'Vui lòng chụp lại ảnh rõ cận cảnh cổ tay hoặc bàn tay của bạn để AI phân tích chính xác nhất.',
+            model: usedModel,
+            isFallback: false,
+            presetConfig: null
+          }
+        });
+      }
+
+      // Trường hợp 2: Đúng là cổ tay / vòng tay
       return res.json({
         success: true,
         data: {
-          analysis: fallbackResult.analysis,
-          model: 'KhánhVyMade Artisan AI (Smart Offline)',
-          isFallback: true,
-          presetConfig: fallbackResult.presetConfig
+          isValidWrist: true,
+          detectedObject: parsedResult.detectedObject || 'Cổ tay hợp lệ',
+          skinTone: parsedResult.skinTone,
+          wristType: parsedResult.wristType,
+          existingBracelet: parsedResult.existingBracelet,
+          recommendedDesignName: parsedResult.recommendedDesignName,
+          analysis: parsedResult.consultation,
+          model: usedModel,
+          isFallback: false,
+          presetConfig: {
+            cordId: parsedResult.suggestedCordId || 'cord-waxed-brown',
+            mainBeadId: parsedResult.suggestedStoneId || 'bead-strawberry',
+            charmId: parsedResult.suggestedCharmId || 'charm-flower-kv',
+            sizeId: 'size-s'
+          }
         }
       });
     }
 
-    // Extract suggested stone and charm for auto-filling BraceletStudio
-    let suggestedStoneId = 'bead-strawberry';
-    let suggestedCharmId = 'charm-lotus';
-    let suggestedCordId = 'cord-waxed-brown';
-
-    const textLower = responseData.toLowerCase();
-    if (textLower.includes('mặt trăng') || textLower.includes('moonstone')) suggestedStoneId = 'bead-moonstone';
-    else if (textLower.includes('thạch anh tím') || textLower.includes('amethyst')) suggestedStoneId = 'bead-amethyst';
-    else if (textLower.includes('mắt hổ') || textLower.includes('tiger eye')) suggestedStoneId = 'bead-tigereye';
-    else if (textLower.includes('ngọc bích') || textLower.includes('jade')) suggestedStoneId = 'bead-jade';
-    else if (textLower.includes('aquamarine') || textLower.includes('lam ngọc')) suggestedStoneId = 'bead-aquamarine';
-
-    if (textLower.includes('hoa cúc') || textLower.includes('hoa acrylic') || textLower.includes('pastel')) {
-      suggestedCharmId = 'charm-flower-kv';
-    } else if (textLower.includes('cỏ bốn lá') || textLower.includes('clover')) {
-      suggestedCharmId = 'charm-clover';
-    } else if (textLower.includes('tỳ hưu')) {
-      suggestedCharmId = 'charm-pixiu';
-    }
-
+    // Trường hợp 3: Gemini ngoại tuyến
+    console.warn('Gemini API không phản hồi, dùng fallback thủ công an toàn...');
+    const fallbackResult = generateArtisanFallbackAnalysis({ birthYear, userNotes, hasImage });
     res.json({
       success: true,
       data: {
-        analysis: responseData,
-        model: usedModel,
-        presetConfig: {
-          cordId: suggestedCordId,
-          mainBeadId: suggestedStoneId,
-          charmId: suggestedCharmId,
-          sizeId: 'size-s'
-        }
+        isValidWrist: fallbackResult.isValidWrist,
+        detectedObject: fallbackResult.detectedObject,
+        invalidReason: fallbackResult.invalidReason,
+        analysis: fallbackResult.analysis,
+        model: 'KhánhVyMade Artisan AI (Smart Offline)',
+        isFallback: true,
+        presetConfig: fallbackResult.presetConfig
       }
     });
 
   } catch (error) {
-    console.error('Lỗi ngoại lệ phân tích AI, chuyển sang chế độ thủ công an toàn:', error);
-    const fallbackResult = generateArtisanFallbackAnalysis({ birthYear: req.body?.birthYear, userNotes: req.body?.userNotes });
+    console.error('Lỗi ngoại lệ phân tích AI:', error);
+    const fallbackResult = generateArtisanFallbackAnalysis({ birthYear: req.body?.birthYear, userNotes: req.body?.userNotes, hasImage: Boolean(req.body?.imageBase64) });
     res.json({
       success: true,
       data: {
+        isValidWrist: fallbackResult.isValidWrist,
+        detectedObject: fallbackResult.detectedObject,
+        invalidReason: fallbackResult.invalidReason,
         analysis: fallbackResult.analysis,
         model: 'KhánhVyMade Artisan AI (Chế Độ An Toàn)',
         isFallback: true,
@@ -260,33 +279,40 @@ export const analyzeBraceletCord = async (req, res) => {
       });
     }
 
-    const systemPrompt = `
-Bạn là Nghệ nhân trưởng kiêm Chuyên gia thẩm định dây đan thủ công tại Xưởng "KhánhVyMade".
-Nhiệm vụ của bạn là soi chiếu bức ảnh vòng tay dây thủ công và BÓC TÁCH TỰ ĐỘNG TOÀN BỘ CÁC THÀNH PHẦN CHI TIẾT LÀM NÊN DÂY.
+    const systemPrompt = `Bạn là Nghệ nhân trưởng kiêm Chuyên gia thẩm định dây đan thủ công tại Xưởng "KhánhVyMade".
+Nhiệm vụ: Soi chiếu bức ảnh và BÓC TÁCH THÀNH PHẦN CHI TIẾT CỦA VÒNG TAY THỦ CÔNG.
 
-Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không kèm markdown \`\`\`json) với cấu trúc sau:
-{
-  "name": "Tên sản phẩm đầy đủ và thơ mộng theo ảnh",
-  "category": "macrame-pastel" hoặc "vong-doi" hoặc "day-do-may-man" hoặc "day-lua-co-phong",
-  "price": 195000,
-  "wholesalePrice": 130000,
-  "wholesaleMinQty": 5,
-  "cordType": "Mô tả sợi dây (ví dụ: Dây chỉ sáp dệt Macrame màu kem be nút rút)",
-  "stoneType": "Mô tả hạt/charm chính (ví dụ: Charm gốm men pastel nung 1200°C)",
-  "tag": "Mẫu Mới Đan Tay 2026",
-  "wristSize": "Dây rút freesize 13cm - 19cm",
-  "description": "Mô tả chi tiết 2-3 câu về nét đẹp thủ công của mẫu dây",
-  "meaning": "Ý nghĩa may mắn, bình an gửi gắm trong chiếc vòng",
-  "cordComposition": {
-    "coreMaterial": "Chi tiết sợi dây (vd: Chỉ sáp dệt Macrame dẻo dai 1.0mm chống nước)",
-    "braidingTechnique": "Kỹ thuật đan thắt nút (vd: Nút thoi Square Knot thủ công kết hợp nút thắt rút trượt đôi Double Sliding Knot)",
-    "mainCharm": "Chi tiết hạt / charm chủ đạo (vd: Gốm men ngọc phủ bóng nung 1200°C & Pha lê hologram)",
-    "cordColor": "Màu sắc sợi dây (vd: Kem Be Vintage / Xanh Mint / Đỏ Tây Tạng / Nâu Sáp)",
-    "wristSizeRange": "13cm - 19cm (Khóa trượt tự do ôm khít mọi cỡ tay)",
-    "durability": "Chống nước tắm giặt, không bai dão, chống xơ xù, bảo hành đan lại dây trọn đời"
+KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
+- Nếu ảnh KHÔNG PHẢI là vòng tay, chuỗi hạt, lắc tay hoặc phụ kiện trang sức thủ công (ví dụ: hoa tươi, lá cây, động vật, phong cảnh, đồ ăn, xe cộ, đồ đạc...):
+  Trả về JSON:
+  {
+    "isBracelet": false,
+    "message": "Hình ảnh tải lên không phải vòng tay hoặc phụ kiện dây thủ công. Vui lòng tải lên ảnh chụp rõ sản phẩm vòng tay để AI bóc tách cấu tạo!"
   }
-}
-`;
+- Nếu ảnh ĐÚNG là vòng tay / dây đan thủ công:
+  Trả về JSON:
+  {
+    "isBracelet": true,
+    "name": "Tên sản phẩm đầy đủ và thơ mộng theo ảnh",
+    "category": "macrame-pastel",
+    "price": 195000,
+    "wholesalePrice": 130000,
+    "wholesaleMinQty": 5,
+    "cordType": "Mô tả sợi dây (ví dụ: Dây chỉ sáp dệt Macrame màu kem be nút rút)",
+    "stoneType": "Mô tả hạt/charm chính (ví dụ: Charm gốm men pastel nung 1200°C)",
+    "tag": "Mẫu Mới Đan Tay 2026",
+    "wristSize": "Dây rút freesize 13cm - 19cm",
+    "description": "Mô tả chi tiết 2-3 câu về nét đẹp thủ công của mẫu dây",
+    "meaning": "Ý nghĩa may mắn, bình an gửi gắm trong chiếc vòng",
+    "cordComposition": {
+      "coreMaterial": "Chi tiết sợi dây (vd: Chỉ sáp dệt Macrame dẻo dai 1.0mm chống nước)",
+      "braidingTechnique": "Kỹ thuật đan thắt nút (vd: Nút thoi Square Knot thủ công kết hợp nút thắt rút trượt đôi Double Sliding Knot)",
+      "mainCharm": "Chi tiết hạt / charm chủ đạo (vd: Gốm men ngọc phủ bóng nung 1200°C & Pha lê hologram)",
+      "cordColor": "Màu sắc sợi dây (vd: Kem Be Vintage / Xanh Mint / Đỏ Tây Tạng / Nâu Sáp)",
+      "wristSizeRange": "13cm - 19cm (Khóa trượt tự do ôm khít mọi cỡ tay)",
+      "durability": "Chống nước tắm giặt, không bai dão, chống xơ xù, bảo hành đan lại dây trọn đời"
+    }
+  }`;
 
     const parts = [{ text: systemPrompt }];
 
@@ -309,19 +335,22 @@ Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không kèm markdown \
 
     // Call Gemini models
     for (const model of GEMINI_MODELS) {
+      let timeoutId = null;
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getGeminiApiKey()}`;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const resp = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts }] }),
+          body: JSON.stringify({ 
+            contents: [{ parts }],
+            generationConfig: { responseMimeType: 'application/json' }
+          }),
           signal: controller.signal
         });
 
-        clearTimeout(timeoutId);
         const data = await resp.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
@@ -332,7 +361,16 @@ Hãy trả về DUY NHẤT một chuỗi JSON hợp lệ (không kèm markdown \
         }
       } catch (err) {
         console.warn(`Lỗi model ${model} bóc tách dây:`, err.message);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
+    }
+
+    if (parsedResult && parsedResult.isBracelet === false) {
+      return res.status(400).json({
+        success: false,
+        message: parsedResult.message || 'Hình ảnh tải lên không phải vòng tay thủ công.'
+      });
     }
 
     // Heuristic craft fallback if Gemini parse not ready

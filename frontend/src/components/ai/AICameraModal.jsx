@@ -69,8 +69,35 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset }) 
     return () => stopCamera();
   }, [isOpen]);
 
+  // Nén ảnh client-side xuống max 1000px để request siêu nhẹ, siêu nhanh và tránh payload limit
+  const compressImage = (dataUrl, maxDimension = 1000, quality = 0.82) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
   // Capture frame from webcam
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (!videoRef.current) return;
     const canvas = canvasRef.current || document.createElement('canvas');
     const video = videoRef.current;
@@ -78,19 +105,21 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset }) 
     canvas.height = video.videoHeight || 640;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-    setCapturedImage(dataUrl);
+    const rawDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const optimized = await compressImage(rawDataUrl, 1000, 0.82);
+    setCapturedImage(optimized);
     stopCamera();
   };
 
-  // Upload image fallback
+  // Upload image fallback with auto-compression
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      setCapturedImage(event.target.result);
+    reader.onload = async (event) => {
+      const optimized = await compressImage(event.target.result, 1000, 0.82);
+      setCapturedImage(optimized);
       stopCamera();
     };
     reader.readAsDataURL(file);
@@ -189,68 +218,165 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset }) 
           {analysisResult ? (
             <div className="space-y-6 animate-fadeIn">
               
-              <div className="flex items-center justify-between p-4 bg-[#EDF3EF] rounded-2xl border border-[#D0E2D7]">
-                <div className="flex items-center gap-2 text-[#4E6857] font-bold text-sm">
-                  <CheckCircle2 className="w-5 h-5" />
-                  <span>AI Gemini Vision đã phân tích thành công cổ tay của bạn!</span>
-                </div>
-                <button
-                  onClick={handleRetake}
-                  className="text-xs text-[#6B6258] hover:text-[#26211C] font-semibold underline"
-                >
-                  Chụp lại ảnh khác
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                
-                {/* Captured Image preview */}
-                <div className="md:col-span-4 space-y-3">
-                  <div className="aspect-square rounded-2xl overflow-hidden border-2 border-[#E8DFD3] shadow-md bg-[#26211C]">
-                    <img 
-                      src={capturedImage} 
-                      alt="Ảnh cổ tay chụp từ camera" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] text-[11px] text-[#6B6258] space-y-1">
-                    <p>✓ Phân tích bởi mô hình: <strong>{analysisResult.model || 'Gemini 3.6 Flash'}</strong></p>
-                    <p>✓ Cảm hứng phối đá: <strong>KhánhVyMade Thủ Công Độc Bản</strong></p>
-                  </div>
-                </div>
-
-                {/* Analysis Report text */}
-                <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-4">
-                  <h4 className="font-serif-boutique text-xl font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-500" />
-                    Lời Khuyên Chuyên Gia Stylist & Nghệ Nhân Phong Thủy
-                  </h4>
-
-                  <div className="text-xs sm:text-sm text-[#26211C] leading-relaxed whitespace-pre-line space-y-2">
-                    {analysisResult.analysis}
-                  </div>
-
-                  {/* Apply to customizer action */}
-                  <div className="pt-4 border-t border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* TRƯỜNG HỢP 1: ẢNH KHÔNG PHẢI CỔ TAY / VÒNG TAY */}
+              {analysisResult.isValidWrist === false ? (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-300">
+                    <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
+                      <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                      <span>Hình ảnh chưa phát hiện cổ tay hoặc vòng tay!</span>
+                    </div>
                     <button
                       onClick={handleRetake}
-                      className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2]"
+                      className="text-xs text-amber-900 hover:text-amber-700 font-semibold underline"
                     >
-                      ← Chụp Lại Cổ Tay
-                    </button>
-
-                    <button
-                      onClick={handleApplyPreset}
-                      className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs sm:text-sm shadow-artisan-hover transition-all flex items-center justify-center gap-2"
-                    >
-                      <Flower2 className="w-4 h-4 text-amber-200" />
-                      <span>Áp Dụng Thiết Kế Vào Xưởng Tự Phối Ngay</span>
-                      <ArrowRight className="w-4 h-4" />
+                      Chụp / Tải ảnh khác
                     </button>
                   </div>
-                </div>
 
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    {/* Preview ảnh gửi lên */}
+                    <div className="md:col-span-4 space-y-3">
+                      <div className="aspect-square rounded-2xl overflow-hidden border-2 border-amber-300 shadow-md bg-[#26211C] relative">
+                        <img 
+                          src={capturedImage} 
+                          alt="Ảnh người dùng gửi" 
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/35 flex items-center justify-center p-3">
+                          <span className="bg-amber-600 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
+                            ⚠️ Không phải cổ tay
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-[11px] text-amber-950 space-y-1">
+                        <p>🔍 AI nhận diện vật thể: <strong className="text-[#26211C]">{analysisResult.detectedObject || 'Hình ảnh khác'}</strong></p>
+                        <p>⚠️ Trạng thái: <span className="text-amber-700 font-semibold">Chưa phát hiện cổ tay</span></p>
+                      </div>
+                    </div>
+
+                    {/* Hướng dẫn chụp lại */}
+                    <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-4">
+                      <h4 className="font-serif-boutique text-lg font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-amber-500" />
+                        Lời Nhắn Từ Nghệ Nhân & Hệ Thống Nhận Diện AI
+                      </h4>
+
+                      <div className="text-xs sm:text-sm text-[#26211C] leading-relaxed whitespace-pre-line bg-[#FAF7F2] p-4 rounded-xl border border-[#E8DFD3]">
+                        {analysisResult.analysis}
+                      </div>
+
+                      <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
+                        <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                          <span>💡 Để AI nhận diện chính xác size tay & tone da của bạn:</span>
+                        </p>
+                        <p>1. Hướng camera trực diện vào <strong>cổ tay</strong> hoặc <strong>bàn tay</strong>.</p>
+                        <p>2. Đặt tay nơi có ánh sáng tự nhiên, nền trơn (mặt bàn, vải sáng...).</p>
+                        <p>3. Có thể đeo sẵn vòng tay cũ để AI soi chiếu chất liệu hoặc để tay mộc để AI đo size.</p>
+                      </div>
+
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={handleRetake}
+                          className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                        >
+                          <Camera className="w-4 h-4" />
+                          <span>Chụp / Tải Lại Ảnh Cổ Tay Ngay</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* TRƯỜNG HỢP 2: ĐÚNG LÀ CỔ TAY HOẶC VÒNG TAY HỢP LỆ */
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between p-4 bg-[#EDF3EF] rounded-2xl border border-[#D0E2D7]">
+                    <div className="flex items-center gap-2 text-[#4E6857] font-bold text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <span>AI Gemini Vision đã nhận diện chính xác cổ tay của bạn!</span>
+                    </div>
+                    <button
+                      onClick={handleRetake}
+                      className="text-xs text-[#6B6258] hover:text-[#26211C] font-semibold underline"
+                    >
+                      Chụp lại ảnh khác
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    {/* Captured Image preview */}
+                    <div className="md:col-span-4 space-y-3">
+                      <div className="aspect-square rounded-2xl overflow-hidden border-2 border-[#E8DFD3] shadow-md bg-[#26211C]">
+                        <img 
+                          src={capturedImage} 
+                          alt="Ảnh cổ tay chụp từ camera" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] text-[11px] text-[#6B6258] space-y-1">
+                        <p>✓ Đối tượng: <strong className="text-[#26211C]">{analysisResult.detectedObject || 'Cổ tay chuẩn xác'}</strong></p>
+                        <p>✓ Mô hình: <strong>{analysisResult.model || 'Gemini Flash AI'}</strong></p>
+                        <p>✓ Nghệ nhân: <strong>KhánhVyMade Thủ Công Độc Bản</strong></p>
+                      </div>
+                    </div>
+
+                    {/* Analysis Report text */}
+                    <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-4">
+                      <h4 className="font-serif-boutique text-xl font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2 flex items-center gap-2">
+                        <Sparkles className="w-5 h-5 text-amber-500" />
+                        Lời Khuyên Chuyên Gia Stylist & Nghệ Nhân Phong Thủy
+                      </h4>
+
+                      {/* Chips nhận diện thực tế */}
+                      {(analysisResult.skinTone || analysisResult.wristType || analysisResult.existingBracelet) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] text-xs">
+                          {analysisResult.skinTone && (
+                            <div>
+                              <span className="text-[#8C8276] text-[10px] block">🎨 Tone da thực tế:</span>
+                              <strong className="text-[#26211C] text-[11px]">{analysisResult.skinTone}</strong>
+                            </div>
+                          )}
+                          {analysisResult.wristType && (
+                            <div>
+                              <span className="text-[#8C8276] text-[10px] block">📏 Dáng & size ước tính:</span>
+                              <strong className="text-[#26211C] text-[11px]">{analysisResult.wristType}</strong>
+                            </div>
+                          )}
+                          {analysisResult.existingBracelet && (
+                            <div className="sm:col-span-2 pt-1 border-t border-[#E8DFD3]/70">
+                              <span className="text-[#8C8276] text-[10px] block">📿 Phụ kiện đang đeo trên tay:</span>
+                              <span className="text-[#4E6857] font-semibold text-[11px]">{analysisResult.existingBracelet}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="text-xs sm:text-sm text-[#26211C] leading-relaxed whitespace-pre-line space-y-2">
+                        {analysisResult.analysis}
+                      </div>
+
+                      {/* Apply to customizer action */}
+                      <div className="pt-4 border-t border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <button
+                          onClick={handleRetake}
+                          className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2]"
+                        >
+                          ← Chụp Lại Cổ Tay
+                        </button>
+
+                        <button
+                          onClick={handleApplyPreset}
+                          className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs sm:text-sm shadow-artisan-hover transition-all flex items-center justify-center gap-2"
+                        >
+                          <Flower2 className="w-4 h-4 text-amber-200" />
+                          <span>Áp Dụng Thiết Kế Vào Xưởng Tự Phối Ngay</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           ) : (
