@@ -10,6 +10,7 @@ import {
   Filter, 
   Check, 
   Eye, 
+  EyeOff,
   AlertCircle,
   Database,
   Lock,
@@ -288,6 +289,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [productVisibilityFilter, setProductVisibilityFilter] = useState('all'); // 'all' | 'visible' | 'hidden'
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isAnalyzingCord, setIsAnalyzingCord] = useState(false);
@@ -310,7 +312,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     tag: 'Mới ra mắt',
     images: ['/images/products/bracelet-pastel-macrame-trio.jpg'],
     description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công.',
-    meaning: 'Bình an, may mắn và tràn đầy năng lượng tích cực.'
+    meaning: 'Bình an, may mắn và tràn đầy năng lượng tích cực.',
+    isHidden: false
   });
 
   // Users state
@@ -373,7 +376,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes] = await Promise.all([
         api.getAdminStats().catch(() => ({ success: false })),
         api.getOrders().catch(() => ({ success: false })),
-        api.getProducts().catch(() => ({ success: false })),
+        api.getProducts({ includeHidden: true }).catch(() => ({ success: false })),
         api.getUsers().catch(() => ({ success: false })),
         api.getMe().catch(() => ({ success: false })),
         api.getVouchers(true).catch(() => ({ success: false })),
@@ -512,7 +515,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         cordColor: 'Màu kem be vintage pastel nhẹ nhàng thanh lịch',
         wristSizeRange: 'Freesize 13cm - 19cm (rút trượt theo cỡ tay)',
         durability: 'Không bay màu, không xơ xù, bảo hành đan lại dây trọn đời'
-      }
+      },
+      isHidden: false
     });
     setIsProductModalOpen(true);
   };
@@ -537,7 +541,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       meaning: prod.meaning || '',
       isBestSeller: prod.isBestSeller ?? prod.is_best_seller ?? false,
       salesCount: prod.salesCount ?? prod.sales_count ?? 0,
-      cordComposition: prod.cordComposition || prod.cord_composition || null
+      cordComposition: prod.cordComposition || prod.cord_composition || null,
+      isHidden: Boolean(prod.isHidden)
     });
     setIsProductModalOpen(true);
   };
@@ -548,7 +553,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       if (editingProduct) {
         const res = await api.updateProduct(editingProduct.id, productFormData);
         if (res.success) {
-          setProducts(prev => prev.map(p => p.id === editingProduct.id ? res.data : p));
+          setProducts(prev => prev.map(p => String(p.id).trim() === String(editingProduct.id).trim() ? res.data : p));
           triggerToast(`Đã cập nhật sản phẩm "${productFormData.name}"`);
         }
       } else {
@@ -565,15 +570,31 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   };
 
   const handleDeleteProduct = async (id, name) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa sản phẩm "${name}" khỏi cơ sở dữ liệu?`)) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm "${name}" khỏi cơ sở dữ liệu? Hành động này sẽ xóa hoàn toàn và không thể khôi phục.`)) return;
     try {
       const res = await api.deleteProduct(id);
       if (res.success) {
-        setProducts(prev => prev.filter(p => p.id !== id));
-        triggerToast(`Đã xóa sản phẩm khỏi cơ sở dữ liệu`);
+        setProducts(prev => prev.filter(p => String(p.id).trim() !== String(id).trim()));
+        triggerToast(`Đã xóa vĩnh viễn sản phẩm "${name}" khỏi cơ sở dữ liệu`);
       }
     } catch (err) {
       alert('Lỗi xóa sản phẩm: ' + err.message);
+    }
+  };
+
+  const handleToggleProductVisibility = async (prod) => {
+    try {
+      const res = await api.toggleProductVisibility(prod.id);
+      if (res.success) {
+        setProducts(prev => prev.map(p => 
+          String(p.id).trim() === String(prod.id).trim() 
+            ? { ...p, isHidden: res.data.isHidden } 
+            : p
+        ));
+        triggerToast(res.message || (res.data.isHidden ? `Đã ẩn "${prod.name}" khỏi gian hàng` : `Đã hiện "${prod.name}" lên gian hàng`));
+      }
+    } catch (err) {
+      alert('Lỗi thay đổi trạng thái ẩn/hiện: ' + err.message);
     }
   };
 
@@ -817,7 +838,12 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     const matchSearch = !productSearch || 
       (p.name && p.name.toLowerCase().includes(productSearch.toLowerCase())) ||
       (p.stoneType && p.stoneType.toLowerCase().includes(productSearch.toLowerCase()));
-    return matchCategory && matchSearch;
+    const matchVisibility = productVisibilityFilter === 'all'
+      ? true
+      : productVisibilityFilter === 'hidden'
+        ? Boolean(p.isHidden)
+        : !Boolean(p.isHidden);
+    return matchCategory && matchSearch && matchVisibility;
   });
 
   const filteredUsers = users.filter(u => {
@@ -1385,8 +1411,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         {/* ================= TAB 3: QUẢN LÝ SẢN PHẨM ================= */}
         {adminTab === 'products' && (
           <div className="space-y-6">
-            <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <button
                   onClick={handleOpenNewProductModal}
                   className="px-4 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
@@ -1395,12 +1421,50 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   <span>+ Thêm Sản Phẩm Mới</span>
                 </button>
 
+                <div className="flex items-center bg-[#FAF7F2] p-1 rounded-xl border border-[#E8DFD3]">
+                  <button
+                    type="button"
+                    onClick={() => setProductVisibilityFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      productVisibilityFilter === 'all' 
+                        ? 'bg-white text-[#26211C] shadow-sm' 
+                        : 'text-[#6B6258] hover:text-[#26211C]'
+                    }`}
+                  >
+                    Tất Cả ({products.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductVisibilityFilter('visible')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      productVisibilityFilter === 'visible' 
+                        ? 'bg-emerald-600 text-white shadow-sm' 
+                        : 'text-emerald-700 hover:text-emerald-900'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Đang Hiện ({products.filter(p => !p.isHidden).length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProductVisibilityFilter('hidden')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      productVisibilityFilter === 'hidden' 
+                        ? 'bg-amber-600 text-white shadow-sm' 
+                        : 'text-amber-700 hover:text-amber-900'
+                    }`}
+                  >
+                    <EyeOff className="w-3.5 h-3.5" />
+                    <span>Đã Ẩn ({products.filter(p => p.isHidden).length})</span>
+                  </button>
+                </div>
+
                 <select
                   value={productCategoryFilter}
                   onChange={(e) => setProductCategoryFilter(e.target.value)}
                   className="bg-[#FAF7F2] border border-[#E8DFD3] text-xs font-semibold rounded-xl px-3 py-2 text-[#26211C] focus:outline-none"
                 >
-                  <option value="all">Tất cả danh mục vòng ({products.length})</option>
+                  <option value="all">Tất cả danh mục vòng</option>
                   <option value="best-seller">🔥 Sản Phẩm Bán Chạy Nhất (Best Sellers)</option>
                   <option value="macrame-pastel">Vòng Dây Macrame Pastel & Hoa Gốm</option>
                   <option value="vong-doi">Vòng Đôi Dây Sáp Nam Châm</option>
@@ -1409,7 +1473,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                 </select>
               </div>
 
-              <div className="relative w-full sm:w-72">
+              <div className="relative w-full md:w-72">
                 <Search className="w-4 h-4 text-[#8C8276] absolute left-3 top-2.5" />
                 <input
                   type="text"
@@ -1423,18 +1487,31 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredProducts.map(prod => (
-                <div key={prod.id} className="bg-white p-4 rounded-3xl border border-[#E8DFD3] shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+                <div key={prod.id} className={`bg-white p-4 rounded-3xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                  prod.isHidden ? 'border-amber-300/80 bg-amber-50/20' : 'border-[#E8DFD3]'
+                }`}>
                   <div className="space-y-3">
                     <div className="relative h-44 rounded-2xl overflow-hidden bg-[#FAF7F2] border border-[#E8DFD3]">
                       <img
                         src={prod.images?.[0] || '/images/products/bracelet-pastel-macrame-trio.jpg'}
                         alt={prod.name}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-opacity ${prod.isHidden ? 'opacity-70 grayscale-[20%]' : ''}`}
                       />
                       <span className="absolute top-2 left-2 bg-[#26211C]/80 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
                         {prod.id}
                       </span>
                       <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+                        {prod.isHidden ? (
+                          <span className="bg-amber-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow flex items-center gap-1">
+                            <EyeOff className="w-2.5 h-2.5" />
+                            <span>ĐÃ ẨN</span>
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow flex items-center gap-1">
+                            <Eye className="w-2.5 h-2.5" />
+                            <span>ĐANG HIỆN</span>
+                          </span>
+                        )}
                         {(prod.isBestSeller || prod.is_best_seller) && (
                           <span className="bg-amber-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow flex items-center gap-1">
                             <Flame className="w-2.5 h-2.5" />
@@ -1450,9 +1527,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-sm text-[#26211C] line-clamp-2">
-                        {prod.name}
-                      </h4>
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="font-bold text-sm text-[#26211C] line-clamp-2">
+                          {prod.name}
+                        </h4>
+                      </div>
                       <p className="text-[11px] text-[#6B6258] mt-1">
                         Đá/Charm: <span className="font-medium text-[#26211C]">{prod.stoneType || 'Thủ công mỹ nghệ'}</span>
                       </p>
@@ -1496,6 +1575,17 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
                     <div className="flex items-center gap-1.5">
                       <button
+                        onClick={() => handleToggleProductVisibility(prod)}
+                        className={`p-2 rounded-xl transition-all shadow-sm ${
+                          prod.isHidden
+                            ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                        }`}
+                        title={prod.isHidden ? 'Bấm để Hiện lại sản phẩm trên gian hàng' : 'Bấm để Ẩn sản phẩm khỏi gian hàng khách'}
+                      >
+                        {prod.isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
                         onClick={() => handleEditProduct(prod)}
                         className="p-2 rounded-xl bg-[#FAF4ED] text-[#B86244] hover:bg-[#B86244] hover:text-white transition-colors"
                         title="Sửa sản phẩm"
@@ -1505,7 +1595,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                       <button
                         onClick={() => handleDeleteProduct(prod.id, prod.name)}
                         className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
-                        title="Xóa khỏi cơ sở dữ liệu"
+                        title="Xóa vĩnh viễn khỏi cơ sở dữ liệu"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -2506,6 +2596,55 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     className="w-24 bg-white p-1.5 rounded-lg border border-amber-300 text-xs font-bold text-amber-900 text-center focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* --- CÀI ĐẶT TRẠNG THÁI HIỂN THỊ (ẨN / HIỆN GIAN HÀNG) --- */}
+              <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${
+                productFormData.isHidden 
+                  ? 'bg-amber-50/80 border-amber-300/80' 
+                  : 'bg-emerald-50/70 border-emerald-200/80'
+              }`}>
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(productFormData.isHidden)}
+                    onChange={(e) => setProductFormData({ ...productFormData, isHidden: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <div>
+                    <span className={`font-bold text-xs flex items-center gap-1.5 ${
+                      productFormData.isHidden ? 'text-amber-900' : 'text-emerald-900'
+                    }`}>
+                      {productFormData.isHidden ? (
+                        <>
+                          <EyeOff className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Đang ẨN sản phẩm khỏi khách mua trên gian hàng</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Đang HIỆN sản phẩm công khai trên gian hàng</span>
+                        </>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-[#6B6258] block">
+                      {productFormData.isHidden 
+                        ? 'Khách hàng ngoài shop sẽ không tìm thấy sản phẩm này. Chỉ Admin mới nhìn thấy trong Dashboard.'
+                        : 'Sản phẩm sẽ xuất hiện công khai trên trang chủ và danh mục cho khách đặt mua.'}
+                    </span>
+                  </div>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setProductFormData({ ...productFormData, isHidden: !productFormData.isHidden })}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all ${
+                    productFormData.isHidden 
+                      ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' 
+                      : 'bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200'
+                  }`}
+                >
+                  {productFormData.isHidden ? 'Bấm để Hiện' : 'Bấm để Ẩn'}
+                </button>
               </div>
 
               <div>

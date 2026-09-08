@@ -3,12 +3,14 @@ import {
   dbGetProducts, 
   dbCreateProduct, 
   dbUpdateProduct, 
-  dbDeleteProduct 
+  dbDeleteProduct,
+  dbToggleProductVisibility 
 } from '../data/dbStore.js';
 
 export const getProducts = async (req, res) => {
   try {
-    const allProducts = await dbGetProducts();
+    const includeHidden = req.query.includeHidden === 'true' || req.query.all === 'true';
+    const allProducts = await dbGetProducts(includeHidden);
     let result = [...allProducts];
     const { category, menh, search, sort } = req.query;
 
@@ -109,6 +111,21 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm để xóa' });
     }
     res.json({ success: true, message: 'Đã xóa sản phẩm khỏi cơ sở dữ liệu thành công' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const toggleProductVisibility = async (req, res) => {
+  try {
+    const result = await dbToggleProductVisibility(req.params.id);
+    res.json({
+      success: true,
+      data: result,
+      message: result.isHidden 
+        ? 'Đã ẩn sản phẩm khỏi gian hàng thành công (chỉ lưu hiển thị trong trang quản trị).' 
+        : 'Đã hiển thị sản phẩm trở lại gian hàng cho khách hàng đặt mua.'
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

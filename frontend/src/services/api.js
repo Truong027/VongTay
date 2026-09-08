@@ -158,6 +158,15 @@ export const api = {
     return data;
   },
 
+  async toggleProductVisibility(id) {
+    const res = await fetch(`${BASE_URL}/products/${id}/toggle-visibility`, {
+      method: 'PATCH'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi ẩn/hiện sản phẩm');
+    return data;
+  },
+
   // Admin User Management
   async getUsers() {
     const res = await fetch(`${BASE_URL}/admin/users`);

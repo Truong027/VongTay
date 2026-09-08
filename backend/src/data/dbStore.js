@@ -67,7 +67,11 @@ try {
   if (fs.existsSync(DB_FILE)) {
     const raw = fs.readFileSync(DB_FILE, 'utf8');
     const parsed = JSON.parse(raw);
-    memoryData.products = [...seedProducts];
+    if (parsed.products && Array.isArray(parsed.products) && parsed.products.length > 0) {
+      memoryData.products = parsed.products;
+    } else {
+      memoryData.products = [...seedProducts];
+    }
     if (parsed.orders) memoryData.orders = parsed.orders;
     if (parsed.users) memoryData.users = parsed.users;
     if (parsed.categories) memoryData.categories = parsed.categories;
@@ -506,10 +510,13 @@ export const syncAllDataToNeon = async () => {
 
 // ==================== PRODUCTS REPOSITORY ====================
 
-export const dbGetProducts = async () => {
+export const dbGetProducts = async (includeHidden = false) => {
   if (isNeonConnected()) {
     try {
-      const res = await query('SELECT * FROM products ORDER BY created_at DESC');
+      const sql = includeHidden
+        ? 'SELECT * FROM products ORDER BY created_at DESC'
+        : 'SELECT * FROM products WHERE (is_hidden IS NULL OR is_hidden = false) ORDER BY created_at DESC';
+      const res = await query(sql);
       if (res && res.rows && res.rows.length > 0) {
         return res.rows.map(r => ({
           id: r.id,
@@ -535,6 +542,7 @@ export const dbGetProducts = async () => {
           meaning: r.meaning,
           stock: r.stock,
           images: r.images,
+          isHidden: Boolean(r.is_hidden),
           createdAt: r.created_at
         }));
       }
@@ -542,7 +550,9 @@ export const dbGetProducts = async () => {
       console.warn('Lỗi đọc products Neon DB, fallback local:', err.message);
     }
   }
-  return memoryData.products;
+  return includeHidden 
+    ? memoryData.products 
+    : memoryData.products.filter(p => !p.isHidden);
 };
 
 export const dbCreateProduct = async (productData) => {
@@ -556,6 +566,7 @@ export const dbCreateProduct = async (productData) => {
     cordComposition: productData.cordComposition || {},
     rating: 5.0,
     reviewsCount: 0,
+    isHidden: Boolean(productData.isHidden || false),
     createdAt: new Date().toISOString()
   };
 
@@ -569,8 +580,8 @@ export const dbCreateProduct = async (productData) => {
           id, name, category, menh, price, original_price, wholesale_price, wholesale_min_qty,
           is_best_seller, sales_count, cord_composition, rating, reviews_count,
           tag, stone_type, cord_type, bead_size, artisan_name, lead_time,
-          description, meaning, stock, images, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+          description, meaning, stock, images, is_hidden, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
         [
           newProduct.id, newProduct.name, newProduct.category, JSON.stringify(newProduct.menh || ['Tất cả']),
           newProduct.price, newProduct.originalPrice || newProduct.price, newProduct.wholesalePrice, newProduct.wholesaleMinQty,
@@ -579,7 +590,7 @@ export const dbCreateProduct = async (productData) => {
           newProduct.tag || '', newProduct.stoneType || '', newProduct.cordType || '', newProduct.beadSize || '8mm',
           newProduct.artisanName || 'Nghệ nhân KhánhVyMade', newProduct.leadTime || 'Làm thủ công 2h',
           newProduct.description || '', newProduct.meaning || '', newProduct.stock || 10,
-          JSON.stringify(newProduct.images || []), newProduct.createdAt
+          JSON.stringify(newProduct.images || []), newProduct.isHidden, newProduct.createdAt
         ]
       );
     } catch (err) {
@@ -591,17 +602,19 @@ export const dbCreateProduct = async (productData) => {
 };
 
 export const dbUpdateProduct = async (id, updates) => {
-  const idx = memoryData.products.findIndex(p => p.id === id);
-  if (idx === -1) return null;
+  const cleanId = String(id).trim();
+  const idx = memoryData.products.findIndex(p => String(p.id).trim() === cleanId);
+  
+  if (idx !== -1) {
+    memoryData.products[idx] = { ...memoryData.products[idx], ...updates };
+    saveToDisk();
+  }
 
-  memoryData.products[idx] = { ...memoryData.products[idx], ...updates };
-  saveToDisk();
-
-  const updated = memoryData.products[idx];
+  let updated = idx !== -1 ? memoryData.products[idx] : null;
 
   if (isNeonConnected()) {
     try {
-      await query(
+      const res = await query(
         `UPDATE products SET 
           name = COALESCE($1, name),
           price = COALESCE($2, price),
@@ -611,14 +624,35 @@ export const dbUpdateProduct = async (id, updates) => {
           sales_count = COALESCE($6, sales_count),
           stock = COALESCE($7, stock),
           category = COALESCE($8, category),
-          description = COALESCE($9, description)
-         WHERE id = $10`,
+          description = COALESCE($9, description),
+          is_hidden = COALESCE($10, is_hidden)
+         WHERE id = $11
+         RETURNING *`,
         [
           updates.name, updates.price, updates.wholesalePrice, updates.wholesaleMinQty,
           updates.isBestSeller, updates.salesCount,
-          updates.stock, updates.category, updates.description, id
+          updates.stock, updates.category, updates.description,
+          updates.isHidden !== undefined ? updates.isHidden : null,
+          cleanId
         ]
       );
+
+      if (res && res.rows && res.rows[0]) {
+        const r = res.rows[0];
+        updated = {
+          id: r.id,
+          name: r.name,
+          category: r.category,
+          price: Number(r.price),
+          wholesalePrice: Number(r.wholesale_price || 0),
+          wholesaleMinQty: Number(r.wholesale_min_qty || 5),
+          isBestSeller: Boolean(r.is_best_seller),
+          salesCount: Number(r.sales_count || 0),
+          stock: r.stock,
+          isHidden: Boolean(r.is_hidden),
+          description: r.description
+        };
+      }
     } catch (err) {
       console.error('Lỗi cập nhật product Neon:', err.message);
     }
@@ -628,20 +662,62 @@ export const dbUpdateProduct = async (id, updates) => {
 };
 
 export const dbDeleteProduct = async (id) => {
-  const initialLen = memoryData.products.length;
-  memoryData.products = memoryData.products.filter(p => p.id !== id);
-  if (memoryData.products.length === initialLen) return false;
-
-  saveToDisk();
+  const cleanId = String(id).trim();
+  let deletedFromNeon = false;
 
   if (isNeonConnected()) {
     try {
-      await query('DELETE FROM products WHERE id = $1', [id]);
+      // Đảm bảo tháo gỡ an toàn các bảng liên kết trước khi xóa
+      await query('UPDATE order_items SET product_id = NULL WHERE product_id = $1', [cleanId]).catch(() => {});
+      await query('DELETE FROM reviews WHERE product_id = $1', [cleanId]).catch(() => {});
+      await query('DELETE FROM wishlists WHERE product_id = $1', [cleanId]).catch(() => {});
+      
+      const res = await query('DELETE FROM products WHERE id = $1', [cleanId]);
+      if (res && res.rowCount > 0) {
+        deletedFromNeon = true;
+      }
     } catch (err) {
       console.warn('Lỗi delete product Neon:', err.message);
     }
   }
-  return true;
+
+  const initialLen = memoryData.products.length;
+  memoryData.products = memoryData.products.filter(p => String(p.id).trim() !== cleanId);
+  const deletedFromMemory = memoryData.products.length < initialLen;
+  saveToDisk();
+
+  return deletedFromNeon || deletedFromMemory;
+};
+
+export const dbToggleProductVisibility = async (id) => {
+  const cleanId = String(id).trim();
+  let newHiddenState = true;
+  const idx = memoryData.products.findIndex(p => String(p.id).trim() === cleanId);
+  
+  if (idx !== -1) {
+    memoryData.products[idx].isHidden = !Boolean(memoryData.products[idx].isHidden);
+    newHiddenState = memoryData.products[idx].isHidden;
+    saveToDisk();
+  }
+
+  if (isNeonConnected()) {
+    try {
+      const res = await query(
+        `UPDATE products SET is_hidden = NOT COALESCE(is_hidden, false) WHERE id = $1 RETURNING is_hidden`,
+        [cleanId]
+      );
+      if (res && res.rows && res.rows[0]) {
+        newHiddenState = Boolean(res.rows[0].is_hidden);
+        if (idx !== -1) {
+          memoryData.products[idx].isHidden = newHiddenState;
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi toggle ẩn/hiện sản phẩm Neon:', err.message);
+    }
+  }
+
+  return { id: cleanId, isHidden: newHiddenState };
 };
 
 // ==================== USERS REPOSITORY ====================

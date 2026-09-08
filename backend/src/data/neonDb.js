@@ -127,6 +127,7 @@ const createTables = async () => {
     ALTER TABLE products ADD COLUMN IF NOT EXISTS sales_count INTEGER DEFAULT 0;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS cord_composition JSONB;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false;
 
     -- 4. ORDERS
     CREATE TABLE IF NOT EXISTS orders (

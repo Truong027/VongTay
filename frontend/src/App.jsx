@@ -176,7 +176,10 @@ function MainShop({ currentUser, setCurrentUser }) {
     return (
       <>
         <AdminDashboard
-          onBackToStore={() => setIsAdminView(false)}
+          onBackToStore={() => {
+            setIsAdminView(false);
+            loadShopData();
+          }}
           currentUser={currentUser}
           onOpenAuth={() => setIsAuthOpen(true)}
           onLogout={handleLogout}
@@ -209,6 +212,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         onOpenAdmin={(targetState) => {
           if (targetState === false) {
             setIsAdminView(false);
+            loadShopData();
           } else {
             if (currentUser?.role === 'admin') {
               setIsAdminView(true);

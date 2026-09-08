@@ -5,7 +5,8 @@ import {
   getCategories, 
   createProduct, 
   updateProduct, 
-  deleteProduct 
+  deleteProduct,
+  toggleProductVisibility 
 } from '../controllers/productController.js';
 
 const router = Router();
@@ -15,6 +16,7 @@ router.get('/', getProducts);
 router.get('/:id', getProductById);
 router.post('/', createProduct);
 router.put('/:id', updateProduct);
+router.patch('/:id/toggle-visibility', toggleProductVisibility);
 router.delete('/:id', deleteProduct);
 
 export default router;
