@@ -100,3 +100,95 @@ img, video, canvas, svg {
   transform: translateY(-3px);
   box-shadow: 0 14px 35px -4px rgba(60, 40, 20, 0.12), 0 6px 14px -2px rgba(60, 40, 20, 0.06);
 }
+
+/* ===== ODOO PREMIUM ANIMATION SYSTEM ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes floatBead {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-4px) rotate(1deg); }
+  66% { transform: translateY(-2px) rotate(-1deg); }
+}
+@keyframes shimmerGold {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(184, 98, 68, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(184, 98, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(184, 98, 68, 0); }
+}
+@keyframes revealStep {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes charmWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-5deg); }
+  40% { transform: rotate(5deg); }
+  60% { transform: rotate(-3deg); }
+  80% { transform: rotate(3deg); }
+}
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-fadeIn { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slideInRight { animation: slideInFromRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slideInLeft { animation: slideInFromLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-scaleIn { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-floatBead { animation: floatBead 4s ease-in-out infinite; }
+.animate-pulseRing { animation: pulseRing 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite; }
+.animate-revealStep { animation: revealStep 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-charmWiggle { animation: charmWiggle 0.6s ease-in-out; }
+.animate-gradientFlow { 
+  background-size: 200% 200%;
+  animation: gradientFlow 4s ease infinite;
+}
+.animate-shimmerGold {
+  background: linear-gradient(90deg, transparent 0%, rgba(192, 154, 88, 0.4) 50%, transparent 100%);
+  background-size: 200% auto;
+  animation: shimmerGold 2s linear infinite;
+}
+
+/* Odoo-style card hover lift */
+.odoo-card {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.odoo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(38, 33, 28, 0.10), 0 2px 8px -1px rgba(38, 33, 28, 0.06);
+}
+.odoo-card:active {
+  transform: scale(0.985);
+}
+
+/* Premium gradient border */
+.border-gradient-gold {
+  border: 1px solid transparent;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #C09A58, #B86244, #C09A58) border-box;
+}
+
+/* Luxury glass morphism */
+.glass-luxury {
+  backdrop-filter: blur(12px) saturate(1.4);
+  background: rgba(250, 247, 242, 0.88);
+  border: 1px solid rgba(232, 223, 211, 0.7);
+}
