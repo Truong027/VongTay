@@ -211,7 +211,7 @@ const createTables = async () => {
     -- 9. CUSTOM_DESIGNS (User-designed bespoke bracelets)
     CREATE TABLE IF NOT EXISTS custom_designs (
       id VARCHAR(50) PRIMARY KEY,
-      user_id VARCHAR(50),
+      user_id VARCHAR(50) REFERENCES users(id) ON DELETE SET NULL,
       design_name VARCHAR(255) NOT NULL,
       cord_type VARCHAR(100),
       cord_color VARCHAR(50),
@@ -236,6 +236,30 @@ const createTables = async () => {
       status VARCHAR(50) DEFAULT 'Chờ tư vấn',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- SAFE FOREIGN KEY REINFORCEMENTS ACROSS TABLES
+    DO $$
+    BEGIN
+      -- Add voucher_code to orders if not exists
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'voucher_code') THEN
+        ALTER TABLE orders ADD COLUMN voucher_code VARCHAR(50);
+      END IF;
+
+      -- Orders -> Users FK
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_orders_user') THEN
+        ALTER TABLE orders ADD CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+      END IF;
+
+      -- Orders -> Vouchers FK
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_orders_voucher') THEN
+        ALTER TABLE orders ADD CONSTRAINT fk_orders_voucher FOREIGN KEY (voucher_code) REFERENCES vouchers(code) ON DELETE SET NULL;
+      END IF;
+
+      -- Custom Designs -> Users FK
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_custom_designs_user') THEN
+        ALTER TABLE custom_designs ADD CONSTRAINT fk_custom_designs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+      END IF;
+    END $$;
   `;
 
   try {

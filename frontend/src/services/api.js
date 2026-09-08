@@ -236,10 +236,51 @@ export const api = {
   },
 
   // Vouchers & Promotions
-  async getVouchers() {
-    const res = await fetch(`${BASE_URL}/vouchers`);
+  async getVouchers(includeAll = false) {
+    const url = includeAll ? `${BASE_URL}/vouchers?all=true` : `${BASE_URL}/vouchers`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Không thể tải danh sách mã giảm giá');
     return res.json();
+  },
+
+  async createVoucher(voucherData) {
+    const res = await fetch(`${BASE_URL}/vouchers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(voucherData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi thêm mã giảm giá');
+    return data;
+  },
+
+  async updateVoucher(id, voucherData) {
+    const res = await fetch(`${BASE_URL}/vouchers/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(voucherData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật mã giảm giá');
+    return data;
+  },
+
+  async deleteVoucher(id) {
+    const res = await fetch(`${BASE_URL}/vouchers/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi xóa mã giảm giá');
+    return data;
+  },
+
+  async toggleVoucher(id) {
+    const res = await fetch(`${BASE_URL}/vouchers/${id}/toggle`, {
+      method: 'PATCH'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi chuyển trạng thái voucher');
+    return data;
   },
 
   async applyVoucher(code, orderTotal) {

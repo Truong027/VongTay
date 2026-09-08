@@ -166,7 +166,13 @@ function MainShop({ currentUser, setCurrentUser }) {
     setIsCustomizerOpen(true);
   };
 
+  // Chỉ tài khoản có quyền admin mới được mở trang quản trị
   if (isAdminView) {
+    if (currentUser?.role !== 'admin') {
+      setIsAdminView(false);
+      return null;
+    }
+
     return (
       <>
         <AdminDashboard
@@ -204,7 +210,11 @@ function MainShop({ currentUser, setCurrentUser }) {
           if (targetState === false) {
             setIsAdminView(false);
           } else {
-            setIsAdminView(true);
+            if (currentUser?.role === 'admin') {
+              setIsAdminView(true);
+            } else {
+              setIsAuthOpen(true);
+            }
           }
         }}
         isAdminView={isAdminView}

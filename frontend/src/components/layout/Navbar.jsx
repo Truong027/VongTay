@@ -255,6 +255,16 @@ export default function Navbar({
                       <span>Tra cứu vận chuyển đơn</span>
                     </button>
 
+                    {currentUser?.role === 'admin' && (
+                      <button
+                        onClick={() => { onOpenAdmin(true); setShowUserDropdown(false); }}
+                        className="w-full text-left px-4 py-2 hover:bg-[#EDF3EF] text-[#4E6857] font-semibold flex items-center gap-2"
+                      >
+                        <LayoutDashboard className="w-4 h-4 text-[#4E6857]" />
+                        <span>Khu Vực Quản Trị Viên (Admin)</span>
+                      </button>
+                    )}
+
                     <div className="border-t border-[#F0EAE1] mt-1 pt-1">
                       <button
                         onClick={() => { onLogout(); setShowUserDropdown(false); }}
@@ -278,19 +288,21 @@ export default function Navbar({
               </button>
             )}
 
-            {/* Admin Toggle Button */}
-            <button
-              onClick={() => onOpenAdmin(!isAdminView)}
-              className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ${
-                isAdminView 
-                  ? 'bg-[#4E6857] text-white shadow-xs' 
-                  : 'bg-[#EDF3EF] text-[#4E6857] hover:bg-[#D8E6DE]'
-              }`}
-              title="Khu vực Quản Trị Hệ Thống"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{isAdminView ? 'Về Shop' : 'Quản Trị'}</span>
-            </button>
+            {/* Admin Toggle Button - ONLY VISIBLE WHEN LOGGED IN AS ADMIN */}
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => onOpenAdmin(!isAdminView)}
+                className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ${
+                  isAdminView 
+                    ? 'bg-[#4E6857] text-white shadow-xs' 
+                    : 'bg-[#EDF3EF] text-[#4E6857] hover:bg-[#D8E6DE]'
+                }`}
+                title="Khu vực Quản Trị Hệ Thống"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{isAdminView ? 'Về Shop' : 'Quản Trị'}</span>
+              </button>
+            )}
 
             {/* Shopping Cart Button */}
             <button
@@ -463,13 +475,15 @@ export default function Navbar({
             </span>
           </button>
 
-          <button
-            onClick={() => { onOpenAdmin(!isAdminView); setIsMobileMenuOpen(false); }}
-            className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#EDF3EF] text-[#4E6857] flex items-center gap-2"
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>Trang Quản Trị (Đơn hàng, Sản phẩm, Tài khoản, DB)</span>
-          </button>
+          {currentUser?.role === 'admin' && (
+            <button
+              onClick={() => { onOpenAdmin(!isAdminView); setIsMobileMenuOpen(false); }}
+              className="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#EDF3EF] text-[#4E6857] flex items-center gap-2"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Trang Quản Trị (Đơn hàng, Mã giảm giá, Sản phẩm, DB)</span>
+            </button>
+          )}
 
           <div className="pt-2 grid grid-cols-2 gap-2">
             <button

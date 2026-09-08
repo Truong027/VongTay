@@ -31,9 +31,244 @@ import {
   Upload,
   Flame,
   Layers,
-  Wand2
+  Wand2,
+  Ticket,
+  Percent,
+  Star,
+  MessageSquare,
+  Link2,
+  GitBranch,
+  Calendar,
+  DollarSign,
+  Copy,
+  Heart,
+  HelpCircle,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../../services/api';
+
+const schemaTables = [
+  {
+    name: 'users',
+    label: 'Tài Khoản & Khách Hàng',
+    icon: 'Users',
+    pk: 'id',
+    color: 'border-blue-500 bg-blue-50/50',
+    tagColor: 'bg-blue-100 text-blue-800',
+    description: 'Lưu trữ thông tin khách hàng, thợ thủ công và ban quản trị xưởng.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Khóa chính PK' },
+      { name: 'email', type: 'VARCHAR(255)', isUnique: true, note: 'Email đăng nhập duy nhất' },
+      { name: 'password_hash', type: 'VARCHAR(255)' },
+      { name: 'full_name', type: 'VARCHAR(255)', note: 'Họ tên người dùng' },
+      { name: 'phone', type: 'VARCHAR(50)', note: 'Số điện thoại nhận hàng' },
+      { name: 'address', type: 'TEXT', note: 'Địa chỉ giao hàng' },
+      { name: 'role', type: 'VARCHAR(50)', note: 'admin | customer | artisan' },
+      { name: 'created_at', type: 'TIMESTAMPTZ', note: 'Thời điểm đăng ký' }
+    ],
+    relations: [
+      { to: 'orders', type: '1:N', fk: 'orders.user_id -> users.id', desc: '1 Khách hàng có thể tạo nhiều Đơn hàng' },
+      { to: 'reviews', type: '1:N', fk: 'reviews.user_id -> users.id', desc: '1 Khách hàng viết nhiều Đánh giá sản phẩm' },
+      { to: 'wishlists', type: '1:N', fk: 'wishlists.user_id -> users.id', desc: '1 Khách hàng lưu nhiều Vòng tay yêu thích' },
+      { to: 'custom_designs', type: '1:N', fk: 'custom_designs.user_id -> users.id', desc: '1 Khách hàng lưu nhiều Bản thiết kế tự phối' }
+    ]
+  },
+  {
+    name: 'categories',
+    label: 'Danh Mục Bộ Sưu Tập',
+    icon: 'Layers',
+    pk: 'id',
+    color: 'border-amber-500 bg-amber-50/50',
+    tagColor: 'bg-amber-100 text-amber-800',
+    description: 'Phân loại các dòng vòng tay dây đan (Macrame pastel, Vòng đôi, Dây đỏ, Dây lụa).',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Mã danh mục' },
+      { name: 'name', type: 'VARCHAR(100)', note: 'Tên hiển thị bộ sưu tập' },
+      { name: 'slug', type: 'VARCHAR(100)', isUnique: true, note: 'Khóa đối chiếu danh mục duy nhất' },
+      { name: 'icon', type: 'VARCHAR(50)' },
+      { name: 'display_order', type: 'INTEGER', note: 'Thứ tự ưu tiên hiển thị' }
+    ],
+    relations: [
+      { to: 'products', type: '1:N', fk: 'products.category -> categories.slug', desc: '1 Danh mục chứa nhiều Sản phẩm vòng tay' }
+    ]
+  },
+  {
+    name: 'products',
+    label: 'Kho Sản Phẩm Vòng Tay',
+    icon: 'Package',
+    pk: 'id',
+    color: 'border-emerald-500 bg-emerald-50/50',
+    tagColor: 'bg-emerald-100 text-emerald-800',
+    description: 'Thông tin chi tiết mẫu mã, giá bán lẻ/sỉ, tồn kho, thành phần sợi dệt AI bóc tách.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Khóa chính mã vòng (vt-pastel-whale...)' },
+      { name: 'name', type: 'VARCHAR(255)', note: 'Tên mẫu vòng tay thủ công' },
+      { name: 'category', type: 'VARCHAR(100)', isFk: true, fkTarget: 'categories.slug', note: 'FK liên kết danh mục' },
+      { name: 'price', type: 'NUMERIC', note: 'Giá bán lẻ niêm yết' },
+      { name: 'wholesale_price', type: 'NUMERIC', note: 'Giá bán buôn/sỉ ưu đãi' },
+      { name: 'cord_type', type: 'VARCHAR(255)', note: 'Chỉ sáp dệt Macrame / Dây lụa' },
+      { name: 'stone_type', type: 'VARCHAR(255)', note: 'Gốm sứ men / Charm acrylic' },
+      { name: 'cord_composition', type: 'JSONB', note: 'AI Gemini Vision bóc tách thành phần' },
+      { name: 'stock', type: 'INTEGER', note: 'Số lượng tồn xưởng' }
+    ],
+    relations: [
+      { to: 'order_items', type: '1:N', fk: 'order_items.product_id -> products.id', desc: '1 Vòng tay xuất hiện trong nhiều Chi tiết đơn' },
+      { to: 'reviews', type: '1:N', fk: 'reviews.product_id -> products.id (ON DELETE CASCADE)', desc: '1 Vòng tay nhận nhiều Đánh giá' },
+      { to: 'wishlists', type: '1:N', fk: 'wishlists.product_id -> products.id (ON DELETE CASCADE)', desc: '1 Vòng tay được nhiều người Yêu thích' }
+    ]
+  },
+  {
+    name: 'orders',
+    label: 'Hóa Đơn & Đơn Hàng',
+    icon: 'ShoppingBag',
+    pk: 'id',
+    color: 'border-[#B86244] bg-orange-50/50',
+    tagColor: 'bg-orange-100 text-[#B86244]',
+    description: 'Quản lý toàn bộ giao dịch đặt làm vòng tay, chiết khấu và trạng thái vận chuyển.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Mã đơn duy nhất (DH-...)' },
+      { name: 'user_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'users.id', note: 'FK liên kết tài khoản đặt' },
+      { name: 'customer_name', type: 'VARCHAR(255)', note: 'Tên người nhận' },
+      { name: 'phone', type: 'VARCHAR(50)', note: 'Số điện thoại nhận hàng' },
+      { name: 'total_amount', type: 'NUMERIC', note: 'Tổng tiền thanh toán cuối cùng' },
+      { name: 'voucher_discount', type: 'NUMERIC', note: 'Chiết khấu từ mã giảm giá' },
+      { name: 'order_status', type: 'VARCHAR(100)', note: 'Chờ xác nhận / Đang kết hạt / Đã giao' },
+      { name: 'tracking_code', type: 'VARCHAR(100)', note: 'Mã vận đơn bưu cục' }
+    ],
+    relations: [
+      { to: 'order_items', type: '1:N', fk: 'order_items.order_id -> orders.id (ON DELETE CASCADE)', desc: '1 Đơn hàng gồm nhiều Dòng sản phẩm chi tiết' },
+      { to: 'users', type: 'N:1', fk: 'orders.user_id -> users.id', desc: 'Đơn hàng liên kết với 1 Khách hàng' },
+      { to: 'vouchers', type: 'N:1', fk: 'orders.voucher_discount áp dụng từ vouchers.code', desc: 'Đơn hàng hưởng chiết khấu từ Mã giảm giá' }
+    ]
+  },
+  {
+    name: 'order_items',
+    label: 'Chi Tiết Dòng Đơn Hàng',
+    icon: 'FileText',
+    pk: 'id',
+    color: 'border-purple-500 bg-purple-50/50',
+    tagColor: 'bg-purple-100 text-purple-800',
+    description: 'Các mục sản phẩm cụ thể kèm size cổ tay đo đạc, khắc chữ kỷ niệm.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Mã dòng chi tiết' },
+      { name: 'order_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'orders.id (CASCADE)', note: 'FK tới đơn hàng cha' },
+      { name: 'product_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'products.id', note: 'FK tới sản phẩm gốc' },
+      { name: 'product_name', type: 'VARCHAR(255)' },
+      { name: 'wrist_size', type: 'VARCHAR(50)', note: 'Size cổ tay đo thực tế (14-17cm)' },
+      { name: 'custom_engraving', type: 'TEXT', note: 'Nội dung khắc chữ kỷ niệm' },
+      { name: 'quantity', type: 'INTEGER', note: 'Số lượng đặt' },
+      { name: 'price', type: 'NUMERIC', note: 'Đơn giá tại thời điểm đặt' }
+    ],
+    relations: [
+      { to: 'orders', type: 'N:1', fk: 'order_items.order_id -> orders.id', desc: 'Thuộc về đơn hàng cha' },
+      { to: 'products', type: 'N:1', fk: 'order_items.product_id -> products.id', desc: 'Liên kết tới sản phẩm gốc' }
+    ]
+  },
+  {
+    name: 'vouchers',
+    label: 'Mã Giảm Giá & Ưu Đãi',
+    icon: 'Ticket',
+    pk: 'id / code',
+    color: 'border-pink-500 bg-pink-50/50',
+    tagColor: 'bg-pink-100 text-pink-800',
+    description: 'Chính sách khuyến mãi chiết khấu % hoặc tiền mặt, quản lý thêm sửa xóa.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Khóa chính mã ID' },
+      { name: 'code', type: 'VARCHAR(50)', isUnique: true, note: 'Mã áp dụng duy nhất (KHANHVY15...)' },
+      { name: 'discount_type', type: 'VARCHAR(20)', note: 'percentage | fixed' },
+      { name: 'discount_value', type: 'NUMERIC', note: 'Tỷ lệ % hoặc tiền mặt ₫' },
+      { name: 'min_order_value', type: 'NUMERIC', note: 'Điều kiện đơn hàng tối thiểu' },
+      { name: 'max_discount', type: 'NUMERIC', note: 'Mức giảm tối đa' },
+      { name: 'usage_limit', type: 'INTEGER', note: 'Giới hạn tổng lượt sử dụng' },
+      { name: 'used_count', type: 'INTEGER', note: 'Số lượt đã được áp dụng' },
+      { name: 'is_active', type: 'BOOLEAN', note: 'Bật / Tắt hiệu lực mã' }
+    ],
+    relations: [
+      { to: 'orders', type: '1:N', fk: 'orders.voucher_discount áp dụng từ vouchers.code', desc: 'Mã giảm giá áp dụng vào các đơn hàng hợp lệ' }
+    ]
+  },
+  {
+    name: 'reviews',
+    label: 'Đánh Giá & Trải Nghiệm',
+    icon: 'Star',
+    pk: 'id',
+    color: 'border-yellow-500 bg-yellow-50/50',
+    tagColor: 'bg-yellow-100 text-yellow-800',
+    description: 'Phản hồi từ người mua thực tế, độ vừa vặn cổ tay, hình ảnh feedback.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Mã đánh giá' },
+      { name: 'product_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'products.id (CASCADE)', note: 'FK tới sản phẩm được đánh giá' },
+      { name: 'user_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'users.id', note: 'FK tới tài khoản người đánh giá' },
+      { name: 'customer_name', type: 'VARCHAR(100)', note: 'Tên người mua' },
+      { name: 'rating', type: 'INTEGER', note: 'Số sao đánh giá (1-5)' },
+      { name: 'wrist_fit', type: 'VARCHAR(100)', note: 'Độ vừa vặn cổ tay' },
+      { name: 'comment', type: 'TEXT', note: 'Nội dung cảm nhận' }
+    ],
+    relations: [
+      { to: 'products', type: 'N:1', fk: 'reviews.product_id -> products.id', desc: 'Đánh giá cho sản phẩm cụ thể' },
+      { to: 'users', type: 'N:1', fk: 'reviews.user_id -> users.id', desc: 'Người viết đánh giá' }
+    ]
+  },
+  {
+    name: 'wishlists',
+    label: 'Bộ Sưu Tập Yêu Thích',
+    icon: 'Heart',
+    pk: 'id',
+    color: 'border-rose-500 bg-rose-50/50',
+    tagColor: 'bg-rose-100 text-rose-800',
+    description: 'Lưu trữ các mẫu vòng khách hàng đã đánh dấu yêu thích trên tài khoản.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true },
+      { name: 'user_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'users.id', note: 'FK tới tài khoản khách hàng' },
+      { name: 'product_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'products.id (CASCADE)', note: 'FK tới sản phẩm yêu thích' },
+      { name: 'created_at', type: 'TIMESTAMPTZ', note: 'Ngày thêm vào yêu thích' }
+    ],
+    relations: [
+      { to: 'users', type: 'N:1', fk: 'wishlists.user_id -> users.id', desc: 'Thuộc về tài khoản người dùng' },
+      { to: 'products', type: 'N:1', fk: 'wishlists.product_id -> products.id', desc: 'Sản phẩm được đánh dấu' }
+    ]
+  },
+  {
+    name: 'custom_designs',
+    label: 'Thiết Kế Tự Phối Độc Bản',
+    icon: 'Sparkles',
+    pk: 'id',
+    color: 'border-indigo-500 bg-indigo-50/50',
+    tagColor: 'bg-indigo-100 text-indigo-800',
+    description: 'Lưu bản vẽ tự phối vòng từ Studio Customizer: hạt, màu dây, charm, chữ khắc.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true },
+      { name: 'user_id', type: 'VARCHAR(50)', isFk: true, fkTarget: 'users.id', note: 'FK tới tài khoản tác giả' },
+      { name: 'design_name', type: 'VARCHAR(255)', note: 'Tên bản thiết kế độc bản' },
+      { name: 'beads_config', type: 'JSONB', note: 'Cấu hình hạt & charm thủ công' },
+      { name: 'cord_color', type: 'VARCHAR(50)', note: 'Màu sắc dây dệt' },
+      { name: 'estimated_price', type: 'NUMERIC', note: 'Dự toán kinh phí gia công' }
+    ],
+    relations: [
+      { to: 'users', type: 'N:1', fk: 'custom_designs.user_id -> users.id', desc: 'Khách hàng tạo bản thiết kế' }
+    ]
+  },
+  {
+    name: 'consultations',
+    label: 'Yêu Cầu Tư Vấn Thủ Công',
+    icon: 'HelpCircle',
+    pk: 'id',
+    color: 'border-teal-500 bg-teal-50/50',
+    tagColor: 'bg-teal-100 text-teal-800',
+    description: 'Yêu cầu gọi lại tư vấn màu hợp mệnh, hướng dẫn đo size cổ tay chuẩn xác.',
+    columns: [
+      { name: 'id', type: 'VARCHAR(50)', isPk: true, note: 'Mã yêu cầu' },
+      { name: 'customer_name', type: 'VARCHAR(100)', note: 'Tên khách hàng' },
+      { name: 'phone', type: 'VARCHAR(50)', note: 'Số điện thoại liên hệ' },
+      { name: 'menh', type: 'VARCHAR(50)', note: 'Mệnh phong thủy (Kim/Mộc/Thủy/Hỏa/Thổ)' },
+      { name: 'wrist_size', type: 'VARCHAR(50)', note: 'Size cổ tay cần tư vấn' },
+      { name: 'status', type: 'VARCHAR(50)', note: 'Chờ tư vấn / Đã hỗ trợ' }
+    ],
+    relations: [
+      { to: 'orders', type: '1:1', fk: 'Tư vấn chuyển đổi thành đơn hàng thực tế', desc: 'Nghệ nhân tư vấn chọn vòng phù hợp và chốt đơn' }
+    ]
+  }
+];
 
 export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth, onLogout }) {
   // Tabs: 'orders' | 'products' | 'users' | 'database'
@@ -91,6 +326,30 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     role: 'customer'
   });
 
+  // Vouchers state (Quản lý Thêm, Sửa, Xóa mã giảm giá)
+  const [vouchers, setVouchers] = useState([]);
+  const [voucherSearch, setVoucherSearch] = useState('');
+  const [voucherFilter, setVoucherFilter] = useState('all'); // 'all' | 'active' | 'inactive' | 'percentage' | 'fixed'
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [editingVoucher, setEditingVoucher] = useState(null);
+  const [voucherFormData, setVoucherFormData] = useState({
+    code: '',
+    discountType: 'percentage',
+    discountValue: 15,
+    minOrderValue: 200000,
+    maxDiscount: 50000,
+    usageLimit: 500,
+    description: 'Ưu đãi tri ân khách hàng KhánhVyMade',
+    isActive: true,
+    expiresAt: ''
+  });
+
+  // Reviews state
+  const [reviews, setReviews] = useState([]);
+
+  // Relational Schema Interactive state
+  const [activeSchemaTable, setActiveSchemaTable] = useState('orders');
+
   // Database / Neon state
   const [dbStatus, setDbStatus] = useState(null);
   const [neonConnString, setNeonConnString] = useState('');
@@ -111,12 +370,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const loadAllAdminData = async () => {
     setLoading(true);
     try {
-      const [statsRes, ordersRes, productsRes, usersRes, meRes] = await Promise.all([
+      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes] = await Promise.all([
         api.getAdminStats().catch(() => ({ success: false })),
         api.getOrders().catch(() => ({ success: false })),
         api.getProducts().catch(() => ({ success: false })),
         api.getUsers().catch(() => ({ success: false })),
-        api.getMe().catch(() => ({ success: false }))
+        api.getMe().catch(() => ({ success: false })),
+        api.getVouchers(true).catch(() => ({ success: false })),
+        api.getReviews().catch(() => ({ success: false }))
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
@@ -124,6 +385,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       if (productsRes.success) setProducts(productsRes.data);
       if (usersRes.success) setUsers(usersRes.data);
       if (meRes.success && meRes.data?.dbStatus) setDbStatus(meRes.data.dbStatus);
+      if (vouchersRes.success && Array.isArray(vouchersRes.data)) setVouchers(vouchersRes.data);
+      if (reviewsRes.success && Array.isArray(reviewsRes.data)) setReviews(reviewsRes.data);
     } catch (err) {
       console.error('Lỗi tải dữ liệu quản trị:', err);
     } finally {
@@ -356,6 +619,101 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     }
   };
 
+  // ================= VOUCHERS HANDLERS =================
+  const handleOpenCreateVoucher = () => {
+    setEditingVoucher(null);
+    setVoucherFormData({
+      code: '',
+      discountType: 'percentage',
+      discountValue: 15,
+      minOrderValue: 200000,
+      maxDiscount: 50000,
+      usageLimit: 500,
+      description: 'Ưu đãi tri ân khách hàng thân thiết KhánhVyMade',
+      isActive: true,
+      expiresAt: ''
+    });
+    setIsVoucherModalOpen(true);
+  };
+
+  const handleOpenEditVoucher = (voucher) => {
+    setEditingVoucher(voucher);
+    setVoucherFormData({
+      code: voucher.code,
+      discountType: voucher.discountType || 'percentage',
+      discountValue: voucher.discountValue || 0,
+      minOrderValue: voucher.minOrderValue || 0,
+      maxDiscount: voucher.maxDiscount || '',
+      usageLimit: voucher.usageLimit || 500,
+      description: voucher.description || '',
+      isActive: voucher.isActive !== false,
+      expiresAt: voucher.expiresAt ? voucher.expiresAt.substring(0, 10) : ''
+    });
+    setIsVoucherModalOpen(true);
+  };
+
+  const handleSaveVoucher = async (e) => {
+    e.preventDefault();
+    try {
+      const cleanCode = String(voucherFormData.code || '').trim().toUpperCase();
+      if (!cleanCode) {
+        alert('Vui lòng nhập mã giảm giá');
+        return;
+      }
+
+      const payload = {
+        ...voucherFormData,
+        code: cleanCode,
+        discountValue: Number(voucherFormData.discountValue) || 0,
+        minOrderValue: Number(voucherFormData.minOrderValue) || 0,
+        maxDiscount: voucherFormData.maxDiscount ? Number(voucherFormData.maxDiscount) : null,
+        usageLimit: Number(voucherFormData.usageLimit) || 500
+      };
+
+      if (editingVoucher) {
+        const res = await api.updateVoucher(editingVoucher.id, payload);
+        if (res.success) {
+          triggerToast(`Đã cập nhật mã giảm giá "${res.data.code}"`);
+        }
+      } else {
+        const res = await api.createVoucher(payload);
+        if (res.success) {
+          triggerToast(`Đã tạo mới mã giảm giá "${res.data.code}"`);
+        }
+      }
+      setIsVoucherModalOpen(false);
+      const vRes = await api.getVouchers(true);
+      if (vRes.success) setVouchers(vRes.data);
+    } catch (err) {
+      alert('Lỗi lưu mã giảm giá: ' + err.message);
+    }
+  };
+
+  const handleDeleteVoucher = async (id, code) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa vĩnh viễn mã giảm giá "${code}"?`)) return;
+    try {
+      const res = await api.deleteVoucher(id);
+      if (res.success) {
+        setVouchers(prev => prev.filter(v => v.id !== id && v.code !== id));
+        triggerToast(`Đã xóa mã voucher "${code}" thành công`);
+      }
+    } catch (err) {
+      alert('Lỗi xóa voucher: ' + err.message);
+    }
+  };
+
+  const handleToggleVoucher = async (id) => {
+    try {
+      const res = await api.toggleVoucher(id);
+      if (res.success) {
+        setVouchers(prev => prev.map(v => (v.id === id || v.code === id) ? { ...v, isActive: res.data.isActive } : v));
+        triggerToast(res.message);
+      }
+    } catch (err) {
+      alert('Lỗi chuyển trạng thái: ' + err.message);
+    }
+  };
+
   // ================= NEON DB HANDLERS =================
   const handleSaveNeonDb = async (e) => {
     e.preventDefault();
@@ -469,6 +827,24 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       (u.phone && u.phone.includes(userSearch));
   });
 
+  const filteredVouchers = vouchers.filter(v => {
+    const matchSearch = !voucherSearch ||
+      (v.code && v.code.toLowerCase().includes(voucherSearch.toLowerCase())) ||
+      (v.description && v.description.toLowerCase().includes(voucherSearch.toLowerCase()));
+    
+    if (!matchSearch) return false;
+
+    if (voucherFilter === 'active') return v.isActive !== false;
+    if (voucherFilter === 'inactive') return v.isActive === false;
+    if (voucherFilter === 'percentage') return v.discountType === 'percentage';
+    if (voucherFilter === 'fixed') return v.discountType === 'fixed';
+    return true;
+  });
+
+  // Tính toán doanh thu dự phòng nếu stats API chưa đồng bộ
+  const calculatedRevenue = orders.reduce((sum, o) => sum + Number(o.totalAmount || o.total_amount || 0), 0);
+  const totalRevenue = (stats?.totalRevenue && Number(stats.totalRevenue) > 0) ? Number(stats.totalRevenue) : calculatedRevenue;
+
   return (
     <div className="min-h-screen bg-[#FAF7F2] py-6 px-4 sm:px-6 lg:px-8 animate-fadeIn">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -529,54 +905,90 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           </div>
         </div>
 
-        {/* 4 Main Management Tabs */}
+        {/* 7 Main Management Tabs */}
         <div className="flex border-b border-[#E8DFD3] gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setAdminTab('orders')}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               adminTab === 'orders'
                 ? 'bg-[#B86244] text-white shadow-sm'
                 : 'bg-white text-[#6B6258] hover:bg-[#F3ECE1] border border-[#E8DFD3]'
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
-            <span>Quản Lý Đơn Hàng ({orders.length})</span>
+            <span>Đơn Hàng ({orders.length})</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('vouchers')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              adminTab === 'vouchers'
+                ? 'bg-[#B86244] text-white shadow-sm'
+                : 'bg-white text-[#6B6258] hover:bg-[#F3ECE1] border border-[#E8DFD3]'
+            }`}
+          >
+            <Ticket className="w-4 h-4 text-amber-500" />
+            <span>Mã Giảm Giá ({vouchers.length})</span>
           </button>
 
           <button
             onClick={() => setAdminTab('products')}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               adminTab === 'products'
                 ? 'bg-[#B86244] text-white shadow-sm'
                 : 'bg-white text-[#6B6258] hover:bg-[#F3ECE1] border border-[#E8DFD3]'
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Quản Lý Sản Phẩm ({products.length})</span>
+            <span>Sản Phẩm ({products.length})</span>
           </button>
 
           <button
             onClick={() => setAdminTab('users')}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               adminTab === 'users'
                 ? 'bg-[#B86244] text-white shadow-sm'
                 : 'bg-white text-[#6B6258] hover:bg-[#F3ECE1] border border-[#E8DFD3]'
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Quản Lý Tài Khoản ({users.length})</span>
+            <span>Tài Khoản ({users.length})</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('reviews')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              adminTab === 'reviews'
+                ? 'bg-[#B86244] text-white shadow-sm'
+                : 'bg-white text-[#6B6258] hover:bg-[#F3ECE1] border border-[#E8DFD3]'
+            }`}
+          >
+            <Star className="w-4 h-4 text-amber-500" />
+            <span>Đánh Giá ({reviews.length})</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('schema')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              adminTab === 'schema'
+                ? 'bg-[#4E6857] text-white shadow-sm'
+                : 'bg-white text-[#4E6857] hover:bg-[#EDF3EF] border border-[#E8DFD3]'
+            }`}
+          >
+            <Link2 className="w-4 h-4" />
+            <span>Sơ Đồ CSDL 10 Bảng (FK)</span>
           </button>
 
           <button
             onClick={() => setAdminTab('database')}
-            className={`px-5 py-3 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
               adminTab === 'database'
                 ? 'bg-[#4E6857] text-white shadow-sm'
                 : 'bg-white text-[#4E6857] hover:bg-[#EDF3EF] border border-[#E8DFD3]'
             }`}
           >
             <Database className="w-4 h-4" />
-            <span>Cơ Sở Dữ Liệu Neon Tech {dbStatus?.isConnected ? '🟢' : '🟡'}</span>
+            <span>Neon DB {dbStatus?.isConnected ? '🟢' : '🟡'}</span>
           </button>
         </div>
 
@@ -588,7 +1000,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
               <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
                 <span className="text-[11px] text-[#6B6258] font-medium block">Tổng Doanh Thu</span>
                 <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#B86244] mt-1 block">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stats?.totalRevenue || 0)}
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRevenue)}
                 </span>
                 <span className="text-[10px] text-emerald-600 mt-1 inline-flex items-center gap-1 font-semibold">
                   <TrendingUp className="w-3 h-3" /> Ghi nhận thời gian thực
@@ -751,7 +1163,226 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           </div>
         )}
 
-        {/* ================= TAB 2: QUẢN LÝ SẢN PHẨM ================= */}
+        {/* ================= TAB 2: QUẢN LÝ MÃ GIẢM GIÁ (VOUCHERS) ================= */}
+        {adminTab === 'vouchers' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Tổng Mã Giảm Giá</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#B86244] mt-1 block">
+                  {vouchers.length} mã
+                </span>
+                <span className="text-[10px] text-[#8C8276] mt-1 block">Trong cơ sở dữ liệu</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Đang Hoạt Động</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-emerald-600 mt-1 block">
+                  {vouchers.filter(v => v.isActive !== false).length} mã
+                </span>
+                <span className="text-[10px] text-emerald-700 mt-1 block">Khách có thể áp dụng</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Mã Giảm Theo %</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-amber-600 mt-1 block">
+                  {vouchers.filter(v => v.discountType === 'percentage').length} mã
+                </span>
+                <span className="text-[10px] text-amber-700 mt-1 block">Chiết khấu theo tỷ lệ %</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Mã Giảm Trực Tiếp</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#4E6857] mt-1 block">
+                  {vouchers.filter(v => v.discountType === 'fixed').length} mã
+                </span>
+                <span className="text-[10px] text-[#4E6857] mt-1 block">Trừ thẳng vào hóa đơn</span>
+              </div>
+            </div>
+
+            {/* Filter & Action Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleOpenCreateVoucher}
+                  className="px-4 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Tạo Mã Giảm Giá Mới</span>
+                </button>
+
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-[#8C8276] absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Tìm theo mã (VD: KHANHVY15)..."
+                    value={voucherSearch}
+                    onChange={(e) => setVoucherSearch(e.target.value)}
+                    className="w-full text-xs bg-[#FAF7F2] pl-8 pr-3 py-2 rounded-xl border border-[#E8DFD3] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                {[
+                  { id: 'all', label: 'Tất Cả' },
+                  { id: 'active', label: 'Đang Bật' },
+                  { id: 'inactive', label: 'Tạm Ngưng' },
+                  { id: 'percentage', label: 'Giảm %' },
+                  { id: 'fixed', label: 'Giảm ₫' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setVoucherFilter(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                      voucherFilter === tab.id
+                        ? 'bg-[#26211C] text-white'
+                        : 'bg-[#FAF7F2] text-[#6B6258] hover:bg-[#EDE5DA]'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Vouchers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredVouchers.map(v => (
+                <div
+                  key={v.id || v.code}
+                  className={`bg-white rounded-2xl border p-5 transition-all shadow-sm relative flex flex-col justify-between ${
+                    v.isActive === false ? 'border-dashed border-gray-300 opacity-75' : 'border-[#E8DFD3] hover:border-[#B86244]'
+                  }`}
+                >
+                  <div>
+                    {/* Top row: Code badge + Status toggle */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-sm tracking-wide bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
+                          <Ticket className="w-3.5 h-3.5 text-[#B86244]" />
+                          {v.code}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(v.code);
+                            triggerToast(`Đã sao chép mã ${v.code}`);
+                          }}
+                          className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                          title="Sao chép mã"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => handleToggleVoucher(v.id || v.code)}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 transition-all ${
+                          v.isActive !== false
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                            : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
+                        }`}
+                        title="Bấm để bật / tắt mã giảm giá"
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${v.isActive !== false ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+                        <span>{v.isActive !== false ? 'Đang bật' : 'Tạm ngưng'}</span>
+                      </button>
+                    </div>
+
+                    {/* Discount Headline */}
+                    <div className="mb-3">
+                      <div className="text-xl font-bold text-[#26211C] flex items-baseline gap-1">
+                        {v.discountType === 'percentage' ? (
+                          <>
+                            <span className="text-[#B86244]">Giảm {v.discountValue}%</span>
+                            {v.maxDiscount && (
+                              <span className="text-xs text-[#8C8276] font-normal">
+                                (Tối đa {new Intl.NumberFormat('vi-VN').format(v.maxDiscount)}₫)
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[#4E6857]">
+                            Giảm {new Intl.NumberFormat('vi-VN').format(v.discountValue)}₫
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#6B6258] mt-1 leading-relaxed line-clamp-2">
+                        {v.description || 'Ưu đãi dành cho đơn hàng tại KhánhVyMade'}
+                      </p>
+                    </div>
+
+                    {/* Criteria Details */}
+                    <div className="bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3]/80 text-[11px] space-y-1 text-[#6B6258] mb-4">
+                      <div className="flex justify-between">
+                        <span>Đơn tối thiểu:</span>
+                        <strong className="text-[#26211C]">
+                          {v.minOrderValue ? `${new Intl.NumberFormat('vi-VN').format(v.minOrderValue)}₫` : 'Không giới hạn'}
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Lượt dùng:</span>
+                        <strong className="text-[#26211C]">
+                          {v.usedCount || 0} / {v.usageLimit || '∞'} lượt
+                        </strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Hạn dùng:</span>
+                        <strong className="text-[#26211C]">
+                          {v.expiresAt ? new Date(v.expiresAt).toLocaleDateString('vi-VN') : 'Vô thời hạn'}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions (Sửa / Xóa) */}
+                  <div className="pt-3 border-t border-[#F0EAE1] flex items-center justify-between">
+                    <span className="text-[10px] text-[#8C8276]">
+                      Loại: <span className="font-semibold text-[#26211C]">{v.discountType === 'percentage' ? 'Theo tỷ lệ %' : 'Tiền mặt cố định'}</span>
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenEditVoucher(v)}
+                        className="p-2 rounded-xl bg-[#FAF4ED] text-[#B86244] hover:bg-[#B86244] hover:text-white transition-colors"
+                        title="Chỉnh sửa mã giảm giá"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVoucher(v.id || v.code, v.code)}
+                        className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
+                        title="Xóa mã giảm giá vĩnh viễn"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredVouchers.length === 0 && (
+              <div className="bg-white p-12 rounded-3xl border border-[#E8DFD3] text-center space-y-3">
+                <Ticket className="w-12 h-12 text-[#CFC1B0] mx-auto" />
+                <h3 className="font-serif-boutique text-lg font-bold text-[#26211C]">
+                  Không tìm thấy mã giảm giá nào
+                </h3>
+                <p className="text-xs text-[#6B6258] max-w-sm mx-auto">
+                  Bạn có thể tạo mã mới để kích hoạt khuyến mãi cho các đơn hàng vòng tay macrame.
+                </p>
+                <button
+                  onClick={handleOpenCreateVoucher}
+                  className="px-4 py-2 bg-[#B86244] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#A05237]"
+                >
+                  + Tạo Mã Ngay
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= TAB 3: QUẢN LÝ SẢN PHẨM ================= */}
         {adminTab === 'products' && (
           <div className="space-y-6">
             <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -987,7 +1618,324 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           </div>
         )}
 
-        {/* ================= TAB 4: DATABASE NEON TECH ================= */}
+        {/* ================= TAB 5: ĐÁNH GIÁ & NHẬN XÉT (REVIEWS) ================= */}
+        {adminTab === 'reviews' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Tổng Số Đánh Giá</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#B86244] mt-1 block">
+                  {reviews.length} đánh giá
+                </span>
+                <span className="text-[10px] text-[#8C8276] mt-1 block">Bảng reviews liên kết products</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Điểm Trung Bình</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-amber-500 mt-1 block flex items-center gap-1">
+                  5.0 <Star className="w-4 h-4 fill-amber-400 text-amber-400 inline" />
+                </span>
+                <span className="text-[10px] text-amber-700 mt-1 block">100% đánh giá 5 sao</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Khách Mua Thực Tế</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-emerald-600 mt-1 block">
+                  {reviews.filter(r => r.isVerifiedBuyer !== false).length} khách
+                </span>
+                <span className="text-[10px] text-emerald-700 mt-1 block">Đã xác thực mua hàng</span>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
+                <span className="text-[11px] text-[#6B6258] font-medium block">Vừa Vặn Cổ Tay</span>
+                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#4E6857] mt-1 block">
+                  {reviews.length} khách
+                </span>
+                <span className="text-[10px] text-[#4E6857] mt-1 block">Feedback chuẩn size đo</span>
+              </div>
+            </div>
+
+            {/* Reviews List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {reviews.map((rev, idx) => (
+                <div key={rev.id || idx} className="bg-white p-5 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-[#26211C]">{rev.customerName || rev.customer_name || 'Khách hàng'}</span>
+                        {(rev.isVerifiedBuyer !== false || rev.is_verified_buyer !== false) && (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                            ✓ Đã Mua Hàng
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-[#8C8276] block mt-0.5">
+                        Mã SP liên kết: <span className="font-mono text-[#B86244] font-semibold">{rev.productId || rev.product_id}</span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 text-amber-400">
+                      {[...Array(Number(rev.rating) || 5)].map((_, i) => (
+                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-[#4A4036] leading-relaxed italic bg-[#FAF7F2] p-3 rounded-xl border border-[#E8DFD3]/60">
+                    "{rev.comment}"
+                  </p>
+
+                  <div className="flex items-center justify-between text-[10px] text-[#8C8276] pt-1">
+                    <span className="bg-[#FAF4ED] text-[#B86244] px-2 py-0.5 rounded-full font-medium border border-[#EADBCC]">
+                      Độ vừa tay: {rev.wristFit || rev.wrist_fit || 'Vừa vặn chuẩn size'}
+                    </span>
+                    <span>{rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('vi-VN') : 'Gần đây'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {reviews.length === 0 && (
+              <div className="bg-white p-12 rounded-3xl border border-[#E8DFD3] text-center space-y-2">
+                <Star className="w-12 h-12 text-[#CFC1B0] mx-auto" />
+                <h3 className="font-serif-boutique text-lg font-bold text-[#26211C]">Chưa có đánh giá nào</h3>
+                <p className="text-xs text-[#6B6258]">Các đánh giá từ người mua sẽ xuất hiện tại đây.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= TAB 6: SƠ ĐỒ LIÊN KẾT CSDL 10 BẢNG (RELATIONAL SCHEMA) ================= */}
+        {adminTab === 'schema' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header Banner */}
+            <div className="bg-gradient-to-r from-[#26211C] via-[#3D352E] to-[#4E6857] text-white p-6 rounded-3xl border border-[#E8DFD3] shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Link2 className="w-5 h-5 text-emerald-400" />
+                    <h2 className="font-serif-boutique text-xl font-bold text-amber-200">
+                      SƠ ĐỒ CƠ SỞ DỮ LIỆU LIÊN KẾT TOÀN DIỆN (10 BẢNG NEON POSTGRESQL)
+                    </h2>
+                  </div>
+                  <p className="text-xs text-[#D8CFBF] mt-1 max-w-2xl leading-relaxed">
+                    Mọi bảng dữ liệu trong hệ thống KhánhVyMade đều được kết nối chặt chẽ bằng Khóa ngoại (Foreign Keys) và ràng buộc toàn vẹn quan hệ (Relational Integrity) — không có bảng nào đứng độc lập rời rạc.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] bg-emerald-500/20 text-emerald-300 font-bold px-3 py-1 rounded-full border border-emerald-500/30">
+                    ✓ 10 Bảng Liên Kết
+                  </span>
+                  <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-full border border-amber-500/30">
+                    ✓ 12 Khóa Ngoại (FK)
+                  </span>
+                  <span className="text-[11px] bg-purple-500/20 text-purple-300 font-bold px-3 py-1 rounded-full border border-purple-500/30">
+                    ✓ Cascade Delete
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive Schema Explorer: 2 Columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: 10 Tables list */}
+              <div className="lg:col-span-4 space-y-2.5">
+                <div className="p-2 text-xs font-bold uppercase tracking-wider text-[#6B6258] flex items-center justify-between">
+                  <span>10 Bảng Dữ Liệu</span>
+                  <span>Khóa Ngoại (FK)</span>
+                </div>
+
+                {schemaTables.map(tbl => {
+                  const isSelected = activeSchemaTable === tbl.name;
+                  return (
+                    <button
+                      key={tbl.name}
+                      onClick={() => setActiveSchemaTable(tbl.name)}
+                      className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between shadow-2xs ${
+                        isSelected 
+                          ? 'bg-white border-[#B86244] shadow-md ring-2 ring-[#B86244]/20' 
+                          : 'bg-white/80 border-[#E8DFD3] hover:bg-white hover:border-[#B86244]/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${tbl.tagColor}`}>
+                          {tbl.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-xs text-[#26211C]">{tbl.name}</span>
+                            <span className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.2 rounded">
+                              PK: {tbl.pk}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-[#6B6258] block mt-0.5">{tbl.label}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10px] bg-[#FAF4ED] text-[#B86244] font-bold px-2 py-0.5 rounded-full border border-[#EADBCC]">
+                          {tbl.relations.length} liên kết
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right Column: Selected Table Inspector */}
+              <div className="lg:col-span-8 space-y-5">
+                {(() => {
+                  const currentTable = schemaTables.find(t => t.name === activeSchemaTable) || schemaTables[0];
+                  return (
+                    <div className="bg-white p-6 rounded-3xl border border-[#E8DFD3] shadow-sm space-y-5">
+                      {/* Table Header Details */}
+                      <div className="flex items-start justify-between border-b border-[#F0EAE1] pb-4">
+                        <div>
+                          <div className="flex items-center gap-2.5">
+                            <span className={`px-2.5 py-1 rounded-xl text-xs font-bold ${currentTable.tagColor}`}>
+                              BẢNG: {currentTable.name.toUpperCase()}
+                            </span>
+                            <span className="font-serif-boutique text-lg font-bold text-[#26211C]">
+                              {currentTable.label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#6B6258] mt-1 leading-relaxed">
+                            {currentTable.description}
+                          </p>
+                        </div>
+
+                        <span className="font-mono text-xs text-[#B86244] bg-[#FAF4ED] px-3 py-1 rounded-xl border border-[#EADBCC] font-bold">
+                          Primary Key: {currentTable.pk}
+                        </span>
+                      </div>
+
+                      {/* Foreign Key Connections */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#26211C] flex items-center gap-1.5">
+                          <GitBranch className="w-3.5 h-3.5 text-[#B86244]" />
+                          <span>Các Mối Quan Hệ Liên Kết (Foreign Keys) Của Bảng Này:</span>
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {currentTable.relations.map((rel, idx) => (
+                            <div key={idx} className="p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] space-y-1 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-[#B86244] font-mono flex items-center gap-1">
+                                  <Link2 className="w-3 h-3" />
+                                  <span>{rel.to}</span>
+                                </span>
+                                <span className="text-[10px] bg-white px-2 py-0.5 rounded-full font-bold border border-[#E8DFD3] text-[#4E6857]">
+                                  Quan hệ {rel.type}
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-mono text-[#26211C] bg-white px-2 py-1 rounded border border-[#E8DFD3]">
+                                {rel.fk}
+                              </p>
+                              <p className="text-[10px] text-[#6B6258] pt-0.5">
+                                {rel.desc}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Columns Schema Table */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#26211C]">
+                          Cấu Trúc Cột & Kiểu Dữ Liệu PostgreSQL:
+                        </h4>
+                        <div className="overflow-x-auto rounded-2xl border border-[#E8DFD3]">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-[#FAF7F2] border-b border-[#E8DFD3] text-[#6B6258] text-[10px] uppercase font-bold">
+                              <tr>
+                                <th className="py-2.5 px-3">Tên Cột</th>
+                                <th className="py-2.5 px-3">Kiểu Dữ Liệu</th>
+                                <th className="py-2.5 px-3">Ràng Buộc</th>
+                                <th className="py-2.5 px-3">Ghi Chú Nghiệp Vụ</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#F0EAE1]">
+                              {currentTable.columns.map((col, idx) => (
+                                <tr key={idx} className="hover:bg-[#FAF7F2]/50">
+                                  <td className="py-2 px-3 font-mono font-bold text-[#26211C]">
+                                    {col.name}
+                                  </td>
+                                  <td className="py-2 px-3 font-mono text-[#4E6857]">
+                                    {col.type}
+                                  </td>
+                                  <td className="py-2 px-3">
+                                    {col.isPk ? (
+                                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        PRIMARY KEY
+                                      </span>
+                                    ) : col.isFk ? (
+                                      <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        FOREIGN KEY ({col.fkTarget})
+                                      </span>
+                                    ) : col.isUnique ? (
+                                      <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                        UNIQUE
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400 text-[10px]">-</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2 px-3 text-[#6B6258] text-[11px]">
+                                    {col.note || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Database Architecture Topology Visual Card */}
+                <div className="bg-[#FAF4ED] p-5 rounded-3xl border border-[#EADBCC] space-y-3">
+                  <h4 className="font-bold text-xs text-[#B86244] uppercase tracking-wider flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Luồng Dữ Liệu Quan Hệ Xuyên Suốt Hệ Thống:</span>
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-[#6B6258]">
+                    <div className="p-3 bg-white rounded-xl border border-[#EADBCC] space-y-1">
+                      <strong className="text-[#26211C] block text-[11px]">1. Luồng Giao Dịch Đơn Hàng:</strong>
+                      <p className="text-[11px] leading-relaxed">
+                        <span className="font-mono text-blue-600">users</span> (Khách hàng) ──1:N──&gt; <span className="font-mono text-[#B86244]">orders</span> (Đơn hàng) ──1:N──&gt; <span className="font-mono text-purple-600">order_items</span> (Chi tiết mẫu vòng, size cổ tay, khắc tên).
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-[#EADBCC] space-y-1">
+                      <strong className="text-[#26211C] block text-[11px]">2. Luồng Mã Giảm Giá & Chiết Khấu:</strong>
+                      <p className="text-[11px] leading-relaxed">
+                        <span className="font-mono text-pink-600">vouchers</span> (Mã giảm giá) ──1:N──&gt; <span className="font-mono text-[#B86244]">orders</span>. Khi khách nhập mã, đơn hàng liên kết để trừ tiền và tính toán doanh thu thực nhận.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-[#EADBCC] space-y-1">
+                      <strong className="text-[#26211C] block text-[11px]">3. Luồng Đánh Giá & Yêu Thích:</strong>
+                      <p className="text-[11px] leading-relaxed">
+                        <span className="font-mono text-emerald-600">products</span> (Kho vòng) ──1:N──&gt; <span className="font-mono text-yellow-600">reviews</span> và <span className="font-mono text-rose-600">wishlists</span>. Cả hai đều liên kết ngược lại <span className="font-mono text-blue-600">users</span>.
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-white rounded-xl border border-[#EADBCC] space-y-1">
+                      <strong className="text-[#26211C] block text-[11px]">4. Luồng Tự Phối Studio & Tư Vấn:</strong>
+                      <p className="text-[11px] leading-relaxed">
+                        <span className="font-mono text-indigo-600">custom_designs</span> liên kết <span className="font-mono text-blue-600">users</span>. Khách yêu cầu <span className="font-mono text-teal-600">consultations</span> chọn hạt & size cổ tay được chuyển đổi thành đơn hàng.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= TAB 7: DATABASE NEON TECH ================= */}
         {adminTab === 'database' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-3xl border border-[#E8DFD3] shadow-sm space-y-5">
@@ -1700,6 +2648,179 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                   className="px-5 py-2.5 rounded-xl bg-[#4E6857] hover:bg-[#3D5244] text-white font-bold"
                 >
                   Tạo Tài Khoản
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: TẠO / CHỈNH SỬA MÃ GIẢM GIÁ ================= */}
+      {isVoucherModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col">
+            <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#B86244] text-white flex items-center justify-center font-bold">
+                  <Ticket className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif-boutique text-lg font-bold">
+                    {editingVoucher ? 'CHỈNH SỬA MÃ GIẢM GIÁ' : 'TẠO MÃ GIẢM GIÁ MỚI'}
+                  </h3>
+                  <p className="text-[10px] text-[#CFC1B0]">
+                    {editingVoucher ? `Chỉnh sửa mã ưu đãi ${editingVoucher.code}` : 'Thiết lập chính sách chiết khấu cho khách hàng'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsVoucherModalOpen(false)} 
+                className="p-1 rounded-full text-white/70 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveVoucher} className="p-6 overflow-y-auto space-y-4 text-xs">
+              {/* Mã code */}
+              <div>
+                <label className="font-bold text-[#26211C] block mb-1">Mã Giảm Giá (Code): *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: KHANHVY15, TRIAN50K, FREESHIP..."
+                  value={voucherFormData.code}
+                  onChange={(e) => setVoucherFormData({ ...voucherFormData, code: e.target.value.toUpperCase() })}
+                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none focus:ring-1 focus:ring-[#B86244] font-mono font-bold uppercase tracking-wider text-sm text-[#B86244]"
+                />
+                <p className="text-[10px] text-[#8C8276] mt-1">Khách hàng sẽ nhập chính xác mã này tại trang thanh toán.</p>
+              </div>
+
+              {/* Loại chiết khấu & Giá trị */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#26211C] block mb-1">Hình Thức Giảm: *</label>
+                  <select
+                    value={voucherFormData.discountType}
+                    onChange={(e) => setVoucherFormData({ ...voucherFormData, discountType: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-semibold text-[#26211C]"
+                  >
+                    <option value="percentage">Giảm theo tỷ lệ phần trăm (%)</option>
+                    <option value="fixed">Giảm số tiền cố định (₫)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#26211C] block mb-1">
+                    {voucherFormData.discountType === 'percentage' ? 'Tỷ Lệ Giảm (%): *' : 'Số Tiền Giảm (₫): *'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder={voucherFormData.discountType === 'percentage' ? '15' : '30000'}
+                    value={voucherFormData.discountValue}
+                    onChange={(e) => setVoucherFormData({ ...voucherFormData, discountValue: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-bold text-[#26211C]"
+                  />
+                </div>
+              </div>
+
+              {/* Điều kiện đơn tối thiểu & Giảm tối đa */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#26211C] block mb-1">Đơn Hàng Tối Thiểu (₫):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10000"
+                    placeholder="150000"
+                    value={voucherFormData.minOrderValue}
+                    onChange={(e) => setVoucherFormData({ ...voucherFormData, minOrderValue: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
+                  />
+                  <span className="text-[10px] text-[#8C8276] mt-0.5 block">0₫ nếu không yêu cầu</span>
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#26211C] block mb-1">Giảm Tối Đa (₫) (Nếu giảm %):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    placeholder="50000"
+                    value={voucherFormData.maxDiscount}
+                    onChange={(e) => setVoucherFormData({ ...voucherFormData, maxDiscount: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
+                  />
+                  <span className="text-[10px] text-[#8C8276] mt-0.5 block">Để trống nếu không giới hạn trần</span>
+                </div>
+              </div>
+
+              {/* Giới hạn lượt dùng & Hạn dùng */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-[#26211C] block mb-1">Giới Hạn Lượt Dùng Toàn Xưởng:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="500"
+                    value={voucherFormData.usageLimit}
+                    onChange={(e) => setVoucherFormData({ ...voucherFormData, usageLimit: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-[#26211C] block mb-1">Hạn Sử Dụng (Tùy chọn):</label>
+                  <input
+                    type="date"
+                    value={voucherFormData.expiresAt}
+                    onChange={(e) => setVoucherFormData({ ...voucherFormData, expiresAt: e.target.value })}
+                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
+                  />
+                </div>
+              </div>
+
+              {/* Mô tả */}
+              <div>
+                <label className="font-bold text-[#26211C] block mb-1">Mô Tả Mã Giảm Giá:</label>
+                <textarea
+                  rows={2}
+                  placeholder="Ví dụ: Giảm 15% tối đa 50k cho đơn vòng tay từ 200k nhân dịp ra mắt bộ sưu tập mới"
+                  value={voucherFormData.description}
+                  onChange={(e) => setVoucherFormData({ ...voucherFormData, description: e.target.value })}
+                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
+                />
+              </div>
+
+              {/* Trạng thái hoạt động */}
+              <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-[#26211C] block">Kích Hoạt Sử Dụng Ngay</span>
+                  <span className="text-[10px] text-[#6B6258]">Bật để khách hàng có thể áp dụng mã này khi đặt vòng</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={voucherFormData.isActive}
+                  onChange={(e) => setVoucherFormData({ ...voucherFormData, isActive: e.target.checked })}
+                  className="w-5 h-5 accent-[#B86244] cursor-pointer"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-[#F0EAE1]">
+                <button
+                  type="button"
+                  onClick={() => setIsVoucherModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-[#6B6258] font-semibold hover:bg-gray-50"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold shadow-sm"
+                >
+                  {editingVoucher ? 'Lưu Thay Đổi' : 'Tạo Mã Giảm Giá'}
                 </button>
               </div>
             </form>

@@ -1,8 +1,16 @@
-import { dbGetVouchers, dbValidateAndApplyVoucher } from '../data/dbStore.js';
+import { 
+  dbGetVouchers, 
+  dbValidateAndApplyVoucher,
+  dbCreateVoucher,
+  dbUpdateVoucher,
+  dbDeleteVoucher,
+  dbToggleVoucherActive
+} from '../data/dbStore.js';
 
 export const getVouchers = async (req, res) => {
   try {
-    const vouchers = await dbGetVouchers();
+    const includeInactive = req.query.all === 'true';
+    const vouchers = await dbGetVouchers(includeInactive);
     res.json({
       success: true,
       data: vouchers
@@ -12,6 +20,89 @@ export const getVouchers = async (req, res) => {
       success: false,
       message: 'Lỗi nạp danh sách mã giảm giá',
       error: err.message
+    });
+  }
+};
+
+export const createVoucher = async (req, res) => {
+  try {
+    const { code, discountType, discountValue, minOrderValue, maxDiscount, usageLimit, description, isActive, expiresAt } = req.body;
+    
+    if (!code || !discountValue) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mã giảm giá và giá trị chiết khấu là bắt buộc'
+      });
+    }
+
+    const created = await dbCreateVoucher({
+      code,
+      discountType,
+      discountValue,
+      minOrderValue,
+      maxDiscount,
+      usageLimit,
+      description,
+      isActive,
+      expiresAt
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Tạo mã giảm giá "${created.code}" thành công`,
+      data: created
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Lỗi tạo mã giảm giá'
+    });
+  }
+};
+
+export const updateVoucher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updated = await dbUpdateVoucher(id, req.body);
+    res.json({
+      success: true,
+      message: `Cập nhật mã giảm giá "${updated.code}" thành công`,
+      data: updated
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Lỗi cập nhật mã giảm giá'
+    });
+  }
+};
+
+export const deleteVoucher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await dbDeleteVoucher(id);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Lỗi xóa mã giảm giá'
+    });
+  }
+};
+
+export const toggleVoucherActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await dbToggleVoucherActive(id);
+    res.json({
+      success: true,
+      message: `Đã ${result.isActive ? 'kích hoạt' : 'tạm ngưng'} mã giảm giá "${result.code}"`,
+      data: result
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Lỗi chuyển trạng thái mã giảm giá'
     });
   }
 };
@@ -40,3 +131,4 @@ export const applyVoucher = async (req, res) => {
     });
   }
 };
+

@@ -650,7 +650,14 @@
       "expiresAt": "2027-12-31T23:59:59.000Z"
     }
   ],
-  "wishlists": [],
+  "wishlists": [
+    {
+      "id": "w-1470",
+      "userId": "user-admin",
+      "productId": "vt-butterfly-fairy",
+      "createdAt": "2026-09-08T00:02:51.470Z"
+    }
+  ],
   "customDesigns": [],
   "consultations": [
     {

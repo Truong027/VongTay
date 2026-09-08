@@ -889,10 +889,13 @@ export const dbGetCategories = async () => {
 
 // ==================== VOUCHERS REPOSITORY ====================
 
-export const dbGetVouchers = async () => {
+export const dbGetVouchers = async (includeInactive = false) => {
   if (isNeonConnected()) {
     try {
-      const res = await query('SELECT * FROM vouchers WHERE is_active = true ORDER BY created_at DESC');
+      const sql = includeInactive 
+        ? 'SELECT * FROM vouchers ORDER BY created_at DESC'
+        : 'SELECT * FROM vouchers WHERE is_active = true ORDER BY created_at DESC';
+      const res = await query(sql);
       if (res && res.rows && res.rows.length > 0) {
         return res.rows.map(r => ({
           id: r.id,
@@ -902,27 +905,198 @@ export const dbGetVouchers = async () => {
           minOrderValue: Number(r.min_order_value || 0),
           maxDiscount: r.max_discount ? Number(r.max_discount) : null,
           usageLimit: r.usage_limit,
-          usedCount: r.used_count,
+          usedCount: Number(r.used_count || 0),
           description: r.description,
           isActive: r.is_active,
-          expiresAt: r.expires_at
+          expiresAt: r.expires_at,
+          createdAt: r.created_at
         }));
       }
     } catch (e) {
       console.warn('Lỗi đọc vouchers Neon DB:', e.message);
     }
   }
-  return (memoryData.vouchers || []).filter(v => v.isActive !== false);
+  const allVouchers = memoryData.vouchers || [];
+  return includeInactive ? allVouchers : allVouchers.filter(v => v.isActive !== false);
+};
+
+export const dbCreateVoucher = async (voucherData) => {
+  const code = String(voucherData.code || '').trim().toUpperCase();
+  if (!code) {
+    throw new Error('Mã voucher không được để trống');
+  }
+
+  const existing = await dbGetVouchers(true);
+  if (existing.some(v => v.code === code)) {
+    throw new Error(`Mã voucher "${code}" đã tồn tại trên hệ thống`);
+  }
+
+  const newVoucher = {
+    id: voucherData.id || `voucher-${Date.now()}`,
+    code,
+    discountType: voucherData.discountType === 'fixed' ? 'fixed' : 'percentage',
+    discountValue: Number(voucherData.discountValue) || 0,
+    minOrderValue: Number(voucherData.minOrderValue) || 0,
+    maxDiscount: voucherData.maxDiscount ? Number(voucherData.maxDiscount) : null,
+    usageLimit: Number(voucherData.usageLimit) || 500,
+    usedCount: 0,
+    description: voucherData.description || `Ưu đãi ${code}`,
+    isActive: voucherData.isActive !== false,
+    expiresAt: voucherData.expiresAt ? new Date(voucherData.expiresAt).toISOString() : null,
+    createdAt: new Date().toISOString()
+  };
+
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `INSERT INTO vouchers (id, code, discount_type, discount_value, min_order_value, max_discount, usage_limit, used_count, description, is_active, expires_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+         ON CONFLICT (code) DO UPDATE SET
+           discount_type = EXCLUDED.discount_type,
+           discount_value = EXCLUDED.discount_value,
+           min_order_value = EXCLUDED.min_order_value,
+           max_discount = EXCLUDED.max_discount,
+           usage_limit = EXCLUDED.usage_limit,
+           description = EXCLUDED.description,
+           is_active = EXCLUDED.is_active,
+           expires_at = EXCLUDED.expires_at`,
+        [
+          newVoucher.id,
+          newVoucher.code,
+          newVoucher.discountType,
+          newVoucher.discountValue,
+          newVoucher.minOrderValue,
+          newVoucher.maxDiscount,
+          newVoucher.usageLimit,
+          newVoucher.usedCount,
+          newVoucher.description,
+          newVoucher.isActive,
+          newVoucher.expiresAt
+        ]
+      );
+    } catch (e) {
+      console.warn('Lỗi thêm voucher vào Neon DB:', e.message);
+    }
+  }
+
+  if (!memoryData.vouchers) memoryData.vouchers = [];
+  memoryData.vouchers.unshift(newVoucher);
+  saveToDisk();
+
+  return newVoucher;
+};
+
+export const dbUpdateVoucher = async (id, updateData) => {
+  const vouchers = await dbGetVouchers(true);
+  const target = vouchers.find(v => v.id === id || v.code === id);
+  if (!target) {
+    throw new Error(`Không tìm thấy mã giảm giá có mã ID "${id}"`);
+  }
+
+  const updatedVoucher = {
+    ...target,
+    code: updateData.code ? String(updateData.code).trim().toUpperCase() : target.code,
+    discountType: updateData.discountType ? updateData.discountType : target.discountType,
+    discountValue: updateData.discountValue !== undefined ? Number(updateData.discountValue) : target.discountValue,
+    minOrderValue: updateData.minOrderValue !== undefined ? Number(updateData.minOrderValue) : target.minOrderValue,
+    maxDiscount: updateData.maxDiscount !== undefined ? (updateData.maxDiscount ? Number(updateData.maxDiscount) : null) : target.maxDiscount,
+    usageLimit: updateData.usageLimit !== undefined ? Number(updateData.usageLimit) : target.usageLimit,
+    description: updateData.description !== undefined ? updateData.description : target.description,
+    isActive: updateData.isActive !== undefined ? Boolean(updateData.isActive) : target.isActive,
+    expiresAt: updateData.expiresAt !== undefined ? (updateData.expiresAt ? new Date(updateData.expiresAt).toISOString() : null) : target.expiresAt
+  };
+
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `UPDATE vouchers 
+         SET code = $1, discount_type = $2, discount_value = $3, min_order_value = $4,
+             max_discount = $5, usage_limit = $6, description = $7, is_active = $8, expires_at = $9
+         WHERE id = $10 OR code = $10`,
+        [
+          updatedVoucher.code,
+          updatedVoucher.discountType,
+          updatedVoucher.discountValue,
+          updatedVoucher.minOrderValue,
+          updatedVoucher.maxDiscount,
+          updatedVoucher.usageLimit,
+          updatedVoucher.description,
+          updatedVoucher.isActive,
+          updatedVoucher.expiresAt,
+          target.id
+        ]
+      );
+    } catch (e) {
+      console.warn('Lỗi cập nhật voucher Neon DB:', e.message);
+    }
+  }
+
+  const memIdx = (memoryData.vouchers || []).findIndex(v => v.id === target.id || v.code === target.code);
+  if (memIdx !== -1) {
+    memoryData.vouchers[memIdx] = updatedVoucher;
+  } else {
+    memoryData.vouchers.push(updatedVoucher);
+  }
+  saveToDisk();
+
+  return updatedVoucher;
+};
+
+export const dbDeleteVoucher = async (id) => {
+  if (isNeonConnected()) {
+    try {
+      await query('DELETE FROM vouchers WHERE id = $1 OR code = $1', [id]);
+    } catch (e) {
+      console.warn('Lỗi xóa voucher Neon DB:', e.message);
+    }
+  }
+
+  if (memoryData.vouchers) {
+    memoryData.vouchers = memoryData.vouchers.filter(v => v.id !== id && v.code !== id);
+    saveToDisk();
+  }
+
+  return { success: true, message: `Đã xóa mã voucher ${id} thành công` };
+};
+
+export const dbToggleVoucherActive = async (id) => {
+  const vouchers = await dbGetVouchers(true);
+  const target = vouchers.find(v => v.id === id || v.code === id);
+  if (!target) {
+    throw new Error(`Không tìm thấy mã giảm giá ID "${id}"`);
+  }
+
+  const newStatus = !target.isActive;
+
+  if (isNeonConnected()) {
+    try {
+      await query('UPDATE vouchers SET is_active = $1 WHERE id = $2 OR code = $2', [newStatus, target.id]);
+    } catch (e) {
+      console.warn('Lỗi đổi trạng thái voucher Neon DB:', e.message);
+    }
+  }
+
+  const memIdx = (memoryData.vouchers || []).findIndex(v => v.id === target.id || v.code === target.code);
+  if (memIdx !== -1) {
+    memoryData.vouchers[memIdx].isActive = newStatus;
+  }
+  saveToDisk();
+
+  return { success: true, id: target.id, code: target.code, isActive: newStatus };
 };
 
 export const dbValidateAndApplyVoucher = async (code, orderTotal) => {
   if (!code) return { success: false, message: 'Vui lòng cung cấp mã voucher' };
   const cleanCode = String(code).trim().toUpperCase();
-  const vouchers = await dbGetVouchers();
+  const vouchers = await dbGetVouchers(false);
   const voucher = vouchers.find(v => v.code === cleanCode);
 
   if (!voucher) {
-    return { success: false, message: `Mã giảm giá "${cleanCode}" không hợp lệ hoặc đã hết hạn` };
+    return { success: false, message: `Mã giảm giá "${cleanCode}" không hợp lệ hoặc đã bị tạm ngưng` };
+  }
+
+  if (voucher.expiresAt && new Date(voucher.expiresAt) < new Date()) {
+    return { success: false, message: `Mã giảm giá "${cleanCode}" đã hết hạn sử dụng` };
   }
 
   if (orderTotal < (voucher.minOrderValue || 0)) {
