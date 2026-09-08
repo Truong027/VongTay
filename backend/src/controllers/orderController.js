@@ -66,11 +66,17 @@ export const createOrder = async (req, res) => {
   try {
     const { customerName, phone, address, items, totalAmount, shippingFee, paymentMethod, note, userId } = req.body;
 
-    if (!customerName || !phone || !address || !items || !items.length) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vui lòng cung cấp đầy đủ thông tin: họ tên, số điện thoại, địa chỉ và sản phẩm' 
-      });
+    if (!customerName || !customerName.trim()) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp họ và tên người nhận hàng' });
+    }
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp số điện thoại nhận hàng' });
+    }
+    if (!address || !address.trim()) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp địa chỉ giao hàng' });
+    }
+    if (!items || !items.length) {
+      return res.status(400).json({ success: false, message: 'Đơn hàng chưa có sản phẩm nào. Vui lòng chọn sản phẩm vào giỏ hàng.' });
     }
 
     const newId = `DH-${Math.floor(1000 + Math.random() * 9000)}`;

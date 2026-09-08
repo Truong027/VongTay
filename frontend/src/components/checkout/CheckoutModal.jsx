@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -21,8 +21,12 @@ import { api } from '../../services/api';
 export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSuccess, currentUser }) {
   if (!isOpen) return null;
 
-  const { clearCart } = useCart();
-  const cartItems = checkoutData?.items || [];
+  const { clearCart, cartItems: contextCartItems } = useCart();
+  const cartItems = (checkoutData?.items && checkoutData.items.length > 0)
+    ? checkoutData.items
+    : (contextCartItems && contextCartItems.length > 0)
+      ? contextCartItems
+      : [];
 
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
   const [phone, setPhone] = useState(currentUser?.phone || '');
@@ -33,6 +37,19 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
   const [errorMsg, setErrorMsg] = useState('');
   const [completedOrder, setCompletedOrder] = useState(null);
   const [copiedField, setCopiedField] = useState('');
+
+  // Auto-sync profile info from currentUser whenever checkout opens or user changes
+  useEffect(() => {
+    if (isOpen) {
+      setErrorMsg('');
+      setCompletedOrder(null);
+      if (currentUser) {
+        if (currentUser.fullName) setFullName(currentUser.fullName);
+        if (currentUser.phone) setPhone(currentUser.phone);
+        if (currentUser.address) setAddress(currentUser.address);
+      }
+    }
+  }, [isOpen, currentUser]);
 
   // Gift Packaging Service
   const [isGiftBox, setIsGiftBox] = useState(false);
@@ -101,6 +118,11 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
 
     if (!fullName.trim() || !phone.trim() || !address.trim()) {
       setErrorMsg('Vui lòng điền đầy đủ họ tên, số điện thoại và địa chỉ nhận hàng.');
+      return;
+    }
+
+    if (!cartItems || cartItems.length === 0) {
+      setErrorMsg('Giỏ hàng chưa có sản phẩm nào. Vui lòng chọn mẫu vòng tay bạn thích trước khi tạo đơn.');
       return;
     }
 

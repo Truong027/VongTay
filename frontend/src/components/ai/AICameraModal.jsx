@@ -27,7 +27,9 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const nativeCameraWristRef = useRef(null);
   const matchFileInputRef = useRef(null);
+  const nativeCameraMatchRef = useRef(null);
 
   // Active Tab / Mode: 'wrist' | 'catalog_match'
   const [modalMode, setModalMode] = useState(initialMode || 'wrist');
@@ -36,6 +38,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
   const [cameraError, setCameraError] = useState('');
+  const [facingMode, setFacingMode] = useState('environment'); // 'environment' (sau) | 'user' (trước)
 
   // Mode 1: Wrist Analysis State
   const [birthYear, setBirthYear] = useState('');
@@ -56,7 +59,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     if (isOpen) {
       setModalMode(initialMode || 'wrist');
       if (initialMode === 'wrist') {
-        startCamera();
+        startCamera(facingMode);
       }
     } else {
       stopCamera();
@@ -64,25 +67,72 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     return () => stopCamera();
   }, [isOpen, initialMode]);
 
-  // Start webcam
-  const startCamera = async () => {
+  // Start webcam with multi-tier fallback for all iOS & Android devices
+  const startCamera = async (mode = facingMode) => {
     setCameraError('');
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setCameraActive(true);
-        }
-      } else {
-        setCameraError('Trình duyệt không hỗ trợ truy cập camera trực tiếp. Bạn có thể tải ảnh chụp từ máy tính/điện thoại.');
-      }
-    } catch (err) {
-      console.warn('Lỗi mở camera:', err);
-      setCameraError('Không thể mở camera (chưa cấp quyền hoặc không có thiết bị). Bạn hãy chọn tải ảnh từ máy nhé!');
+    stopCamera();
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Trình duyệt chưa hỗ trợ luồng camera trực tiếp (hoặc đang mở trong app Zalo/Facebook). Bạn hãy bấm nút "Chụp Bằng Camera Máy" bên dưới để mở ngay!');
+      return;
     }
+
+    // Multi-tier fallback constraints:
+    // Tier 1: Ideal facingMode + 720p/HD resolution
+    // Tier 2: Simple facingMode
+    // Tier 3: Opposite facingMode (if device lacks requested one)
+    // Tier 4: { video: true } universal fallback guaranteed on 100% of mobile & desktop browsers
+    const constraintTiers = [
+      { video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+      { video: { facingMode: mode } },
+      { video: { facingMode: mode === 'environment' ? 'user' : 'environment' } },
+      { video: true }
+    ];
+
+    let activeStream = null;
+    let lastErr = null;
+
+    for (const constraints of constraintTiers) {
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (activeStream) break;
+      } catch (err) {
+        lastErr = err;
+        console.warn('Camera tier constraint failed, trying next tier...', err.name, err.message);
+      }
+    }
+
+    if (activeStream) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = activeStream;
+        try {
+          // iOS Safari requires explicit play() call
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn('Video play() failed:', playErr);
+        }
+        setCameraActive(true);
+        setCameraError('');
+      }
+    } else {
+      console.warn('All camera tiers failed:', lastErr);
+      let msg = 'Không thể mở luồng camera trực tiếp.';
+      if (lastErr?.name === 'NotAllowedError' || lastErr?.name === 'PermissionDeniedError') {
+        msg = 'Quyền Camera đang bị chặn trên trình duyệt. Bạn hãy cấp quyền hoặc nhấn nút "📸 Chụp Bằng Camera Máy" bên dưới để chụp ngay nhé!';
+      } else if (lastErr?.name === 'NotFoundError' || lastErr?.name === 'DevicesNotFoundError') {
+        msg = 'Không tìm thấy thiết bị camera trên máy.';
+      } else {
+        msg = 'Camera bị hạn chế hoặc đang bận. Bạn hãy dùng nút "📸 Chụp Bằng Camera Máy" bên dưới để chụp trực tiếp!';
+      }
+      setCameraError(msg);
+      setCameraActive(false);
+    }
+  };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
   };
 
   const stopCamera = () => {
@@ -530,6 +580,16 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                             muted
                             className="w-full h-full object-cover"
                           />
+                          {/* Flip Camera Button */}
+                          <button
+                            onClick={toggleFacingMode}
+                            className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-medium flex items-center gap-1.5 hover:bg-black/80 transition-all border border-white/20 shadow-md cursor-pointer"
+                            title="Đổi camera trước hoặc sau"
+                          >
+                            <RefreshCw className="w-3 h-3 text-amber-300" />
+                            <span>{facingMode === 'environment' ? 'Cam Sau' : 'Cam Trước'}</span>
+                          </button>
+
                           <div className="absolute inset-8 border-2 border-dashed border-white/60 rounded-3xl pointer-events-none flex items-center justify-center">
                             <div className="text-center bg-black/40 backdrop-blur-sm p-3 rounded-xl">
                               <p className="text-white text-xs font-semibold">
@@ -542,53 +602,101 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                           </div>
                         </>
                       ) : (
-                        <div className="text-center p-6 space-y-3">
-                          <Camera className="w-12 h-12 text-[#8C8276] mx-auto opacity-50" />
-                          <p className="text-xs text-[#CFC1B0] max-w-xs">
-                            {cameraError || 'Camera đang tắt hoặc chưa kết nối.'}
+                        <div className="text-center p-5 space-y-3">
+                          <div className="w-12 h-12 rounded-full bg-white/10 text-amber-300 flex items-center justify-center mx-auto">
+                            <Camera className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs text-[#E8DFD3] max-w-xs mx-auto leading-relaxed">
+                            {cameraError || 'Camera trực tiếp chưa được bật hoặc bị chặn quyền truy cập.'}
                           </p>
-                          <button
-                            onClick={startCamera}
-                            className="px-4 py-2 rounded-xl bg-[#B86244] text-white text-xs font-semibold hover:bg-[#A05237]"
-                          >
-                            Thử Bật Lại Camera
-                          </button>
+                          <div className="flex flex-col gap-2 max-w-xs mx-auto pt-1">
+                            <button
+                              onClick={() => nativeCameraWristRef.current?.click()}
+                              className="w-full py-2.5 px-4 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              <Camera className="w-4 h-4 text-amber-200" />
+                              <span>📸 Mở Camera Điện Thoại Chụp Ngay</span>
+                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => startCamera(facingMode)}
+                                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium border border-white/20 cursor-pointer"
+                              >
+                                Bật Lại Live Cam
+                              </button>
+                              <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium border border-white/20 flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Upload className="w-3 h-3" />
+                                <span>Thư Viện Ảnh</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       )}
 
                       <canvas ref={canvasRef} className="hidden" />
                     </div>
 
-                    <div className="flex items-center gap-3 mt-4 w-full max-w-[380px]">
+                    <div className="flex flex-wrap items-center gap-2 mt-4 w-full max-w-[380px]">
                       {capturedImage ? (
                         <button
                           onClick={() => {
                             setCapturedImage(null);
-                            startCamera();
+                            startCamera(facingMode);
                           }}
-                          className="flex-1 py-2.5 rounded-xl border border-[#E8DFD3] bg-white text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center justify-center gap-1.5"
+                          className="flex-1 py-2.5 rounded-xl border border-[#E8DFD3] bg-white text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                         >
-                          <RefreshCw className="w-3.5 h-3.5" />
+                          <RefreshCw className="w-3.5 h-3.5 text-[#B86244]" />
                           Chụp Lại Ảnh Khác
                         </button>
                       ) : cameraActive ? (
+                        <>
+                          <button
+                            onClick={handleCaptureWrist}
+                            className="flex-1 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-artisan-hover flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Camera className="w-4 h-4" />
+                            Chụp Khung Hình Này
+                          </button>
+                          <button
+                            onClick={() => nativeCameraWristRef.current?.click()}
+                            className="py-3 px-3.5 rounded-xl bg-[#26211C] hover:bg-[#3D352E] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                            title="Mở ứng dụng chụp ảnh gốc của thiết bị"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-amber-300" />
+                            <span className="hidden sm:inline">Camera Máy</span>
+                          </button>
+                        </>
+                      ) : (
                         <button
-                          onClick={handleCaptureWrist}
-                          className="flex-1 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-artisan-hover flex items-center justify-center gap-2"
+                          onClick={() => nativeCameraWristRef.current?.click()}
+                          className="flex-1 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer"
                         >
-                          <Camera className="w-4 h-4" />
-                          Chụp Ngay Cổ Tay Này
+                          <Camera className="w-4 h-4 text-amber-200" />
+                          <span>📸 Chụp Bằng Camera Máy</span>
                         </button>
-                      ) : null}
+                      )}
 
                       <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="py-2.5 px-4 rounded-xl border border-[#E8DFD3] bg-white text-[#6B6258] hover:text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center gap-1.5"
+                        className="py-2.5 px-3.5 rounded-xl border border-[#E8DFD3] bg-white text-[#6B6258] hover:text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center gap-1.5 shadow-2xs cursor-pointer"
                         title="Tải ảnh từ điện thoại / máy tính"
                       >
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Tải Ảnh Lên</span>
+                        <span>Thư Viện Ảnh</span>
                       </button>
+
+                      {/* Native camera input - always supported on iOS Safari and Android */}
+                      <input
+                        ref={nativeCameraWristRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileUploadWrist}
+                        className="hidden"
+                      />
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -936,15 +1044,26 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                           </div>
                           <div>
                             <p className="text-sm font-bold text-[#26211C]">
-                              Bấm vào đây để tải ảnh lên
+                              Bấm vào đây để tải ảnh hoặc chụp ảnh mẫu
                             </p>
                             <p className="text-xs text-[#8C8276] mt-1">
-                              Hỗ trợ JPG, PNG, WEBP từ điện thoại hoặc máy tính
+                              Hỗ trợ chụp trực tiếp từ camera hoặc tải ảnh từ máy
                             </p>
                           </div>
-                          <div className="pt-2">
-                            <span className="inline-block text-[11px] bg-white px-3 py-1 rounded-full border border-[#E8DFD3] text-[#B86244] font-semibold">
-                              🌸 Ảnh hoa, trang phục, moodboard hoặc charm mẫu
+                          <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                nativeCameraMatchRef.current?.click();
+                              }}
+                              className="px-3 py-1.5 rounded-full bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                              <span>📸 Mở Camera Chụp Ngay</span>
+                            </button>
+                            <span className="text-[11px] bg-white px-3 py-1 rounded-full border border-[#E8DFD3] text-[#B86244] font-semibold">
+                              🌸 Ảnh hoa, váy, charm
                             </span>
                           </div>
                         </div>
@@ -957,19 +1076,46 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                         onChange={handleFileUploadMatch}
                         className="hidden"
                       />
+                      <input
+                        ref={nativeCameraMatchRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleFileUploadMatch}
+                        className="hidden"
+                      />
                     </div>
 
-                    {matchImage && (
-                      <div className="flex items-center gap-3 mt-3 w-full max-w-[380px]">
+                    <div className="flex items-center gap-2 mt-3 w-full max-w-[380px]">
+                      {matchImage ? (
                         <button
                           onClick={() => setMatchImage(null)}
-                          className="flex-1 py-2 rounded-xl border border-[#E8DFD3] bg-white text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2] flex items-center justify-center gap-1.5"
+                          className="flex-1 py-2 rounded-xl border border-[#E8DFD3] bg-white text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2] flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
                         >
-                          <RefreshCw className="w-3.5 h-3.5" />
+                          <RefreshCw className="w-3.5 h-3.5 text-[#B86244]" />
                           Xóa & Chọn Ảnh Khác
                         </button>
-                      </div>
-                    )}
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => nativeCameraMatchRef.current?.click()}
+                            className="flex-1 py-2.5 rounded-xl bg-[#26211C] hover:bg-[#3D352E] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-amber-200" />
+                            <span>📸 Camera Máy</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => matchFileInputRef.current?.click()}
+                            className="flex-1 py-2.5 rounded-xl border border-[#E8DFD3] bg-white text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                          >
+                            <Upload className="w-3.5 h-3.5 text-[#B86244]" />
+                            <span>Thư Viện Ảnh</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Form input */}

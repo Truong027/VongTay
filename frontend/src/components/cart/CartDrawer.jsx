@@ -298,6 +298,7 @@ export default function CartDrawer({ onProceedToCheckout }) {
                 onClick={() => {
                   closeCart();
                   onProceedToCheckout({
+                    items: cartItems,
                     discount,
                     shippingFee,
                     finalTotal,
