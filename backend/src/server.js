@@ -14,6 +14,10 @@ import voucherRoutes from './routes/voucherRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import consultationRoutes from './routes/consultationRoutes.js';
+import { ensureNeonConnected } from './data/neonDb.js';
+
+// Kích hoạt kết nối Neon PostgreSQL nền
+ensureNeonConnected().catch(err => console.warn('Neon background connect notice:', err.message));
 
 // Phòng vệ chống sập tiến trình Node.js (Anti-crash handlers)
 process.on('uncaughtException', (err) => {

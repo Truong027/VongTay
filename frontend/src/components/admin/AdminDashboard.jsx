@@ -373,21 +373,29 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const loadAllAdminData = async () => {
     setLoading(true);
     try {
-      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes] = await Promise.all([
+      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes, telemRes] = await Promise.all([
         api.getAdminStats().catch(() => ({ success: false })),
         api.getOrders().catch(() => ({ success: false })),
         api.getProducts({ includeHidden: true }).catch(() => ({ success: false })),
         api.getUsers().catch(() => ({ success: false })),
         api.getMe().catch(() => ({ success: false })),
         api.getVouchers(true).catch(() => ({ success: false })),
-        api.getReviews().catch(() => ({ success: false }))
+        api.getReviews().catch(() => ({ success: false })),
+        api.getDatabaseTelemetry().catch(() => ({ success: false }))
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
       if (ordersRes.success) setOrders(ordersRes.data);
       if (productsRes.success) setProducts(productsRes.data);
       if (usersRes.success) setUsers(usersRes.data);
-      if (meRes.success && meRes.data?.dbStatus) setDbStatus(meRes.data.dbStatus);
+      if (telemRes.success && telemRes.data) {
+        setDbStatus({
+          isConnected: telemRes.data.isNeonConnected,
+          connection: telemRes.data.connection
+        });
+      } else if (meRes.success && meRes.data?.dbStatus) {
+        setDbStatus(meRes.data.dbStatus);
+      }
       if (vouchersRes.success && Array.isArray(vouchersRes.data)) setVouchers(vouchersRes.data);
       if (reviewsRes.success && Array.isArray(reviewsRes.data)) setReviews(reviewsRes.data);
     } catch (err) {
@@ -2116,9 +2124,16 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
               {/* Configure connection string */}
               <form onSubmit={handleSaveNeonDb} className="space-y-3 pt-2">
-                <label className="text-xs font-bold text-[#26211C] block">
-                  Cập nhật / Kết nối chuỗi Neon Connection String:
-                </label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <label className="text-xs font-bold text-[#26211C] block">
+                    Cập nhật / Kết nối chuỗi Neon Connection String:
+                  </label>
+                  {dbStatus?.connection?.maskedUrl && (
+                    <span className="text-[10px] text-[#6B6258] font-mono bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200 truncate max-w-sm">
+                      {dbStatus.connection.maskedUrl}
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="password"

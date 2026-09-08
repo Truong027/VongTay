@@ -9,7 +9,7 @@ import {
   sampleReviews as seedReviews,
   sampleConsultations as seedConsultations
 } from './seedData.js';
-import { query, isNeonConnected, initNeonDb } from './neonDb.js';
+import { query, isNeonConnected, initNeonDb, ensureNeonConnected } from './neonDb.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -285,7 +285,8 @@ export const ensureNeonTables = async () => {
 };
 
 export const syncAllDataToNeon = async () => {
-  if (!isNeonConnected()) {
+  const connected = await ensureNeonConnected();
+  if (!connected && !isNeonConnected()) {
     throw new Error('Chưa kết nối Neon PostgreSQL. Vui lòng kiểm tra chuỗi kết nối trong Bảng Quản Trị.');
   }
 
@@ -1457,6 +1458,7 @@ export const dbSaveCustomDesign = async (data) => {
 };
 
 export const getDbTelemetry = async () => {
+  await ensureNeonConnected();
   const products = await dbGetProducts();
   const orders = await dbGetOrders();
   const users = await dbGetUsers();

@@ -7,6 +7,7 @@ const { Pool } = pg;
 
 let pool = null;
 let isConnected = false;
+let connectingPromise = null;
 let currentConnectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || 'postgresql://neondb_owner:npg_dxON2tr3BCTK@ep-blue-moon-b3pc0ls7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full';
 
 export const initNeonDb = async (connStr = null) => {
@@ -21,47 +22,66 @@ export const initNeonDb = async (connStr = null) => {
     return { success: true, message: 'Đã kết nối sẵn sàng tới Neon Tech PostgreSQL' };
   }
 
-  try {
-    if (pool) {
-      const oldPool = pool;
-      pool = null;
-      await oldPool.end().catch(() => {});
-    }
-
-    pool = new Pool({
-      connectionString,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    });
-
-    // Test connection
-    const client = await pool.connect();
-    const res = await client.query('SELECT NOW() as now, version() as ver');
-    client.release();
-
-    isConnected = true;
-    currentConnectionString = connectionString;
-
-    console.log('🐘 Đã kết nối thành công tới Neon PostgreSQL Database!');
-    console.log('🕒 Thời gian máy chủ Neon:', res.rows[0].now);
-
-    // Auto-create tables
-    await createTables();
-
-    return { 
-      success: true, 
-      message: 'Kết nối Neon Tech PostgreSQL thành công',
-      serverTime: res.rows[0].now 
-    };
-  } catch (error) {
-    isConnected = false;
-    console.error('❌ Lỗi kết nối Neon Database:', error.message);
-    return { 
-      success: false, 
-      message: `Lỗi kết nối Neon: ${error.message}` 
-    };
+  if (connectingPromise && (!connStr || connStr === currentConnectionString)) {
+    return connectingPromise;
   }
+
+  connectingPromise = (async () => {
+    try {
+      if (pool) {
+        const oldPool = pool;
+        pool = null;
+        await oldPool.end().catch(() => {});
+      }
+
+      pool = new Pool({
+        connectionString,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      });
+
+      // Test connection
+      const client = await pool.connect();
+      const res = await client.query('SELECT NOW() as now, version() as ver');
+      client.release();
+
+      isConnected = true;
+      currentConnectionString = connectionString;
+
+      console.log('🐘 Đã kết nối thành công tới Neon PostgreSQL Database!');
+      console.log('🕒 Thời gian máy chủ Neon:', res.rows[0].now);
+
+      // Auto-create tables
+      await createTables();
+
+      return { 
+        success: true, 
+        message: 'Kết nối Neon Tech PostgreSQL thành công',
+        serverTime: res.rows[0].now 
+      };
+    } catch (error) {
+      isConnected = false;
+      console.error('❌ Lỗi kết nối Neon Database:', error.message);
+      return { 
+        success: false, 
+        message: `Lỗi kết nối Neon: ${error.message}` 
+      };
+    } finally {
+      connectingPromise = null;
+    }
+  })();
+
+  return connectingPromise;
+};
+
+export const ensureNeonConnected = async () => {
+  if (isConnected && pool) return true;
+  if (currentConnectionString) {
+    const res = await initNeonDb();
+    return res.success;
+  }
+  return false;
 };
 
 const createTables = async () => {
@@ -274,7 +294,7 @@ const createTables = async () => {
 export const query = async (text, params) => {
   if (!pool || !isConnected) {
     if (currentConnectionString) {
-      await initNeonDb();
+      await ensureNeonConnected();
     }
   }
   if (!pool || !isConnected) {
@@ -295,5 +315,6 @@ export const getConnectionInfo = () => ({
 
 // Auto-run if DATABASE_URL is present in environment
 if (currentConnectionString) {
-  initNeonDb();
+  ensureNeonConnected().catch(err => console.warn('Background connect notice:', err.message));
 }
+

@@ -3,10 +3,11 @@ import {
   syncAllDataToNeon, 
   getDbTelemetry 
 } from '../data/dbStore.js';
-import { isNeonConnected, getConnectionInfo } from '../data/neonDb.js';
+import { isNeonConnected, getConnectionInfo, ensureNeonConnected } from '../data/neonDb.js';
 
 export const getAdminStats = async (req, res) => {
   try {
+    await ensureNeonConnected();
     const orders = await dbGetOrders();
     const totalOrders = orders.length;
     const totalRevenue = orders
@@ -59,6 +60,7 @@ export const syncNeonDatabase = async (req, res) => {
 
 export const getDatabaseTelemetry = async (req, res) => {
   try {
+    await ensureNeonConnected();
     const telemetry = await getDbTelemetry();
     res.json({
       success: true,

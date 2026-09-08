@@ -5,7 +5,7 @@ import {
   dbUpdateUserRole, 
   dbDeleteUser 
 } from '../data/dbStore.js';
-import { initNeonDb, getConnectionInfo, isNeonConnected } from '../data/neonDb.js';
+import { initNeonDb, getConnectionInfo, isNeonConnected, ensureNeonConnected } from '../data/neonDb.js';
 
 export const register = async (req, res) => {
   try {
@@ -154,6 +154,7 @@ export const deleteUser = async (req, res) => {
 };
 
 export const getMe = async (req, res) => {
+  await ensureNeonConnected();
   res.json({
     success: true,
     data: {
