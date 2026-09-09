@@ -207,7 +207,7 @@ function MainShop({ currentUser, setCurrentUser }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF7F2] w-full max-w-full overflow-x-clip pb-16 lg:pb-0">
+    <div className="min-h-screen flex flex-col luxury-pastel-bg w-full max-w-full overflow-x-clip pb-16 lg:pb-0">
       {/* Main Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -268,10 +268,10 @@ function MainShop({ currentUser, setCurrentUser }) {
         <div className="mb-8 text-center sm:text-left">
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
             <div>
-              <span className="text-[11px] uppercase tracking-widest text-[#B86244] font-bold">
+              <span className="text-[11px] uppercase tracking-widest text-[#C59B6D] font-bold">
                 {activeTab === 'wishlist' ? 'Bộ Sưu Tập Của Bạn' : activeTab === 'best-seller' ? 'Được Yêu Thích Nhất' : 'Nghệ Thuật Đan Tay'}
               </span>
-              <h2 className="font-serif-boutique text-2xl sm:text-4xl font-bold text-[#26211C]">
+              <h2 className="font-serif-boutique text-2xl sm:text-4xl font-bold text-[#231F1C]">
                 {activeTab === 'wishlist' ? (
                   `Vòng Dây Yêu Thích (${products.length})`
                 ) : activeTab === 'best-seller' ? (
@@ -294,17 +294,17 @@ function MainShop({ currentUser, setCurrentUser }) {
             <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-0">
               <button
                 onClick={handleOpenAiWrist}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-amber-600 to-[#B86244] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
+                className="btn-luxury-cta inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all shadow-md cursor-pointer"
               >
-                <Camera className="w-3.5 h-3.5 text-amber-200" />
+                <Camera className="w-3.5 h-3.5 text-amber-100" />
                 <span>AI Quét Cổ Tay</span>
               </button>
 
               <button
                 onClick={handleOpenAiMatch}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-[#B86244] to-[#C09A58] text-white text-xs font-bold hover:opacity-95 transition-all shadow-sm"
+                className="btn-luxury-secondary inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
-                <Palette className="w-3.5 h-3.5 text-amber-200" />
+                <Palette className="w-3.5 h-3.5 text-[#C59B6D]" />
                 <span className="hidden sm:inline">Tải Ảnh Gợi Ý Hạt & Charm Có Sẵn</span>
                 <span className="sm:hidden">Gợi Ý Hạt & Charm</span>
               </button>
@@ -314,7 +314,7 @@ function MainShop({ currentUser, setCurrentUser }) {
                   setAiCustomPreset(null);
                   setIsCustomizerOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] text-xs font-semibold hover:bg-[#B86244] hover:text-white transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/80 text-[#C59B6D] border border-white text-xs font-bold hover:bg-[#C59B6D] hover:text-white transition-all shadow-xs cursor-pointer"
               >
                 <Flower2 className="w-3.5 h-3.5 text-amber-500" />
                 <span className="hidden sm:inline">Tự phối vòng thủ công</span>

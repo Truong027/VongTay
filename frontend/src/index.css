@@ -1,28 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
   --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
+  /* Light & Pastel Luxury Palette */
   --color-paper: #FAF7F2;
-  --color-paper-subtle: #F3ECE1;
-  --color-paper-card: #FFFFFF;
-  --color-border: #E8DFD3;
-  --color-border-dark: #CFC1B0;
+  --color-paper-subtle: #F5EFE6;
+  --color-paper-card: rgba(255, 255, 255, 0.78);
+  
+  --color-border: rgba(232, 223, 211, 0.7);
+  --color-border-subtle: rgba(255, 255, 255, 0.85);
+  --color-border-gold: rgba(197, 155, 109, 0.4);
+  
+  --color-champagne: #C59B6D;
+  --color-champagne-light: #DFB78C;
+  --color-champagne-dark: #A57C4E;
   
   --color-terracotta: #B86244;
   --color-terracotta-hover: #A05237;
-  --color-terracotta-subtle: #FBEFEA;
   
-  --color-sage: #4E6857;
-  --color-sage-subtle: #EDF3EF;
+  --color-pastel-blush: #F7ECE8;
+  --color-pastel-sage: #E5EDE8;
+  --color-pastel-lavender: #EFEBF6;
+  --color-pastel-gold: #FBF4E8;
   
-  --color-gold: #C09A58;
-  --color-gold-subtle: #FBF6EC;
-  
-  --color-charcoal: #26211C;
+  --color-charcoal: #231F1C;
   --color-charcoal-muted: #6B6258;
+  --color-charcoal-light: #948A7E;
 }
 
 html {
@@ -39,7 +45,7 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-paper);
+  background-color: #FAF7F2;
   color: var(--color-charcoal);
   margin: 0;
   padding: 0;
@@ -49,6 +55,21 @@ body {
   position: relative;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ambient Luxury Gemstones & Pearls Bokeh Background */
+.luxury-pastel-bg {
+  background-color: #FAF7F2;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(247, 236, 232, 0.65) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(239, 235, 246, 0.6) 0%, transparent 45%),
+    radial-gradient(circle at 50% 65%, rgba(229, 237, 232, 0.55) 0%, transparent 50%),
+    radial-gradient(circle at 80% 85%, rgba(251, 244, 232, 0.7) 0%, transparent 45%),
+    url('/images/luxury_pastel_bg.jpg');
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 #root {
@@ -74,34 +95,96 @@ img, video, canvas, svg {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-paper);
+  background: rgba(250, 247, 242, 0.6);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-dark);
+  background: rgba(197, 155, 109, 0.35);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-terracotta);
+  background: rgba(197, 155, 109, 0.7);
 }
 
-/* Artisan textures and soft shadows */
-.shadow-artisan {
-  box-shadow: 0 4px 20px -2px rgba(60, 40, 20, 0.05), 0 2px 6px -1px rgba(60, 40, 20, 0.03);
+/* ===== HIGH-END GLASSMORPHISM SYSTEM ===== */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 40px -12px rgba(180, 150, 130, 0.10), 0 1px 4px rgba(255, 255, 255, 0.7) inset;
 }
 
-.shadow-artisan-lg {
-  box-shadow: 0 10px 30px -4px rgba(60, 40, 20, 0.08), 0 4px 10px -2px rgba(60, 40, 20, 0.04);
+.glass-card-luxury {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow: 0 12px 36px -8px rgba(190, 160, 140, 0.08), 0 1px 3px rgba(255, 255, 255, 0.9) inset;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.shadow-artisan-hover {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.shadow-artisan-hover:hover {
+.glass-card-luxury:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #FFFFFF;
   transform: translateY(-3px);
-  box-shadow: 0 14px 35px -4px rgba(60, 40, 20, 0.12), 0 6px 14px -2px rgba(60, 40, 20, 0.06);
+  box-shadow: 0 20px 45px -10px rgba(190, 160, 140, 0.16), 0 1px 4px rgba(255, 255, 255, 1) inset;
 }
 
-/* ===== ODOO PREMIUM ANIMATION SYSTEM ===== */
+.glass-pill {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(190, 160, 140, 0.06);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(232, 223, 211, 0.8);
+  transition: all 0.25s ease;
+}
+.glass-input:focus {
+  background: #FFFFFF;
+  border-color: var(--color-champagne);
+  box-shadow: 0 0 0 3px rgba(197, 155, 109, 0.18);
+  outline: none;
+}
+
+/* Luxury CTA Button */
+.btn-luxury-cta {
+  background: linear-gradient(135deg, #C59B6D 0%, #D8B48D 50%, #B07D4C 100%);
+  color: #FFFFFF;
+  box-shadow: 0 8px 24px -4px rgba(197, 155, 109, 0.45), 0 1px 2px rgba(255, 255, 255, 0.5) inset;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-luxury-cta:hover {
+  background: linear-gradient(135deg, #B58B5D 0%, #CDA47D 50%, #A06D3C 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 0 12px 28px -4px rgba(197, 155, 109, 0.55), 0 1px 3px rgba(255, 255, 255, 0.7) inset;
+}
+.btn-luxury-cta:active {
+  transform: scale(0.98);
+}
+
+.btn-luxury-secondary {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  color: var(--color-charcoal);
+  box-shadow: 0 4px 14px rgba(190, 160, 140, 0.08);
+  transition: all 0.25s ease;
+}
+.btn-luxury-secondary:hover {
+  background: #FFFFFF;
+  border-color: var(--color-champagne);
+  color: var(--color-champagne-dark);
+  transform: translateY(-1.5px);
+}
+
+/* Soft Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -110,85 +193,20 @@ img, video, canvas, svg {
   from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
-@keyframes slideInFromLeft {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.92); }
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
-@keyframes floatBead {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  33% { transform: translateY(-4px) rotate(1deg); }
-  66% { transform: translateY(-2px) rotate(-1deg); }
-}
-@keyframes shimmerGold {
+@keyframes shimmerPearl {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
-}
-@keyframes pulseRing {
-  0% { box-shadow: 0 0 0 0 rgba(184, 98, 68, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(184, 98, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(184, 98, 68, 0); }
-}
-@keyframes revealStep {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes charmWiggle {
-  0%, 100% { transform: rotate(0deg); }
-  20% { transform: rotate(-5deg); }
-  40% { transform: rotate(5deg); }
-  60% { transform: rotate(-3deg); }
-  80% { transform: rotate(3deg); }
-}
-@keyframes gradientFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
 }
 
 .animate-fadeIn { animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-slideInRight { animation: slideInFromRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-slideInLeft { animation: slideInFromLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-scaleIn { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-floatBead { animation: floatBead 4s ease-in-out infinite; }
-.animate-pulseRing { animation: pulseRing 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite; }
-.animate-revealStep { animation: revealStep 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.animate-charmWiggle { animation: charmWiggle 0.6s ease-in-out; }
-.animate-gradientFlow { 
-  background-size: 200% 200%;
-  animation: gradientFlow 4s ease infinite;
-}
-.animate-shimmerGold {
-  background: linear-gradient(90deg, transparent 0%, rgba(192, 154, 88, 0.4) 50%, transparent 100%);
+.animate-shimmerPearl {
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
   background-size: 200% auto;
-  animation: shimmerGold 2s linear infinite;
-}
-
-/* Odoo-style card hover lift */
-.odoo-card {
-  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.odoo-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px -4px rgba(38, 33, 28, 0.10), 0 2px 8px -1px rgba(38, 33, 28, 0.06);
-}
-.odoo-card:active {
-  transform: scale(0.985);
-}
-
-/* Premium gradient border */
-.border-gradient-gold {
-  border: 1px solid transparent;
-  background: linear-gradient(white, white) padding-box,
-              linear-gradient(135deg, #C09A58, #B86244, #C09A58) border-box;
-}
-
-/* Luxury glass morphism */
-.glass-luxury {
-  backdrop-filter: blur(12px) saturate(1.4);
-  background: rgba(250, 247, 242, 0.88);
-  border: 1px solid rgba(232, 223, 211, 0.7);
+  animation: shimmerPearl 2.5s linear infinite;
 }
