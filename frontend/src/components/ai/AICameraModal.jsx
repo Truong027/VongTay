@@ -351,7 +351,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
             }`}
           >
             <Camera className="w-3.5 h-3.5 text-amber-300" />
-            <span>1. Quét Cổ Tay Đo Size</span>
+            <span>1. Quét Cổ Tay / Cánh Tay Đo Size</span>
           </button>
 
           <button
@@ -602,13 +602,13 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                             <span>{facingMode === 'environment' ? 'Cam Sau' : 'Cam Trước'}</span>
                           </button>
 
-                          <div className="absolute inset-8 border-2 border-dashed border-white/60 rounded-3xl pointer-events-none flex items-center justify-center">
-                            <div className="text-center bg-black/40 backdrop-blur-sm p-3 rounded-xl">
-                              <p className="text-white text-xs font-semibold">
-                                ĐẶT CỔ TAY VÀO KHUNG NÀY
+                          <div className="absolute inset-6 border-2 border-dashed border-white/70 rounded-3xl pointer-events-none flex items-center justify-center">
+                            <div className="text-center bg-black/55 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-lg">
+                              <p className="text-white text-xs font-bold tracking-wide">
+                                ĐẶT CỔ TAY HOẶC CẢ CÁNH TAY VÀO KHUNG
                               </p>
                               <p className="text-[10px] text-amber-200 mt-0.5">
-                                Để AI quét màu da và đo size tay
+                                AI tự động định vị cổ tay & quét sắc tố da để gợi ý vòng
                               </p>
                             </div>
                           </div>
@@ -754,10 +754,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                       <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-[11px] text-[#845339] space-y-1">
                         <p className="font-bold flex items-center gap-1 text-[#B86244]">
-                          <Zap className="w-3.5 h-3.5" /> Công Nghệ Đo Thật 100%:
+                          <Zap className="w-3.5 h-3.5" /> Nhận Diện Cổ Tay & Cả Cánh Tay:
                         </p>
                         <p>
-                          AI phân tích trực tiếp độ rộng xương cổ tay và màu da thật, đề xuất mẫu đan dây macrame và hạt phong thủy tương hợp.
+                          Bạn có thể chụp cận cảnh cổ tay hoặc chụp cả cánh tay/bàn tay. AI sẽ tự động định vị vị trí cổ tay và sắc độ da để gợi ý mẫu vòng freesize cùng loại đá phong thủy tương hợp nhất.
                         </p>
                       </div>
                     </div>

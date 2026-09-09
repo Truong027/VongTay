@@ -129,80 +129,92 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* 2. CENTER: Perfectly Balanced Boutique Navigation */}
-          <nav className="hidden lg:flex items-center justify-center gap-1 xl:gap-3 flex-1 mx-4">
-            <button
-              onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative ${
-                !isAdminView && activeTab === 'all'
-                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
-                  : 'text-[#5A5147] hover:text-[#26211C]'
-              }`}
-            >
-              Tất Cả Sản Phẩm
-            </button>
+          {/* 2. CENTER: Luxury Boutique Category Cards & Actions */}
+          <nav className="hidden lg:flex items-center justify-center gap-1.5 xl:gap-2 flex-1 mx-2 xl:mx-4 overflow-x-auto no-scrollbar py-1">
+            {/* Category Cards Frosted Group */}
+            <div className="flex items-center gap-1 p-1 bg-[#FAF4ED]/95 backdrop-blur-md rounded-2xl border border-[#EADBCC] shadow-2xs">
+              <button
+                onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'all'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>✨</span>
+                <span>Tất Cả Sản Phẩm</span>
+              </button>
 
-            <button
-              onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative flex items-center gap-1.5 ${
-                !isAdminView && activeTab === 'guong-dinh'
-                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
-                  : 'text-[#5A5147] hover:text-[#26211C]'
-              }`}
-            >
-              <span>🪞 Gương Đính Gập & Đơn</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-            </button>
+              <button
+                onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'guong-dinh'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>🪞</span>
+                <span>Gương Đính Gập & Đơn</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold uppercase ${
+                  !isAdminView && activeTab === 'guong-dinh' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
+                }`}>
+                  Mới
+                </span>
+              </button>
 
-            <button
-              onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative flex items-center gap-1.5 ${
-                !isAdminView && activeTab === 'macrame-pastel'
-                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
-                  : 'text-[#5A5147] hover:text-[#26211C]'
-              }`}
-            >
-              <span>Macrame Pastel</span>
-            </button>
+              <button
+                onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'macrame-pastel'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>🌸</span>
+                <span>Macrame Pastel</span>
+              </button>
 
-            <button
-              onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative ${
-                !isAdminView && activeTab === 'vong-doi'
-                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
-                  : 'text-[#5A5147] hover:text-[#26211C]'
-              }`}
-            >
-              Vòng Đôi Dây Sáp
-            </button>
+              <button
+                onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'vong-doi'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>💫</span>
+                <span>Vòng Đôi Dây Sáp</span>
+              </button>
 
-            <button
-              onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
-              className={`px-3 py-1.5 text-xs font-semibold tracking-wide transition-all relative ${
-                !isAdminView && activeTab === 'day-do-may-man'
-                  ? 'text-[#B86244] font-bold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-[#B86244] after:rounded-full' 
-                  : 'text-[#5A5147] hover:text-[#26211C]'
-              }`}
-            >
-              Dây Đỏ Hộ Thân
-            </button>
+              <button
+                onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'day-do-may-man'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>🏮</span>
+                <span>Dây Đỏ Hộ Thân</span>
+              </button>
+            </div>
 
-            <div className="h-4 w-[1px] bg-[#E8DFD3] mx-1"></div>
+            <div className="h-4 w-[1px] bg-[#E8DFD3] mx-0.5"></div>
 
-            {/* Customizer button */}
+            {/* Customizer button card */}
             <button
               onClick={onOpenCustomizer}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs hover:shadow-sm"
+              className="px-3.5 py-2 text-xs font-semibold rounded-2xl bg-[#FAF4ED] hover:bg-[#F2E5D5] text-[#B86244] border border-[#EADBCC] transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>Tự Phối Vòng</span>
             </button>
 
-            {/* AI Camera Stylist */}
+            {/* AI Camera Stylist button card */}
             <button
               onClick={onOpenAICamera}
-              className="px-3.5 py-1.5 text-xs font-semibold rounded-full bg-[#B86244] hover:bg-[#A05237] text-white transition-all whitespace-nowrap inline-flex items-center gap-1.5 shadow-xs hover:shadow-sm"
-              title="Quét cổ tay đo size & Tải ảnh gợi ý phối từ hạt và charm có sẵn"
+              className="px-3.5 py-2 text-xs font-semibold rounded-2xl bg-gradient-to-r from-[#B86244] to-[#A05237] hover:brightness-105 text-white transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer"
+              title="Quét cổ tay/cánh tay đo size & Tải ảnh gợi ý phối từ hạt và charm có sẵn"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
               <span>AI Quét & Gợi Ý Vòng</span>
@@ -474,51 +486,73 @@ export default function Navbar({
             )}
           </div>
 
-          <button
-            onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold ${
-              activeTab === 'all' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
-            }`}
-          >
-            Tất Cả Sản Phẩm
-          </button>
+          {/* Mobile Category Cards */}
+          <div className="space-y-1.5 pt-1">
+            <p className="text-[10px] font-bold text-[#8C8276] uppercase tracking-wider px-1">
+              Danh Mục Bộ Sưu Tập
+            </p>
+            <div className="grid grid-cols-1 gap-1.5">
+              <button
+                onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'all' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>✨</span> Tất Cả Sản Phẩm</span>
+                <span className="text-[10px] opacity-70">Xem hết</span>
+              </button>
 
-          <button
-            onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between ${
-              activeTab === 'guong-dinh' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
-            }`}
-          >
-            <span>🪞 Gương Đính Gập & Đơn</span>
-            <span className="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-600 rounded-full font-bold">Mới</span>
-          </button>
+              <button
+                onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'guong-dinh' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>🪞</span> Gương Đính Gập & Đơn</span>
+                <span className="text-[10px] px-2 py-0.5 bg-rose-100 text-rose-600 rounded-full font-bold">Mới</span>
+              </button>
 
-          <button
-            onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold ${
-              activeTab === 'macrame-pastel' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
-            }`}
-          >
-            Vòng Dây Macrame Pastel (Cá Voi, Hoa Cúc & Bướm Tiên)
-          </button>
+              <button
+                onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'macrame-pastel' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>🌸</span> Macrame Pastel</span>
+                <span className="text-[10px] opacity-70">Trend</span>
+              </button>
 
-          <button
-            onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
-            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold ${
-              activeTab === 'vong-doi' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
-            }`}
-          >
-            Vòng Đôi Dây Sáp Nam Châm
-          </button>
+              <button
+                onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'vong-doi' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>💫</span> Vòng Đôi Dây Sáp</span>
+                <span className="text-[10px] opacity-70">Cặp đôi</span>
+              </button>
 
-          <button
-            onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
-            className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold ${
-              activeTab === 'day-do-may-man' && !isAdminView ? 'bg-[#26211C] text-white' : 'text-[#26211C] hover:bg-[#EFE6DA]'
-            }`}
-          >
-            Vòng Dây Chỉ Đỏ Hộ Thân
-          </button>
+              <button
+                onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'day-do-may-man' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>🏮</span> Dây Đỏ Hộ Thân</span>
+                <span className="text-[10px] opacity-70">Bình an</span>
+              </button>
+            </div>
+          </div>
 
           <button
             onClick={() => { onOpenAICamera(); setIsMobileMenuOpen(false); }}
