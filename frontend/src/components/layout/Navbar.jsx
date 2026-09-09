@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ShoppingBag, 
   Heart, 
@@ -38,6 +38,60 @@ export default function Navbar({
   const [showSearchInput, setShowSearchInput] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
+  // Refs cho các phần tử xổ xuống để phát hiện click bên ngoài
+  const userDropdownRef = useRef(null);
+  const searchContainerRef = useRef(null);
+  const searchBtnRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const mobileToggleBtnRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // 1. Đóng dropdown tài khoản khi click ra ngoài
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setShowUserDropdown(false);
+      }
+
+      // 2. Đóng thanh tìm kiếm khi click ra ngoài thanh tìm kiếm và nút tìm kiếm
+      if (
+        searchContainerRef.current && 
+        !searchContainerRef.current.contains(event.target) &&
+        searchBtnRef.current && 
+        !searchBtnRef.current.contains(event.target)
+      ) {
+        setShowSearchInput(false);
+      }
+
+      // 3. Đóng mobile menu khi click ra ngoài mobile menu và nút mở
+      if (
+        mobileMenuRef.current && 
+        !mobileMenuRef.current.contains(event.target) &&
+        mobileToggleBtnRef.current && 
+        !mobileToggleBtnRef.current.contains(event.target)
+      ) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setShowUserDropdown(false);
+        setShowSearchInput(false);
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8DFD3] shadow-xs transition-all w-full max-w-full pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -46,6 +100,7 @@ export default function Navbar({
           {/* 1. LEFT: Brand Logo & Mobile Menu Toggle */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button 
+              ref={mobileToggleBtnRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-1.5 sm:p-2 rounded-xl text-[#26211C] hover:bg-[#EFE6DA] transition-colors lg:hidden shrink-0"
               aria-label="Menu"
@@ -159,6 +214,7 @@ export default function Navbar({
             
             {/* Search Icon Trigger */}
             <button
+              ref={searchBtnRef}
               onClick={() => setShowSearchInput(!showSearchInput)}
               className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shrink-0 ${
                 showSearchInput 
@@ -193,7 +249,7 @@ export default function Navbar({
 
             {/* USER AUTH / PROFILE */}
             {currentUser ? (
-              <div className="relative shrink-0">
+              <div ref={userDropdownRef} className="relative shrink-0">
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
                   className="flex items-center gap-1 sm:gap-1.5 bg-[#FAF4ED] p-1 sm:pl-1.5 sm:pr-2.5 sm:py-1 rounded-full border border-[#E8DFD3] text-xs font-semibold text-[#26211C] hover:bg-[#F0E6D8] transition-all shadow-2xs whitespace-nowrap shrink-0"
@@ -337,7 +393,7 @@ export default function Navbar({
 
         {/* Search Input Popover Row (Opens cleanly below navbar, never crowding items) */}
         {showSearchInput && (
-          <div className="pb-3 pt-1 border-t border-[#E8DFD3]/70 animate-fadeIn flex items-center justify-center">
+          <div ref={searchContainerRef} className="pb-3 pt-1 border-t border-[#E8DFD3]/70 animate-fadeIn flex items-center justify-center">
             <div className="relative w-full max-w-md">
               <Search className="w-4 h-4 text-[#8C8276] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -361,9 +417,18 @@ export default function Navbar({
         )}
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu & Outside Backdrop */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden bg-[#FAF7F2] border-b border-[#E8DFD3] px-4 pt-2 pb-6 space-y-3 shadow-lg animate-fadeIn">
+        <>
+          <div 
+            className="fixed inset-0 top-16 sm:top-20 bg-black/40 backdrop-blur-xs z-30 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div 
+            ref={mobileMenuRef}
+            className="relative z-40 lg:hidden bg-[#FAF7F2] border-b border-[#E8DFD3] px-4 pt-2 pb-6 space-y-3 shadow-lg animate-fadeIn"
+          >
           
           {/* Mobile User Profile / Login Card */}
           <div className="bg-[#FAF4ED] p-3 rounded-2xl border border-[#E8DFD3]">
@@ -526,6 +591,7 @@ export default function Navbar({
             </button>
           </div>
         </div>
+        </>
       )}
     </header>
   );

@@ -333,6 +333,15 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
     }).catch(console.error).finally(() => setLoading(false));
   }, [initialPreset]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const priceData = useMemo(() => {
     if (!selectedCord || !selectedMainBead || !selectedSize) return { total: 0, cordCost: 0, beadCost: 0, charmCost: 0, craftFee: 30000, beadCount: 21 };
     const count = selectedSize.beadCount || 21;
@@ -404,8 +413,14 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
 
   if (loading || !options) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm">
-        <div className="p-8 bg-white rounded-3xl shadow-2xl flex flex-col items-center gap-4 border border-[#E8DFD3] animate-scaleIn">
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm"
+        onClick={onClose}
+      >
+        <div 
+          className="p-8 bg-white rounded-3xl shadow-2xl flex flex-col items-center gap-4 border border-[#E8DFD3] animate-scaleIn"
+          onClick={e => e.stopPropagation()}
+        >
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#FAF4ED] to-[#F0E8DE] flex items-center justify-center border border-[#E8DFD3] shadow-inner">
             <Sparkles className="w-7 h-7 text-[#B86244] animate-spin" />
           </div>
@@ -419,7 +434,10 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-3 lg:p-5 bg-black/70 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-3 lg:p-5 bg-black/70 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+      onClick={onClose}
+    >
       <div
         className="relative w-full max-w-5xl bg-[#FAF7F2] rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-2 sm:my-4"
         onClick={e => e.stopPropagation()}

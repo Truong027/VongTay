@@ -67,6 +67,15 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     return () => stopCamera();
   }, [isOpen, initialMode]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Start webcam with multi-tier fallback for all iOS & Android devices
   const startCamera = async (mode = facingMode) => {
     setCameraError('');
@@ -291,7 +300,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-black/75 backdrop-blur-md overflow-y-auto animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-black/75 backdrop-blur-md overflow-y-auto animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="relative w-full max-w-4xl bg-[#FAF7F2] rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-4"
         onClick={(e) => e.stopPropagation()}

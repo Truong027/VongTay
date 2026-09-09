@@ -20,6 +20,15 @@ export default function OrderTrackingModal({ isOpen, onClose, currentUser }) {
     }
   }, [isOpen, currentUser]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const executeSearch = async (searchTerm) => {
     const rawKey = (searchTerm || query).trim();
     if (!rawKey) {
@@ -91,7 +100,10 @@ export default function OrderTrackingModal({ isOpen, onClose, currentUser }) {
     : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="relative w-full max-w-2xl bg-[#FAF7F2] rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-6"
         onClick={(e) => e.stopPropagation()}

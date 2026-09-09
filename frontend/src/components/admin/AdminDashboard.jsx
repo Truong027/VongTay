@@ -414,6 +414,18 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     loadAllAdminData();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setSelectedOrderDetail(null);
+        setIsUserModalOpen(false);
+        setIsVoucherModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const triggerToast = (msg) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(''), 3000);
@@ -2313,8 +2325,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
       {/* ================= MODAL: CHI TIẾT ĐƠN HÀNG ================= */}
       {selectedOrderDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setSelectedOrderDetail(null)}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-[#CFC1B0] uppercase tracking-wider block">Xưởng Chế Tác Vòng Tay Nhà Zy</span>
@@ -2430,8 +2448,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
       {/* ================= MODAL: THÊM TÀI KHOẢN MỚI ================= */}
       {isUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-md rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }}
+        >
+          <div 
+            className="bg-white w-full max-w-md rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
               <div>
                 <h3 className="font-serif-boutique text-lg font-bold">
@@ -2546,8 +2570,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
       {/* ================= MODAL: TẠO / CHỈNH SỬA MÃ GIẢM GIÁ ================= */}
       {isVoucherModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => { setIsVoucherModalOpen(false); setEditingVoucher(null); }}
+        >
+          <div 
+            className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-[#B86244] text-white flex items-center justify-center font-bold">

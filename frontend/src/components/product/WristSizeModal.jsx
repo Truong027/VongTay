@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Ruler, CheckCircle2, Scissors, Info } from 'lucide-react';
 
 export default function WristSizeModal({ isOpen, onClose }) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="relative w-full max-w-2xl bg-[#FAF7F2] rounded-3xl shadow-2xl border border-[#E8DFD3] p-6 sm:p-8 overflow-hidden"
         onClick={(e) => e.stopPropagation()}

@@ -57,6 +57,14 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
     }
   }, [product?.id]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
@@ -138,7 +146,10 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-auto max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}

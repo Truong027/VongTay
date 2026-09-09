@@ -78,6 +78,14 @@ export default function UserProfileModal({
     }
   }, [products, isOpen]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   // Danh sách sản phẩm yêu thích của riêng tài khoản này
   const wishlistedProducts = (modalProducts || []).filter(p => isWishlisted(p.id));
 
@@ -184,7 +192,10 @@ export default function UserProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm animate-fadeIn">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/65 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+    >
       <div 
         className="relative w-full max-w-lg bg-[#FAF7F2] rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-6 max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
