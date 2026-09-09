@@ -93,7 +93,7 @@ export default function Navbar({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FAF7F2]/95 backdrop-blur-md border-b border-[#E8DFD3] shadow-xs transition-all w-full max-w-full pt-[env(safe-area-inset-top,0px)]">
+    <header className="sticky top-0 z-40 bg-[#FAF7F2]/80 backdrop-blur-2xl border-b border-white/80 shadow-[0_4px_30px_rgba(0,0,0,0.03)] ios-spring w-full max-w-full pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-1.5 sm:gap-3">
           
@@ -266,8 +266,8 @@ export default function Navbar({
 
                 {/* Dropdown Menu */}
                 {showUserDropdown && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-[#E8DFD3] py-2 z-50 animate-fadeIn text-xs">
-                    <div className="px-4 py-2 border-b border-[#F0EAE1]">
+                  <div className="absolute right-0 mt-2 w-64 bg-white/90 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.12)] border border-white/90 p-2 z-50 animate-scaleIn text-xs">
+                    <div className="px-4 py-2.5 rounded-2xl bg-[#FAF7F2]/80 border border-white/60 mb-1">
                       <p className="font-bold text-[#26211C] truncate">{currentUser.fullName}</p>
                       <p className="text-[11px] text-[#8C8276] truncate">{currentUser.email}</p>
                       {currentUser.phone && (
@@ -281,7 +281,7 @@ export default function Navbar({
                     {currentUser.role === 'admin' && (
                       <button
                         onClick={() => { onOpenAdmin(true); setShowUserDropdown(false); }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-[#FAF4ED] text-[#4E6857] font-semibold flex items-center gap-2"
+                        className="w-full text-left px-3.5 py-2.5 rounded-xl hover:bg-[#FAF4ED] text-[#4E6857] font-semibold flex items-center gap-2 transition-colors ios-press"
                       >
                         <LayoutDashboard className="w-4 h-4" />
                         <span>Mở Trang Quản Trị</span>
@@ -290,7 +290,7 @@ export default function Navbar({
 
                     <button
                       onClick={() => { onOpenProfile('orders'); setShowUserDropdown(false); }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center gap-2"
+                      className="w-full text-left px-3.5 py-2 rounded-xl hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center gap-2 transition-colors ios-press"
                     >
                       <ShoppingBag className="w-4 h-4 text-[#B86244]" />
                       <span>Lịch sử đơn hàng của tôi</span>
@@ -298,11 +298,11 @@ export default function Navbar({
 
                     <button
                       onClick={() => { openWishlist(); setShowUserDropdown(false); }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center justify-between"
+                      className="w-full text-left px-3.5 py-2 rounded-xl hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center justify-between transition-colors ios-press"
                     >
                       <span className="flex items-center gap-2">
                         <Heart className="w-4 h-4 text-[#B86244] fill-[#B86244]" />
-                        <span>Bộ sưu tập yêu thích của tôi</span>
+                        <span>Bộ sưu tập yêu thích</span>
                       </span>
                       <span className="text-[10px] bg-[#FAF4ED] text-[#B86244] font-bold px-2 py-0.5 rounded-full border border-[#EADBCC]">
                         {wishlist.length}
@@ -311,7 +311,7 @@ export default function Navbar({
 
                     <button
                       onClick={() => { onOpenProfile('profile'); setShowUserDropdown(false); }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center gap-2"
+                      className="w-full text-left px-3.5 py-2 rounded-xl hover:bg-[#FAF4ED] text-[#26211C] font-medium flex items-center gap-2 transition-colors ios-press"
                     >
                       <User className="w-4 h-4 text-[#B86244]" />
                       <span>Thông tin tài khoản</span>
@@ -319,26 +319,16 @@ export default function Navbar({
 
                     <button
                       onClick={() => { onOpenTracking(); setShowUserDropdown(false); }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#FAF4ED] text-[#26211C] flex items-center gap-2"
+                      className="w-full text-left px-3.5 py-2 rounded-xl hover:bg-[#FAF4ED] text-[#26211C] flex items-center gap-2 transition-colors ios-press"
                     >
                       <Truck className="w-4 h-4 text-[#B86244]" />
                       <span>Tra cứu vận chuyển đơn</span>
                     </button>
 
-                    {currentUser?.role === 'admin' && (
-                      <button
-                        onClick={() => { onOpenAdmin(true); setShowUserDropdown(false); }}
-                        className="w-full text-left px-4 py-2 hover:bg-[#EDF3EF] text-[#4E6857] font-semibold flex items-center gap-2"
-                      >
-                        <LayoutDashboard className="w-4 h-4 text-[#4E6857]" />
-                        <span>Khu Vực Quản Trị Viên (Admin)</span>
-                      </button>
-                    )}
-
                     <div className="border-t border-[#F0EAE1] mt-1 pt-1">
                       <button
                         onClick={() => { onLogout(); setShowUserDropdown(false); }}
-                        className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-semibold flex items-center gap-2"
+                        className="w-full text-left px-3.5 py-2 rounded-xl hover:bg-rose-50 text-rose-600 font-semibold flex items-center gap-2 transition-colors ios-press"
                       >
                         <LogOut className="w-4 h-4" />
                         <span>Đăng Xuất</span>
@@ -350,7 +340,7 @@ export default function Navbar({
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="hidden sm:inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full text-xs font-bold bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0 hover:shadow-sm"
+                className="hidden sm:inline-flex items-center gap-1 sm:gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC] hover:bg-[#B86244] hover:text-white transition-all shadow-2xs whitespace-nowrap shrink-0 hover:shadow-sm ios-press"
                 title="Đăng nhập hoặc đăng ký tài khoản"
               >
                 <User className="w-3.5 h-3.5" />
@@ -362,7 +352,7 @@ export default function Navbar({
             {currentUser?.role === 'admin' && (
               <button
                 onClick={() => onOpenAdmin(!isAdminView)}
-                className={`hidden md:inline-flex px-2 py-1.5 sm:px-2.5 sm:py-1.5 rounded-full text-xs font-semibold items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ${
+                className={`hidden md:inline-flex px-2.5 py-1.5 rounded-full text-xs font-semibold items-center gap-1.5 transition-all whitespace-nowrap shrink-0 ios-press ${
                   isAdminView 
                     ? 'bg-[#4E6857] text-white shadow-xs' 
                     : 'bg-[#EDF3EF] text-[#4E6857] hover:bg-[#D8E6DE]'
@@ -377,7 +367,7 @@ export default function Navbar({
             {/* Shopping Cart Button */}
             <button
               onClick={openCart}
-              className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#26211C] text-[#FAF7F2] rounded-full hover:bg-[#3D352E] transition-all shadow-xs flex items-center justify-center shrink-0"
+              className="relative w-8 h-8 sm:w-9 sm:h-9 bg-[#26211C] text-[#FAF7F2] rounded-full hover:bg-[#3D352E] transition-all shadow-xs flex items-center justify-center shrink-0 ios-press"
               aria-label="Giỏ hàng"
             >
               <ShoppingBag className="w-4 h-4" />
@@ -393,7 +383,7 @@ export default function Navbar({
 
         {/* Search Input Popover Row (Opens cleanly below navbar, never crowding items) */}
         {showSearchInput && (
-          <div ref={searchContainerRef} className="pb-3 pt-1 border-t border-[#E8DFD3]/70 animate-fadeIn flex items-center justify-center">
+          <div ref={searchContainerRef} className="pb-3 pt-1 border-t border-white/70 animate-fadeIn flex items-center justify-center">
             <div className="relative w-full max-w-md">
               <Search className="w-4 h-4 text-[#8C8276] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -401,7 +391,7 @@ export default function Navbar({
                 placeholder="Tìm vòng tay dây macrame, cá voi, hoa cúc, bướm fairy..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-white rounded-full border border-[#E8DFD3] text-xs sm:text-sm text-[#26211C] placeholder-[#8C8276] focus:outline-none focus:ring-1 focus:ring-[#B86244] shadow-xs"
+                className="w-full pl-9 pr-8 py-2.5 bg-white/85 backdrop-blur-xl rounded-full border border-white/90 text-xs sm:text-sm text-[#26211C] placeholder-[#8C8276] focus:outline-none focus:ring-2 focus:ring-[#B86244]/30 shadow-sm"
                 autoFocus
               />
               {searchQuery && (
@@ -421,13 +411,13 @@ export default function Navbar({
       {isMobileMenuOpen && (
         <>
           <div 
-            className="fixed inset-0 top-16 sm:top-20 bg-black/40 backdrop-blur-xs z-30 lg:hidden"
+            className="fixed inset-0 top-16 sm:top-20 bg-black/30 backdrop-blur-xs z-30 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           />
           <div 
             ref={mobileMenuRef}
-            className="relative z-40 lg:hidden bg-[#FAF7F2] border-b border-[#E8DFD3] px-4 pt-2 pb-6 space-y-3 shadow-lg animate-fadeIn"
+            className="relative z-40 lg:hidden bg-[#FAF7F2]/95 backdrop-blur-2xl border-b border-white/80 px-4 pt-2 pb-6 space-y-3 shadow-2xl animate-fadeIn"
           >
           
           {/* Mobile User Profile / Login Card */}

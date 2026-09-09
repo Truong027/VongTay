@@ -31,16 +31,16 @@ export default function ProductFilter({
             <button
               key={cat.id}
               onClick={() => onSelectCategory(cat.id)}
-              className={`px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ios-press ${
                 isSelected
                   ? 'btn-luxury-cta shadow-md'
-                  : 'glass-pill text-[#6B6258] hover:text-[#231F1C] hover:bg-white border border-white/80'
+                  : 'ios-pill text-[#6B6258] hover:text-[#231F1C] hover:bg-white/80'
               }`}
             >
               <span>{cat.name}</span>
               {cat.count && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-[#FAF4E8] text-[#C59B6D]'
+                  isSelected ? 'bg-white/25 text-white' : 'bg-[#FAF4E8] text-[#C59B6D]'
                 }`}>
                   {cat.count}
                 </span>
@@ -64,10 +64,10 @@ export default function ProductFilter({
               <button
                 key={m.id}
                 onClick={() => onSelectMenh(m.id)}
-                className={`px-3 py-1 rounded-xl font-semibold transition-all flex-shrink-0 cursor-pointer text-xs ${
+                className={`px-3 py-1 rounded-xl font-semibold transition-all flex-shrink-0 cursor-pointer text-xs ios-press ${
                   isSelected
                     ? 'bg-[#C59B6D] text-white shadow-xs'
-                    : 'glass-pill text-[#6B6258] hover:text-[#231F1C] hover:bg-white border border-white/80'
+                    : 'ios-pill text-[#6B6258] hover:text-[#231F1C] hover:bg-white/80'
                 }`}
               >
                 {m.id === 'all' ? 'Tất cả' : m.id}
@@ -82,7 +82,7 @@ export default function ProductFilter({
             Hiển thị <strong className="text-[#231F1C]">{totalResults}</strong> mẫu vòng thủ công
           </span>
 
-          <div className="flex items-center gap-1.5 glass-pill px-3 py-1.5 rounded-2xl border border-white/90 text-[#231F1C] shadow-2xs">
+          <div className="flex items-center gap-1.5 ios-pill px-3 py-1.5 rounded-2xl text-[#231F1C] shadow-2xs">
             <ArrowUpDown className="w-3.5 h-3.5 text-[#C59B6D]" />
             <select
               value={sortOption}

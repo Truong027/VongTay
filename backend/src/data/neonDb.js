@@ -38,7 +38,11 @@ export const initNeonDb = async (connStr = null) => {
         connectionString,
         ssl: {
           rejectUnauthorized: false
-        }
+        },
+        max: 12,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+        keepAlive: true
       });
 
       // Test connection

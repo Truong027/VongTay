@@ -147,17 +147,17 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/65 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/40 backdrop-blur-md overflow-y-auto animate-fadeIn"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-auto max-h-[92vh] flex flex-col"
+        className="relative w-full max-w-4xl bg-white/95 backdrop-blur-2xl rounded-3xl sm:rounded-[32px] shadow-[0_25px_70px_rgba(0,0,0,0.2)] border border-white/90 overflow-hidden my-auto max-h-[92vh] flex flex-col ios-spring"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Floating Top Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 z-30 p-2 rounded-full bg-white/90 hover:bg-white text-[#26211C] transition-all shadow-md hover:scale-105 border border-[#E8DFD3]"
+          className="absolute top-3 right-3 z-30 p-2 rounded-full bg-white/80 hover:bg-white text-[#26211C] transition-all shadow-md hover:scale-105 border border-white/90 ios-press"
           aria-label="Đóng"
         >
           <X className="w-5 h-5" />

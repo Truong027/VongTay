@@ -80,15 +80,15 @@ function MainShop({ currentUser, setCurrentUser }) {
   const [allProductsMaster, setAllProductsMaster] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
 
-  // Nạp toàn bộ kho sản phẩm nền (Master list) ngay khi ứng dụng khởi chạy
+  // Debounce search input để trải nghiệm gõ phím mượt mà, không giật lag
   useEffect(() => {
-    api.getProducts({}).then(res => {
-      if (res.success && Array.isArray(res.data)) {
-        setAllProductsMaster(res.data);
-      }
-    }).catch(console.error);
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Fetch products and categories from backend
   const loadShopData = async () => {
@@ -102,7 +102,7 @@ function MainShop({ currentUser, setCurrentUser }) {
           category: activeTab !== 'all' ? activeTab : undefined,
           menh: selectedMenh !== 'all' ? selectedMenh : undefined,
           sort: sortOption,
-          search: searchQuery
+          search: debouncedSearch
         }),
         api.getCategories()
       ]);
@@ -154,7 +154,7 @@ function MainShop({ currentUser, setCurrentUser }) {
 
   useEffect(() => {
     loadShopData();
-  }, [activeTab, selectedMenh, sortOption, searchQuery]);
+  }, [activeTab, selectedMenh, sortOption, debouncedSearch]);
 
   const handleProceedToCheckout = (data) => {
     setCheckoutData(data);

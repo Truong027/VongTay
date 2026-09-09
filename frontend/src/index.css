@@ -105,83 +105,141 @@ img, video, canvas, svg {
   background: rgba(197, 155, 109, 0.7);
 }
 
-/* ===== HIGH-END GLASSMORPHISM SYSTEM ===== */
+/* ===== HIGH-END iOS & visionOS ULTRA-GLASS SYSTEM ===== */
+.ios-glass,
 .glass-panel {
-  background: rgba(255, 255, 255, 0.76);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 16px 40px -12px rgba(180, 150, 130, 0.10), 0 1px 4px rgba(255, 255, 255, 0.7) inset;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(28px) saturate(190%) contrast(104%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(104%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 18px 45px -12px rgba(180, 150, 130, 0.12),
+    0 1px 1.5px rgba(255, 255, 255, 0.95) inset,
+    0 -1px 1px rgba(0, 0, 0, 0.02) inset;
 }
 
+.ios-glass-card,
 .glass-card-luxury {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.84) 0%, rgba(255, 255, 255, 0.68) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.88);
-  box-shadow: 0 12px 36px -8px rgba(190, 160, 140, 0.08), 0 1px 3px rgba(255, 255, 255, 0.9) inset;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 
+    0 14px 38px -8px rgba(180, 140, 120, 0.10),
+    0 4px 12px rgba(0, 0, 0, 0.02),
+    0 1px 2px rgba(255, 255, 255, 0.95) inset;
+  border-radius: 26px;
+  transition: all 0.38s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+.ios-glass-card:hover,
 .glass-card-luxury:hover {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: #FFFFFF;
-  transform: translateY(-3px);
-  box-shadow: 0 20px 45px -10px rgba(190, 160, 140, 0.16), 0 1px 4px rgba(255, 255, 255, 1) inset;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.84) 100%);
+  border-color: rgba(255, 255, 255, 1);
+  transform: translateY(-4px) scale(1.008);
+  box-shadow: 
+    0 24px 50px -10px rgba(180, 140, 120, 0.18),
+    0 6px 16px rgba(0, 0, 0, 0.04),
+    0 1px 3px rgba(255, 255, 255, 1) inset;
 }
 
+.ios-dock {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow: 
+    0 20px 40px -6px rgba(35, 31, 28, 0.14),
+    0 8px 16px -4px rgba(35, 31, 28, 0.08),
+    0 1px 2px rgba(255, 255, 255, 1) inset;
+  border-radius: 9999px;
+  transition: all 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ios-pill,
 .glass-pill {
   background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
   border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(190, 160, 140, 0.06);
+  box-shadow: 0 2px 10px rgba(190, 160, 140, 0.07), 0 1px 1px rgba(255, 255, 255, 0.95) inset;
+  border-radius: 9999px;
+  transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ios-pill:hover,
+.glass-pill:hover {
+  background: #FFFFFF;
+  border-color: rgba(255, 255, 255, 1);
+  box-shadow: 0 4px 14px rgba(190, 160, 140, 0.12), 0 1px 2px rgba(255, 255, 255, 1) inset;
+}
+
+.ios-spring {
+  transition: all 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ios-press:active {
+  transform: scale(0.965);
+  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ios-segmented-control {
+  background: rgba(244, 239, 232, 0.82);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  padding: 4px;
 }
 
 .glass-input {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(232, 223, 211, 0.8);
-  transition: all 0.25s ease;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(232, 223, 211, 0.85);
+  border-radius: 18px;
+  transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .glass-input:focus {
   background: #FFFFFF;
   border-color: var(--color-champagne);
-  box-shadow: 0 0 0 3px rgba(197, 155, 109, 0.18);
+  box-shadow: 0 0 0 3px rgba(197, 155, 109, 0.22), 0 4px 16px rgba(197, 155, 109, 0.08);
   outline: none;
 }
 
-/* Luxury CTA Button */
+/* Luxury CTA Button with iOS Liquid Sheen */
 .btn-luxury-cta {
   background: linear-gradient(135deg, #C59B6D 0%, #D8B48D 50%, #B07D4C 100%);
   color: #FFFFFF;
-  box-shadow: 0 8px 24px -4px rgba(197, 155, 109, 0.45), 0 1px 2px rgba(255, 255, 255, 0.5) inset;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 24px -4px rgba(197, 155, 109, 0.45), 0 1px 2px rgba(255, 255, 255, 0.55) inset;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .btn-luxury-cta:hover {
   background: linear-gradient(135deg, #B58B5D 0%, #CDA47D 50%, #A06D3C 100%);
-  transform: translateY(-1.5px);
-  box-shadow: 0 12px 28px -4px rgba(197, 155, 109, 0.55), 0 1px 3px rgba(255, 255, 255, 0.7) inset;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -4px rgba(197, 155, 109, 0.58), 0 1px 3px rgba(255, 255, 255, 0.8) inset;
 }
 .btn-luxury-cta:active {
-  transform: scale(0.98);
+  transform: scale(0.965);
 }
 
 .btn-luxury-secondary {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.95);
   color: var(--color-charcoal);
-  box-shadow: 0 4px 14px rgba(190, 160, 140, 0.08);
-  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(190, 160, 140, 0.08), 0 1px 2px rgba(255, 255, 255, 0.9) inset;
+  transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .btn-luxury-secondary:hover {
   background: #FFFFFF;
   border-color: var(--color-champagne);
   color: var(--color-champagne-dark);
   transform: translateY(-1.5px);
+}
+.btn-luxury-secondary:active {
+  transform: scale(0.965);
 }
 
 /* Soft Animations */

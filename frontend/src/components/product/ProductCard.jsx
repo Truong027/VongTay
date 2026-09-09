@@ -19,10 +19,10 @@ export default function ProductCard({ product, onQuickView }) {
   return (
     <div 
       onClick={() => onQuickView(product)}
-      className="glass-card-luxury rounded-3xl overflow-hidden border border-white/85 shadow-sm hover:shadow-2xl transition-all duration-500 flex flex-col cursor-pointer relative group"
+      className="ios-glass-card rounded-[28px] overflow-hidden flex flex-col cursor-pointer relative group"
     >
       {/* Image Container with subtle inner rounded frame */}
-      <div className="relative aspect-square overflow-hidden bg-[#F5EFE6] m-2 sm:m-2.5 rounded-2xl sm:rounded-[1.35rem]">
+      <div className="relative aspect-square overflow-hidden bg-[#F5EFE6]/80 m-2 sm:m-2.5 rounded-2xl sm:rounded-[1.4rem]">
         <img
           src={product.images[0]}
           alt={product.name}
@@ -43,12 +43,12 @@ export default function ProductCard({ product, onQuickView }) {
             </span>
           )}
           {product.tag && (
-            <span className="glass-pill text-[#231F1C] text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-2xs">
+            <span className="ios-pill text-[#231F1C] text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-2xs">
               {product.tag}
             </span>
           )}
           {product.menh && product.menh.length > 0 && product.menh[0] !== 'Tất cả' && (
-            <span className="glass-pill text-[#C59B6D] text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-2xs">
+            <span className="ios-pill text-[#C59B6D] text-[10px] font-semibold px-2.5 py-0.5 rounded-full shadow-2xs">
               Mệnh: {product.menh.join(', ')}
             </span>
           )}
@@ -57,7 +57,7 @@ export default function ProductCard({ product, onQuickView }) {
         {/* Wishlist Button */}
         <button
           onClick={handleToggleWishlist}
-          className="absolute top-2.5 right-2.5 p-2 rounded-full bg-white/85 backdrop-blur-md text-[#6B6258] hover:text-[#C59B6D] transition-all duration-200 shadow-sm hover:scale-110 z-10 border border-white"
+          className="absolute top-2.5 right-2.5 p-2 rounded-full bg-white/80 backdrop-blur-xl text-[#6B6258] hover:text-[#C59B6D] transition-all duration-300 shadow-sm hover:scale-110 z-10 border border-white/90 ios-press"
           title="Thêm vào yêu thích"
         >
           <Heart className={`w-4 h-4 ${liked ? 'fill-[#C59B6D] text-[#C59B6D]' : ''}`} />
@@ -67,7 +67,7 @@ export default function ProductCard({ product, onQuickView }) {
         <div className="absolute inset-x-2.5 bottom-2.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-1.5 z-10">
           <button
             onClick={(e) => { e.stopPropagation(); onQuickView(product); }}
-            className="flex-1 py-2 px-3 bg-white/95 text-[#231F1C] hover:bg-white text-xs font-semibold rounded-xl shadow-md backdrop-blur-md flex items-center justify-center gap-1.5 transition-colors border border-white"
+            className="flex-1 py-2 px-3 bg-white/90 backdrop-blur-xl text-[#231F1C] hover:bg-white text-xs font-semibold rounded-2xl shadow-md flex items-center justify-center gap-1.5 transition-all border border-white/90 ios-press"
           >
             <Eye className="w-3.5 h-3.5 text-[#C59B6D]" />
             <span>Xem Chi Tiết</span>
@@ -75,7 +75,7 @@ export default function ProductCard({ product, onQuickView }) {
           
           <button
             onClick={handleAddToCart}
-            className="p-2 btn-luxury-cta rounded-xl shadow-md transition-all flex items-center justify-center cursor-pointer"
+            className="p-2 btn-luxury-cta rounded-2xl shadow-md transition-all flex items-center justify-center cursor-pointer ios-press"
             title="Thêm nhanh vào giỏ"
           >
             <ShoppingBag className="w-4 h-4 text-white" />
@@ -133,7 +133,7 @@ export default function ProductCard({ product, onQuickView }) {
 
           <button
             onClick={handleAddToCart}
-            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[#FAF4E8] text-[#C59B6D] border border-[#EADBCC] hover:bg-[#C59B6D] hover:text-white transition-all shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#FAF4E8]/90 text-[#C59B6D] border border-[#EADBCC] hover:bg-[#C59B6D] hover:text-white transition-all shadow-2xs cursor-pointer ios-press"
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>Mua</span>

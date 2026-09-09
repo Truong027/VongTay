@@ -1,8 +1,37 @@
 const BASE_URL = '/api';
 
+const clientCache = new Map();
+const CLIENT_CACHE_TTL = 20000; // 20s client cache for 0ms instantaneous tab switching
+
+const getCached = (key) => {
+  const item = clientCache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.time > CLIENT_CACHE_TTL) {
+    clientCache.delete(key);
+    return null;
+  }
+  return item.data;
+};
+
+const setCached = (key, data) => {
+  clientCache.set(key, { data, time: Date.now() });
+};
+
+export const clearClientCache = (prefix = '') => {
+  if (!prefix) {
+    clientCache.clear();
+    return;
+  }
+  for (const key of clientCache.keys()) {
+    if (key.startsWith(prefix)) {
+      clientCache.delete(key);
+    }
+  }
+};
+
 export const api = {
   // Products & Categories
-  async getProducts(params = {}) {
+  async getProducts(params = {}, bypassCache = false) {
     const cleanParams = {};
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== '' && value !== 'all' && value !== 'undefined' && value !== 'null') {
@@ -10,9 +39,18 @@ export const api = {
       }
     }
     const query = new URLSearchParams(cleanParams).toString();
+    const cacheKey = `products:${query}`;
+    
+    if (!bypassCache) {
+      const cached = getCached(cacheKey);
+      if (cached) return cached;
+    }
+
     const res = await fetch(`${BASE_URL}/products${query ? `?${query}` : ''}`);
     if (!res.ok) throw new Error('Không thể tải danh sách sản phẩm');
-    return res.json();
+    const data = await res.json();
+    setCached(cacheKey, data);
+    return data;
   },
 
   async getProductById(id) {
@@ -21,17 +59,33 @@ export const api = {
     return res.json();
   },
 
-  async getCategories() {
+  async getCategories(bypassCache = false) {
+    const cacheKey = 'categories';
+    if (!bypassCache) {
+      const cached = getCached(cacheKey);
+      if (cached) return cached;
+    }
+
     const res = await fetch(`${BASE_URL}/products/categories`);
     if (!res.ok) throw new Error('Không thể tải danh mục');
-    return res.json();
+    const data = await res.json();
+    setCached(cacheKey, data);
+    return data;
   },
 
   // Customizer
-  async getCustomizerOptions() {
+  async getCustomizerOptions(bypassCache = false) {
+    const cacheKey = 'customizer:options';
+    if (!bypassCache) {
+      const cached = getCached(cacheKey);
+      if (cached) return cached;
+    }
+
     const res = await fetch(`${BASE_URL}/customizer/options`);
     if (!res.ok) throw new Error('Không thể tải linh kiện phối vòng');
-    return res.json();
+    const data = await res.json();
+    setCached(cacheKey, data);
+    return data;
   },
 
   async calculateCustomPrice(payload) {
@@ -68,6 +122,7 @@ export const api = {
       const err = await res.json();
       throw new Error(err.message || 'Lỗi đặt hàng');
     }
+    clearClientCache();
     return res.json();
   },
 
@@ -146,6 +201,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi thêm sản phẩm');
+    clearClientCache('products');
     return data;
   },
 
@@ -157,6 +213,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật sản phẩm');
+    clearClientCache('products');
     return data;
   },
 
@@ -166,6 +223,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi xóa sản phẩm');
+    clearClientCache('products');
     return data;
   },
 
@@ -175,6 +233,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi ẩn/hiện sản phẩm');
+    clearClientCache('products');
     return data;
   },
 
@@ -223,6 +282,7 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi đồng bộ Neon PostgreSQL');
+    clearClientCache();
     return data;
   },
 

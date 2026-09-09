@@ -287,6 +287,29 @@ export const ensureNeonTables = async () => {
   }
 };
 
+const runInBatches = async (items, batchSize, fn) => {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+};
+
+let productsCache = {
+  dataWithHidden: null,
+  dataPublicOnly: null,
+  lastFetched: 0
+};
+const CACHE_TTL_MS = 20000; // 20s Tier-1 cache for instant response
+
+export const invalidateProductsCache = () => {
+  productsCache.dataWithHidden = null;
+  productsCache.dataPublicOnly = null;
+  productsCache.lastFetched = 0;
+};
+
 export const syncAllDataToNeon = async () => {
   const connected = await ensureNeonConnected();
   if (!connected && !isNeonConnected()) {
@@ -304,52 +327,119 @@ export const syncAllDataToNeon = async () => {
   let vouchersSynced = 0;
   let consultationsSynced = 0;
 
-  // 1. Sync Users
-  for (const u of memoryData.users) {
-    try {
-      await query(
-        `INSERT INTO users (id, email, password_hash, full_name, phone, address, role, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (id) DO UPDATE SET
-           full_name = EXCLUDED.full_name,
-           phone = EXCLUDED.phone,
-           address = EXCLUDED.address,
-           role = EXCLUDED.role,
-           password_hash = EXCLUDED.password_hash`,
-        [u.id, u.email, u.password, u.fullName, u.phone || '', u.address || '', u.role, u.createdAt || new Date().toISOString()]
-      );
-      usersSynced++;
-    } catch (e) {
-      console.warn(`Lỗi sync user ${u.email}:`, e.message);
-    }
-  }
+  // 1. Đồng bộ song song các bảng phụ trợ (Users, Categories, Vouchers, Reviews, Consultations)
+  await Promise.all([
+    // Users
+    Promise.all(memoryData.users.map(async (u) => {
+      try {
+        await query(
+          `INSERT INTO users (id, email, password_hash, full_name, phone, address, role, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (id) DO UPDATE SET
+             full_name = EXCLUDED.full_name,
+             phone = EXCLUDED.phone,
+             address = EXCLUDED.address,
+             role = EXCLUDED.role,
+             password_hash = EXCLUDED.password_hash`,
+          [u.id, u.email, u.password, u.fullName, u.phone || '', u.address || '', u.role, u.createdAt || new Date().toISOString()]
+        );
+        usersSynced++;
+      } catch (e) {
+        console.warn(`Lỗi sync user ${u.email}:`, e.message);
+      }
+    })),
 
-  // 2. Sync Categories
-  for (const c of (memoryData.categories || [])) {
-    if (c.id === 'all' || c.id === 'best-seller') continue;
-    try {
-      await query(
-        `INSERT INTO categories (id, name, slug, icon, description, display_order)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (id) DO UPDATE SET
-           name = EXCLUDED.name,
-           slug = EXCLUDED.slug,
-           icon = EXCLUDED.icon`,
-        [c.id, c.name, c.id, c.icon || 'Sparkles', c.description || c.name, c.displayOrder || 0]
-      );
-      categoriesSynced++;
-    } catch (e) {
-      console.warn(`Lỗi sync category ${c.name}:`, e.message);
-    }
-  }
+    // Categories
+    Promise.all((memoryData.categories || []).map(async (c) => {
+      if (c.id === 'all' || c.id === 'best-seller') return;
+      try {
+        await query(
+          `INSERT INTO categories (id, name, slug, icon, description, display_order)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (id) DO UPDATE SET
+             name = EXCLUDED.name,
+             slug = EXCLUDED.slug,
+             icon = EXCLUDED.icon`,
+          [c.id, c.name, c.id, c.icon || 'Sparkles', c.description || c.name, c.displayOrder || 0]
+        );
+        categoriesSynced++;
+      } catch (e) {
+        console.warn(`Lỗi sync category ${c.name}:`, e.message);
+      }
+    })),
 
-  // 3. Sync Products
+    // Vouchers
+    Promise.all((memoryData.vouchers || []).map(async (v) => {
+      try {
+        await query(
+          `INSERT INTO vouchers (id, code, discount_type, discount_value, min_order_value, max_discount, usage_limit, used_count, description, is_active, expires_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           ON CONFLICT (id) DO UPDATE SET
+             discount_value = EXCLUDED.discount_value,
+             min_order_value = EXCLUDED.min_order_value,
+             usage_limit = EXCLUDED.usage_limit,
+             used_count = EXCLUDED.used_count,
+             is_active = EXCLUDED.is_active`,
+          [
+            v.id, v.code, v.discountType, v.discountValue, v.minOrderValue || 0,
+            v.maxDiscount || null, v.usageLimit || 500, v.usedCount || 0,
+            v.description || '', v.isActive !== false, v.expiresAt || null
+          ]
+        );
+        vouchersSynced++;
+      } catch (e) {
+        console.warn(`Lỗi sync voucher ${v.code}:`, e.message);
+      }
+    })),
+
+    // Reviews
+    Promise.all((memoryData.reviews || []).map(async (r) => {
+      try {
+        await query(
+          `INSERT INTO reviews (id, product_id, user_id, customer_name, rating, wrist_fit, comment, is_verified_buyer, photos, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (id) DO UPDATE SET
+             rating = EXCLUDED.rating,
+             comment = EXCLUDED.comment`,
+          [
+            r.id, r.productId, r.userId || null, r.customerName, r.rating || 5,
+            r.wristFit || 'Vừa vặn chuẩn', r.comment, r.isVerifiedBuyer !== false,
+            JSON.stringify(r.photos || []), r.createdAt || new Date().toISOString()
+          ]
+        );
+        reviewsSynced++;
+      } catch (e) {
+        console.warn(`Lỗi sync review ${r.id}:`, e.message);
+      }
+    })),
+
+    // Consultations
+    Promise.all((memoryData.consultations || []).map(async (c) => {
+      try {
+        await query(
+          `INSERT INTO consultations (id, customer_name, phone, email, menh, wrist_circumference, message, status, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            c.id, c.customerName, c.phone, c.email || '', c.menh || '',
+            c.wristCircumference || '', c.message || '', c.status || 'Chờ tư vấn',
+            c.createdAt || new Date().toISOString()
+          ]
+        );
+        consultationsSynced++;
+      } catch (e) {
+        console.warn(`Lỗi sync consultation ${c.id}:`, e.message);
+      }
+    }))
+  ]);
+
+  // 2. Sync Products theo lô song song 8 sản phẩm/lần (tăng tốc gấp 8x)
   const currentIds = memoryData.products.map(p => p.id);
   if (currentIds.length > 0) {
     const placeholders = currentIds.map((_, i) => `$${i + 1}`).join(',');
     await query(`DELETE FROM products WHERE id NOT IN (${placeholders})`, currentIds).catch(() => {});
   }
-  for (const p of memoryData.products) {
+  await runInBatches(memoryData.products, 8, async (p) => {
     try {
       await query(
         `INSERT INTO products (
@@ -386,10 +476,10 @@ export const syncAllDataToNeon = async () => {
     } catch (e) {
       console.warn(`Lỗi sync product ${p.name}:`, e.message);
     }
-  }
+  });
 
-  // 4. Sync Orders & Order Items
-  for (const o of memoryData.orders) {
+  // 3. Sync Orders theo lô song song 6 đơn/lần + order_items song song
+  await runInBatches(memoryData.orders, 6, async (o) => {
     try {
       await query(
         `INSERT INTO orders (
@@ -411,92 +501,30 @@ export const syncAllDataToNeon = async () => {
       );
       ordersSynced++;
 
-      // Sync normalized order_items
-      if (Array.isArray(o.items)) {
-        for (let idx = 0; idx < o.items.length; idx++) {
-          const item = o.items[idx];
+      if (Array.isArray(o.items) && o.items.length > 0) {
+        await Promise.all(o.items.map(async (item, idx) => {
           const itemId = `${o.id}-item-${idx + 1}`;
-          await query(
-            `INSERT INTO order_items (id, order_id, product_id, product_name, price, quantity, wrist_size, custom_engraving, item_total)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT (id) DO NOTHING`,
-            [
-              itemId, o.id, item.id || null, item.name || 'Vòng tay thủ công',
-              item.price || 0, item.quantity || 1, item.wristSize || item.customDetails?.size || '15-16cm',
-              item.customDetails?.engravedLetter || null, (item.price || 0) * (item.quantity || 1)
-            ]
-          ).catch(() => {});
-          orderItemsSynced++;
-        }
+          try {
+            await query(
+              `INSERT INTO order_items (id, order_id, product_id, product_name, price, quantity, wrist_size, custom_engraving, item_total)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT (id) DO NOTHING`,
+              [
+                itemId, o.id, item.id || null, item.name || 'Vòng tay thủ công',
+                item.price || 0, item.quantity || 1, item.wristSize || item.customDetails?.size || '15-16cm',
+                item.customDetails?.engravedLetter || null, (item.price || 0) * (item.quantity || 1)
+              ]
+            );
+            orderItemsSynced++;
+          } catch (_) {}
+        }));
       }
     } catch (e) {
       console.warn(`Lỗi sync order ${o.id}:`, e.message);
     }
-  }
+  });
 
-  // 5. Sync Vouchers
-  for (const v of (memoryData.vouchers || [])) {
-    try {
-      await query(
-        `INSERT INTO vouchers (id, code, discount_type, discount_value, min_order_value, max_discount, usage_limit, used_count, description, is_active, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         ON CONFLICT (id) DO UPDATE SET
-           discount_value = EXCLUDED.discount_value,
-           min_order_value = EXCLUDED.min_order_value,
-           usage_limit = EXCLUDED.usage_limit,
-           used_count = EXCLUDED.used_count,
-           is_active = EXCLUDED.is_active`,
-        [
-          v.id, v.code, v.discountType, v.discountValue, v.minOrderValue || 0,
-          v.maxDiscount || null, v.usageLimit || 500, v.usedCount || 0,
-          v.description || '', v.isActive !== false, v.expiresAt || null
-        ]
-      );
-      vouchersSynced++;
-    } catch (e) {
-      console.warn(`Lỗi sync voucher ${v.code}:`, e.message);
-    }
-  }
-
-  // 6. Sync Reviews
-  for (const r of (memoryData.reviews || [])) {
-    try {
-      await query(
-        `INSERT INTO reviews (id, product_id, user_id, customer_name, rating, wrist_fit, comment, is_verified_buyer, photos, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (id) DO UPDATE SET
-           rating = EXCLUDED.rating,
-           comment = EXCLUDED.comment`,
-        [
-          r.id, r.productId, r.userId || null, r.customerName, r.rating || 5,
-          r.wristFit || 'Vừa vặn chuẩn', r.comment, r.isVerifiedBuyer !== false,
-          JSON.stringify(r.photos || []), r.createdAt || new Date().toISOString()
-        ]
-      );
-      reviewsSynced++;
-    } catch (e) {
-      console.warn(`Lỗi sync review ${r.id}:`, e.message);
-    }
-  }
-
-  // 7. Sync Consultations
-  for (const c of (memoryData.consultations || [])) {
-    try {
-      await query(
-        `INSERT INTO consultations (id, customer_name, phone, email, menh, wrist_circumference, message, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         ON CONFLICT (id) DO NOTHING`,
-        [
-          c.id, c.customerName, c.phone, c.email || '', c.menh || '',
-          c.wristCircumference || '', c.message || '', c.status || 'Chờ tư vấn',
-          c.createdAt || new Date().toISOString()
-        ]
-      );
-      consultationsSynced++;
-    } catch (e) {
-      console.warn(`Lỗi sync consultation ${c.id}:`, e.message);
-    }
-  }
+  invalidateProductsCache();
 
   return {
     tablesCount: 10,
@@ -515,6 +543,14 @@ export const syncAllDataToNeon = async () => {
 // ==================== PRODUCTS REPOSITORY ====================
 
 export const dbGetProducts = async (includeHidden = false) => {
+  const now = Date.now();
+  if (includeHidden && productsCache.dataWithHidden && (now - productsCache.lastFetched < CACHE_TTL_MS)) {
+    return productsCache.dataWithHidden;
+  }
+  if (!includeHidden && productsCache.dataPublicOnly && (now - productsCache.lastFetched < CACHE_TTL_MS)) {
+    return productsCache.dataPublicOnly;
+  }
+
   await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
@@ -550,19 +586,32 @@ export const dbGetProducts = async (includeHidden = false) => {
           isHidden: Boolean(r.is_hidden),
           createdAt: r.created_at
         }));
+
         if (includeHidden) {
+          productsCache.dataWithHidden = mapped;
           memoryData.products = mapped;
           saveToDisk();
+        } else {
+          productsCache.dataPublicOnly = mapped;
         }
+        productsCache.lastFetched = Date.now();
+
         return mapped;
       }
     } catch (err) {
       console.warn('Lỗi đọc products Neon DB, fallback local:', err.message);
     }
   }
-  return includeHidden 
+
+  const fallback = includeHidden 
     ? memoryData.products 
     : memoryData.products.filter(p => !p.isHidden);
+
+  if (includeHidden) productsCache.dataWithHidden = fallback;
+  else productsCache.dataPublicOnly = fallback;
+  productsCache.lastFetched = Date.now();
+
+  return fallback;
 };
 
 export const dbCreateProduct = async (productData) => {
@@ -637,6 +686,7 @@ export const dbCreateProduct = async (productData) => {
     }
   }
 
+  invalidateProductsCache();
   return newProduct;
 };
 
@@ -734,6 +784,7 @@ export const dbUpdateProduct = async (id, updates) => {
     }
   }
 
+  invalidateProductsCache();
   return updated;
 };
 
@@ -760,8 +811,7 @@ export const dbDeleteProduct = async (id) => {
   const initialLen = memoryData.products.length;
   memoryData.products = memoryData.products.filter(p => String(p.id).trim() !== cleanId);
   const deletedFromMemory = memoryData.products.length < initialLen;
-  saveToDisk();
-
+  invalidateProductsCache();
   return deletedFromNeon || deletedFromMemory;
 };
 
@@ -793,6 +843,7 @@ export const dbToggleProductVisibility = async (id) => {
     }
   }
 
+  invalidateProductsCache();
   return { id: cleanId, isHidden: newHiddenState };
 };
 
