@@ -1247,6 +1247,87 @@ export const dbUpdateOrderStatus = async (id, statusUpdates) => {
   return order;
 };
 
+export const dbUpdateOrder = async (id, updates) => {
+  await ensureNeonConnected();
+  const order = memoryData.orders.find(o => o.id === id);
+  if (!order) return null;
+
+  const now = new Date();
+  const formattedDate = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+
+  const updatedOrder = {
+    ...order,
+    customerName: updates.customerName !== undefined ? updates.customerName.trim() : order.customerName,
+    phone: updates.phone !== undefined ? updates.phone.trim() : order.phone,
+    address: updates.address !== undefined ? updates.address.trim() : order.address,
+    note: updates.note !== undefined ? updates.note : order.note,
+    trackingCode: updates.trackingCode !== undefined ? (updates.trackingCode ? updates.trackingCode.trim() : null) : (order.trackingCode || null),
+    carrier: updates.carrier !== undefined ? (updates.carrier ? updates.carrier.trim() : 'GHTK') : (order.carrier || 'GHTK'),
+    paymentMethod: updates.paymentMethod !== undefined ? updates.paymentMethod : order.paymentMethod,
+    paymentStatus: updates.paymentStatus !== undefined ? updates.paymentStatus : order.paymentStatus,
+    orderStatus: updates.orderStatus !== undefined ? updates.orderStatus : order.orderStatus,
+    shippingFee: updates.shippingFee !== undefined ? Number(updates.shippingFee) : order.shippingFee,
+    totalAmount: updates.totalAmount !== undefined ? Number(updates.totalAmount) : order.totalAmount,
+    items: updates.items !== undefined ? updates.items : order.items
+  };
+
+  if (updates.orderStatus && updates.orderStatus !== order.orderStatus) {
+    updatedOrder.timeline = updatedOrder.timeline || [];
+    updatedOrder.timeline.unshift({
+      time: formattedDate,
+      status: `Chuyển trạng thái: ${updates.orderStatus}${updates.timelineNote ? ` (${updates.timelineNote})` : ''}`
+    });
+  }
+
+  const idx = memoryData.orders.findIndex(o => o.id === id);
+  if (idx !== -1) {
+    memoryData.orders[idx] = updatedOrder;
+  }
+  saveToDisk();
+
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `UPDATE orders SET
+           customer_name = $1, phone = $2, address = $3, note = $4,
+           tracking_code = $5, carrier = $6, payment_method = $7, payment_status = $8,
+           order_status = $9, shipping_fee = $10, total_amount = $11,
+           items = $12, timeline = $13
+         WHERE id = $14`,
+        [
+          updatedOrder.customerName, updatedOrder.phone, updatedOrder.address, updatedOrder.note,
+          updatedOrder.trackingCode, updatedOrder.carrier, updatedOrder.paymentMethod, updatedOrder.paymentStatus,
+          updatedOrder.orderStatus, updatedOrder.shippingFee, updatedOrder.totalAmount,
+          JSON.stringify(updatedOrder.items), JSON.stringify(updatedOrder.timeline || []), id
+        ]
+      );
+    } catch (err) {
+      console.warn('Lỗi cập nhật order Neon DB:', err.message);
+    }
+  }
+
+  return updatedOrder;
+};
+
+export const dbDeleteOrder = async (id) => {
+  await ensureNeonConnected();
+  const initialLen = memoryData.orders.length;
+  memoryData.orders = memoryData.orders.filter(o => o.id !== id);
+  const deleted = memoryData.orders.length < initialLen;
+  if (deleted) saveToDisk();
+
+  if (isNeonConnected()) {
+    try {
+      await query('DELETE FROM order_items WHERE order_id = $1', [id]).catch(() => {});
+      await query('DELETE FROM orders WHERE id = $1', [id]);
+    } catch (err) {
+      console.warn('Lỗi xóa order Neon DB:', err.message);
+    }
+  }
+
+  return deleted;
+};
+
 // ==================== CATEGORIES REPOSITORY ====================
 
 export const dbGetCategories = async () => {

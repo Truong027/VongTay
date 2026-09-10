@@ -51,6 +51,7 @@ import {
 import { api } from '../../services/api';
 import ProductEditorView from './ProductEditorView';
 import CharmManagerView from './CharmManagerView';
+import OrderManagerView from './OrderManagerView';
 
 const schemaTables = [
   {
@@ -1203,173 +1204,14 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
         {/* ================= TAB 1: QUẢN LÝ ĐƠN HÀNG ================= */}
         {adminTab === 'orders' && (
-          <div className="space-y-6">
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
-                <span className="text-[11px] text-[#6B6258] font-medium block">Tổng Doanh Thu</span>
-                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#B86244] mt-1 block">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRevenue)}
-                </span>
-                <span className="text-[10px] text-emerald-600 mt-1 inline-flex items-center gap-1 font-semibold">
-                  <TrendingUp className="w-3 h-3" /> Ghi nhận thời gian thực
-                </span>
-              </div>
-
-              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
-                <span className="text-[11px] text-[#6B6258] font-medium block">Tổng Đơn Hàng</span>
-                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-[#26211C] mt-1 block">
-                  {orders.length} đơn
-                </span>
-                <span className="text-[10px] text-[#8C8276] mt-1 block">Từ website Vòng Tay Nhà Zy</span>
-              </div>
-
-              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
-                <span className="text-[11px] text-[#6B6258] font-medium block">Đang Đan Hạt Thủ Công</span>
-                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-amber-600 mt-1 block">
-                  {orders.filter(o => o.orderStatus === 'Chờ xác nhận' || o.orderStatus === 'Đang kết hạt thủ công').length} đơn
-                </span>
-                <span className="text-[10px] text-amber-700 mt-1 block">Nghệ nhân đang hoàn thiện</span>
-              </div>
-
-              <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] shadow-sm">
-                <span className="text-[11px] text-[#6B6258] font-medium block">Đã Hoàn Thành / Giao</span>
-                <span className="text-xl sm:text-2xl font-bold font-serif-boutique text-emerald-600 mt-1 block">
-                  {orders.filter(o => o.orderStatus === 'Đã giao hàng' || o.orderStatus === 'Đang giao hàng').length} đơn
-                </span>
-                <span className="text-[10px] text-emerald-700 mt-1 block">Giao thành công</span>
-              </div>
-            </div>
-
-            {/* Filter & Search Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Filter className="w-4 h-4 text-[#6B6258]" />
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="bg-[#FAF7F2] border border-[#E8DFD3] text-xs font-semibold rounded-xl px-3 py-2 text-[#26211C] focus:outline-none"
-                >
-                  <option value="all">Tất cả trạng thái ({orders.length})</option>
-                  {statusOptions.map(st => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="relative w-full sm:w-72">
-                <Search className="w-4 h-4 text-[#8C8276] absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Tìm mã đơn DH-, tên khách, sđt..."
-                  value={orderSearchQuery}
-                  onChange={(e) => setOrderSearchQuery(e.target.value)}
-                  className="w-full text-xs bg-[#FAF7F2] pl-9 pr-3 py-2 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Orders Table */}
-            <div className="bg-white rounded-3xl border border-[#E8DFD3] shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FAF7F2] border-b border-[#E8DFD3] text-[#6B6258] uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="py-3.5 px-4">Mã Đơn</th>
-                      <th className="py-3.5 px-4">Khách Hàng</th>
-                      <th className="py-3.5 px-4">Sản Phẩm Đặt</th>
-                      <th className="py-3.5 px-4">Tổng Tiền</th>
-                      <th className="py-3.5 px-4">Thanh Toán</th>
-                      <th className="py-3.5 px-4">Trạng Thái Đơn</th>
-                      <th className="py-3.5 px-4 text-right">Thao Tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F0EAE1]">
-                    {filteredOrders.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="text-center py-10 text-[#8C8276]">
-                          Không tìm thấy đơn hàng nào phù hợp
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredOrders.map(order => (
-                        <tr key={order.id} className="hover:bg-[#FAF4ED]/50 transition-colors">
-                          <td className="py-3.5 px-4 font-mono font-bold text-[#B86244]">
-                            <div className="flex items-center gap-1.5">
-                              <span>#{order.id}</span>
-                              {(order.items?.some(it => it.isWholesale || it.quantity >= 5) || order.items?.reduce((s, i) => s + (i.quantity || 1), 0) >= 5) ? (
-                                <span className="inline-block text-[9px] bg-[#2E583A] text-white px-1.5 py-0.5 rounded font-sans font-bold">
-                                  ĐƠN SỈ
-                                </span>
-                              ) : (
-                                <span className="inline-block text-[9px] bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded font-sans font-medium">
-                                  ĐƠN LẺ
-                                </span>
-                              )}
-                            </div>
-                            <span className="block text-[10px] text-[#8C8276] font-normal font-sans mt-0.5">
-                              {order.createdAt ? new Date(order.createdAt).toLocaleDateString('vi-VN') : ''}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <p className="font-semibold text-[#26211C]">{order.customerName}</p>
-                            <p className="text-[11px] text-[#6B6258]">{order.phone}</p>
-                            <p className="text-[10px] text-[#8C8276] max-w-xs truncate">{order.address}</p>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="space-y-1 max-w-xs">
-                              {order.items?.map((it, idx) => (
-                                <p key={idx} className="text-[11px] text-[#26211C]">
-                                  • <span className="font-semibold">{it.quantity}x</span> {it.name}
-                                  {it.isCustom && <span className="text-[#B86244] text-[10px] ml-1">(Tự phối)</span>}
-                                </p>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4 font-bold text-[#26211C]">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalAmount)}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                              order.paymentStatus === 'Đã thanh toán' 
-                                ? 'bg-emerald-100 text-emerald-800' 
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {order.paymentStatus}
-                            </span>
-                            <span className="block text-[10px] text-[#8C8276] mt-0.5">
-                              {order.paymentMethod}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <select
-                              value={order.orderStatus}
-                              disabled={updatingOrderId === order.id}
-                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                              className="text-xs bg-[#FAF7F2] border border-[#E8DFD3] rounded-lg px-2 py-1 font-medium text-[#26211C] focus:outline-none"
-                            >
-                              {statusOptions.map(st => (
-                                <option key={st} value={st}>{st}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            <button
-                              onClick={() => setSelectedOrderDetail(order)}
-                              className="px-2.5 py-1 text-xs rounded-lg bg-[#FAF4ED] text-[#B86244] hover:bg-[#B86244] hover:text-white font-semibold transition-colors inline-flex items-center gap-1"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Chi tiết</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <OrderManagerView
+            orders={orders}
+            setOrders={setOrders}
+            products={products}
+            users={users}
+            onRefresh={loadAllAdminData}
+            triggerToast={triggerToast}
+          />
         )}
 
         {/* ================= TAB 2: QUẢN LÝ MÃ GIẢM GIÁ (VOUCHERS) ================= */}

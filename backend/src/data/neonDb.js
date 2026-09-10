@@ -170,6 +170,7 @@ const createTables = async () => {
       payment_status VARCHAR(50) DEFAULT 'Chờ thanh toán',
       order_status VARCHAR(100) DEFAULT 'Chờ xác nhận',
       tracking_code VARCHAR(100),
+      carrier VARCHAR(100) DEFAULT 'GHTK',
       note TEXT,
       timeline JSONB,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -179,6 +180,7 @@ const createTables = async () => {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS wholesale_discount NUMERIC DEFAULT 0;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS voucher_discount NUMERIC DEFAULT 0;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(100);
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier VARCHAR(100);
 
     -- 5. ORDER_ITEMS (Normalized relational line items)
     CREATE TABLE IF NOT EXISTS order_items (

@@ -100,7 +100,7 @@
       "wholesalePrice": 15000,
       "wholesaleMinQty": 5,
       "isBestSeller": false,
-      "isTrending": false,
+      "isTrending": true,
       "salesCount": 0,
       "cordComposition": {
         "cordColor": "Xanh Mint (Mint Green) và Trắng Kem (Cream White)",
@@ -240,7 +240,7 @@
       "paymentMethod": "COD",
       "paymentStatus": "Chờ thanh toán khi nhận hàng",
       "orderStatus": "Đã giao hàng",
-      "trackingCode": null,
+      "trackingCode": "VN12345678",
       "note": "",
       "timeline": [
         {
@@ -252,7 +252,8 @@
           "status": "Đơn hàng mới tạo trên Website"
         }
       ],
-      "createdAt": "2026-09-09T01:19:32.279Z"
+      "createdAt": "2026-09-09T01:19:32.279Z",
+      "carrier": "Viettel Post"
     },
     {
       "id": "DH-2160",
@@ -319,10 +320,14 @@
       "shippingFee": 25000,
       "paymentMethod": "COD",
       "paymentStatus": "Chờ thanh toán khi nhận hàng",
-      "orderStatus": "Chờ xác nhận",
+      "orderStatus": "Đã giao hàng",
       "trackingCode": null,
       "note": "",
       "timeline": [
+        {
+          "time": "08:21 10/09/2026",
+          "status": "Trạng thái: Đã giao hàng"
+        },
         {
           "time": "10:54 08/09/2026",
           "status": "Đơn hàng mới tạo trên Website"

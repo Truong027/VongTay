@@ -196,6 +196,30 @@ export const api = {
     return res.json();
   },
 
+  async updateOrder(id, orderData) {
+    const res = await fetch(`${BASE_URL}/orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi cập nhật thông tin đơn hàng');
+    }
+    return res.json();
+  },
+
+  async deleteOrder(id) {
+    const res = await fetch(`${BASE_URL}/orders/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi xóa đơn hàng');
+    }
+    return res.json();
+  },
+
   // Admin Stats
   async getAdminStats() {
     const res = await fetch(`${BASE_URL}/admin/stats`);

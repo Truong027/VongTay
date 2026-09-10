@@ -1,7 +1,9 @@
 import { 
   dbGetOrders, 
   dbSaveOrder, 
-  dbUpdateOrderStatus 
+  dbUpdateOrderStatus,
+  dbUpdateOrder,
+  dbDeleteOrder
 } from '../data/dbStore.js';
 import { isNeonConnected } from '../data/neonDb.js';
 
@@ -159,6 +161,46 @@ export const updateOrderStatus = async (req, res) => {
       success: true,
       message: 'Cập nhật trạng thái đơn hàng thành công',
       data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const updated = await dbUpdateOrder(id, updates);
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng để cập nhật' });
+    }
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật thông tin đơn hàng #${id}`,
+      data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await dbDeleteOrder(id);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng để xóa' });
+    }
+
+    res.json({
+      success: true,
+      message: `Đã xóa đơn hàng #${id} khỏi hệ thống`,
+      id
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
