@@ -145,12 +145,14 @@ const createTables = async () => {
       images JSONB,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price NUMERIC;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesale_price NUMERIC;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesale_min_qty INTEGER DEFAULT 5;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS is_best_seller BOOLEAN DEFAULT false;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS sales_count INTEGER DEFAULT 0;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS cord_composition JSONB;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS is_trending BOOLEAN DEFAULT false;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN DEFAULT false;
 
     -- 4. ORDERS

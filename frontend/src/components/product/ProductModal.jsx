@@ -100,7 +100,9 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
     { value: '18 - 19 cm (Tay đậm)', label: '18 - 19 cm (Tay đậm)' },
   ];
 
-  const originalPrice = Math.round(product.price * 1.25 / 1000) * 1000;
+  const originalPrice = product.originalPrice && Number(product.originalPrice) > Number(product.price)
+    ? Number(product.originalPrice)
+    : Math.round(product.price * 1.25 / 1000) * 1000;
   const isWholesale = quantity >= (product.wholesaleMinQty || 5);
   const effectivePrice = isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price;
 

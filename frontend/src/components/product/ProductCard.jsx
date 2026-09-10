@@ -113,10 +113,15 @@ export default function ProductCard({ product, onQuickView }) {
         {/* Pricing & Add to Cart */}
         <div className="pt-2 border-t border-white/60 flex items-center justify-between">
           <div>
-            <div className="flex items-baseline gap-1.5">
+            <div className="flex items-baseline gap-1.5 flex-wrap">
               <span className="text-base sm:text-lg font-bold text-[#C59B6D] font-serif-boutique">
                 {product.price.toLocaleString('vi-VN')}₫
               </span>
+              {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
+                <span className="text-[11px] text-[#948A7E] line-through font-medium">
+                  {Number(product.originalPrice).toLocaleString('vi-VN')}₫
+                </span>
+              )}
               <span className="text-[9px] text-[#948A7E] uppercase font-semibold">Giá lẻ</span>
             </div>
             {product.wholesalePrice && (

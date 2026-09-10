@@ -344,11 +344,11 @@ export default function ProductEditorView({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 
-                {/* Giá bán lẻ */}
+                {/* Giá bán lẻ (Khách trả) */}
                 <div className="p-4 rounded-2xl bg-white/70 border border-white/90 shadow-2xs">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="font-bold text-[#C59B6D] text-xs flex items-center gap-1">
-                      <span>Giá bán lẻ (₫): *</span>
+                      <span>Giá bán lẻ thực tế (₫): *</span>
                     </label>
                     {retailPrice > 0 && (
                       <span className="text-xs font-bold text-[#C59B6D] bg-[#FAF4E8] px-2 py-0.5 rounded-md">
@@ -360,7 +360,7 @@ export default function ProductEditorView({
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Ví dụ: 195000"
+                      placeholder="Ví dụ: 25000 hoặc 195000"
                       value={productFormData.price}
                       onChange={(e) => {
                         const clean = cleanNumberInput(e.target.value);
@@ -373,7 +373,79 @@ export default function ProductEditorView({
                       className="w-full glass-input p-3 rounded-xl font-bold text-[#C59B6D] text-base"
                     />
                   </div>
-                  <p className="text-[10px] text-[#948A7E] mt-1.5">Giá niêm yết khi khách mua lẻ trên website</p>
+                  <p className="text-[10px] text-[#948A7E] mt-1.5">Giá khách thực sự thanh toán khi mua sản phẩm</p>
+                </div>
+
+                {/* Giá gốc niêm yết (Số tiền bị gạch) */}
+                <div className="p-4 rounded-2xl bg-white/70 border border-white/90 shadow-2xs">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-[#6B6258] text-xs flex items-center gap-1.5">
+                      <span>Giá gốc (₫) - <strong className="line-through text-red-500">Số tiền bị gạch</strong>:</span>
+                    </label>
+                    {originalPrice > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-[#8C8276] line-through bg-stone-100 px-2 py-0.5 rounded-md">
+                          {new Intl.NumberFormat('vi-VN').format(originalPrice)} đ
+                        </span>
+                        {originalPrice > retailPrice && retailPrice > 0 && (
+                          <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-md">
+                            -{Math.round(((originalPrice - retailPrice) / originalPrice) * 100)}%
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Ví dụ: 220000 (để gạch ngang như ảnh)"
+                      value={productFormData.originalPrice || ''}
+                      onChange={(e) => setProductFormData({ ...productFormData, originalPrice: cleanNumberInput(e.target.value) })}
+                      className="w-full glass-input p-3 rounded-xl font-bold text-[#4A453F] text-base"
+                    />
+                    {productFormData.originalPrice && (
+                      <button
+                        type="button"
+                        onClick={() => setProductFormData({ ...productFormData, originalPrice: '' })}
+                        className="absolute right-3 top-3 text-[11px] text-[#8C8276] hover:text-red-500 font-semibold cursor-pointer"
+                        title="Xóa giá gạch ngang"
+                      >
+                        ✕ Bỏ gạch
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5 text-[10px]">
+                    <span className="text-[#948A7E]">Số tiền gạch ngang tạo cảm giác khuyến mãi</span>
+                    {retailPrice > 0 && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setProductFormData({ ...productFormData, originalPrice: String(Math.round(retailPrice * 1.2 / 1000) * 1000) })}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 hover:bg-[#FAF4E8] hover:text-[#C59B6D] font-bold transition-colors cursor-pointer"
+                          title="Gợi ý +20% giá bán"
+                        >
+                          +20%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProductFormData({ ...productFormData, originalPrice: String(Math.round(retailPrice * 1.35 / 1000) * 1000) })}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 hover:bg-[#FAF4E8] hover:text-[#C59B6D] font-bold transition-colors cursor-pointer"
+                          title="Gợi ý +35% giá bán"
+                        >
+                          +35%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProductFormData({ ...productFormData, originalPrice: '220000' })}
+                          className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 hover:bg-[#FAF4E8] hover:text-[#C59B6D] font-bold transition-colors cursor-pointer"
+                          title="Điền 220.000đ"
+                        >
+                          220k
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Giá bán sỉ */}
