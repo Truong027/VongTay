@@ -13,7 +13,9 @@ import {
   User,
   LogOut,
   LogIn,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
@@ -44,6 +46,74 @@ export default function Navbar({
   const searchBtnRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const mobileToggleBtnRef = useRef(null);
+
+  // Ref & State cho thanh trượt danh mục (vuốt chuột, cuộn bánh xe ngang & nút điều hướng)
+  const navRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const isDraggingNav = useRef(false);
+  const startXNav = useRef(0);
+  const scrollLeftNav = useRef(0);
+  const hasMovedNav = useRef(false);
+
+  const checkNavScroll = () => {
+    if (navRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
+      setCanScrollLeft(scrollLeft > 6);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 6);
+    }
+  };
+
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+
+    checkNavScroll();
+    const timer = setTimeout(checkNavScroll, 200);
+    el.addEventListener('scroll', checkNavScroll, { passive: true });
+    window.addEventListener('resize', checkNavScroll);
+
+    // Chuyển cuộn chuột dọc thành vuốt trượt ngang mượt mà
+    const handleWheelScroll = (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+    el.addEventListener('wheel', handleWheelScroll, { passive: false });
+
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener('scroll', checkNavScroll);
+      window.removeEventListener('resize', checkNavScroll);
+      el.removeEventListener('wheel', handleWheelScroll);
+    };
+  }, []);
+
+  const handleNavMouseDown = (e) => {
+    if (!navRef.current) return;
+    isDraggingNav.current = true;
+    startXNav.current = e.pageX - navRef.current.offsetLeft;
+    scrollLeftNav.current = navRef.current.scrollLeft;
+    hasMovedNav.current = false;
+  };
+
+  const handleNavMouseMove = (e) => {
+    if (!isDraggingNav.current || !navRef.current) return;
+    const x = e.pageX - navRef.current.offsetLeft;
+    const walk = (x - startXNav.current) * 1.6;
+    if (Math.abs(walk) > 4) {
+      hasMovedNav.current = true;
+    }
+    navRef.current.scrollLeft = scrollLeftNav.current - walk;
+  };
+
+  const handleNavMouseUp = () => {
+    isDraggingNav.current = false;
+    setTimeout(() => {
+      hasMovedNav.current = false;
+    }, 60);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -94,7 +164,7 @@ export default function Navbar({
 
   return (
     <header className="sticky top-0 z-40 bg-[#FAF7F2]/80 backdrop-blur-2xl border-b border-white/80 shadow-[0_4px_30px_rgba(0,0,0,0.03)] ios-spring w-full max-w-full pt-[env(safe-area-inset-top,0px)]">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-1.5 sm:gap-3">
           
           {/* 1. LEFT: Brand Logo & Mobile Menu Toggle */}
@@ -129,139 +199,188 @@ export default function Navbar({
             </div>
           </div>
 
-          {/* 2. CENTER: Luxury Boutique Category Cards & Actions */}
-          <nav className="hidden lg:flex items-center justify-start gap-1.5 xl:gap-2 flex-1 mx-1 xl:mx-4 overflow-x-auto scrollbar-none py-1 min-w-0 touch-pan-x">
-            {/* Category Cards Frosted Group */}
-            <div className="flex items-center gap-1 p-1 bg-[#FAF4ED]/95 backdrop-blur-md rounded-2xl border border-[#EADBCC] shadow-2xs shrink-0">
-              <button
-                onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'all'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>✨</span>
-                <span>Tất Cả Sản Phẩm</span>
-              </button>
-
-              <button
-                onClick={() => { 
-                  setActiveTab(activeTab === 'guong-dinh' ? 'all' : 'guong-dinh'); 
-                  if (isAdminView) onOpenAdmin(false); 
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'guong-dinh'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>🪞</span>
-                <span>Gương Đính Gập & Đơn</span>
-                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold uppercase ${
-                  !isAdminView && activeTab === 'guong-dinh' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
-                }`}>
-                  Mới
-                </span>
-              </button>
-
-              <button
-                onClick={() => { 
-                  setActiveTab(activeTab === 'macrame-pastel' ? 'all' : 'macrame-pastel'); 
-                  if (isAdminView) onOpenAdmin(false); 
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'macrame-pastel'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>🌸</span>
-                <span>Macrame Pastel</span>
-              </button>
-
-              <button
-                onClick={() => { 
-                  setActiveTab(activeTab === 'vong-doi' ? 'all' : 'vong-doi'); 
-                  if (isAdminView) onOpenAdmin(false); 
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'vong-doi'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>💫</span>
-                <span>Vòng Đôi Dây Sáp</span>
-              </button>
-
-              <button
-                onClick={() => { 
-                  setActiveTab(activeTab === 'day-do-may-man' ? 'all' : 'day-do-may-man'); 
-                  if (isAdminView) onOpenAdmin(false); 
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'day-do-may-man'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>🏮</span>
-                <span>Dây Đỏ Hộ Thân</span>
-              </button>
-
-              <button
-                onClick={() => { 
-                  setActiveTab(activeTab === 'day-chuyen-vintage' ? 'all' : 'day-chuyen-vintage'); 
-                  if (isAdminView) onOpenAdmin(false); 
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'day-chuyen-vintage'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>📿</span>
-                <span>Dây Chuyền Vintage</span>
-              </button>
-
-              <button
-                onClick={() => { 
-                  setActiveTab(activeTab === 'day-lua-co-phong' ? 'all' : 'day-lua-co-phong'); 
-                  if (isAdminView) onOpenAdmin(false); 
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                  !isAdminView && activeTab === 'day-lua-co-phong'
-                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
-                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
-                }`}
-              >
-                <span>🎋</span>
-                <span>Dây Lụa Cổ Phong</span>
-              </button>
-            </div>
-
-            <div className="h-4 w-[1px] bg-[#E8DFD3] mx-0.5"></div>
-
-            {/* Customizer button card */}
+          {/* 2. CENTER: Luxury Boutique Category Cards & Actions (Có hỗ trợ Vuốt chuột, Lăn bánh xe & Nút trượt ‹ ›) */}
+          <div className="relative hidden lg:flex items-center flex-1 mx-1 xl:mx-3 min-w-0 group/slider">
+            {/* Nút trượt sang trái */}
             <button
-              onClick={onOpenCustomizer}
-              className="px-3.5 py-2 text-xs font-semibold rounded-2xl bg-[#FAF4ED] hover:bg-[#F2E5D5] text-[#B86244] border border-[#EADBCC] transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer"
+              type="button"
+              onClick={() => navRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
+              className={`absolute left-0 z-20 w-7 h-7 rounded-full bg-white/95 text-[#26211C] shadow-md border border-[#EADBCC] flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95 ${
+                canScrollLeft ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'
+              }`}
+              title="Trượt sang trái"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Tự Phối Vòng</span>
+              <ChevronLeft className="w-4 h-4 text-[#B86244]" />
             </button>
 
-            {/* AI Camera Stylist button card */}
-            <button
-              onClick={onOpenAICamera}
-              className="px-3.5 py-2 text-xs font-semibold rounded-2xl bg-gradient-to-r from-[#B86244] to-[#A05237] hover:brightness-105 text-white transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer"
-              title="Quét cổ tay/cánh tay đo size & Tải ảnh gợi ý phối từ hạt và charm có sẵn"
+            <nav
+              ref={navRef}
+              onMouseDown={handleNavMouseDown}
+              onMouseMove={handleNavMouseMove}
+              onMouseUp={handleNavMouseUp}
+              onMouseLeave={handleNavMouseUp}
+              className="flex items-center justify-start gap-1.5 xl:gap-2 flex-1 overflow-x-auto scrollbar-none py-1 min-w-0 touch-pan-x cursor-grab active:cursor-grabbing select-none scroll-smooth"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
-              <span>AI Quét & Gợi Ý Vòng</span>
+              {/* Category Cards Frosted Group */}
+              <div className="flex items-center gap-1 p-1 bg-[#FAF4ED]/95 backdrop-blur-md rounded-2xl border border-[#EADBCC] shadow-2xs shrink-0">
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab('all'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'all'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>✨</span>
+                  <span>Tất Cả Sản Phẩm</span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab(activeTab === 'guong-dinh' ? 'all' : 'guong-dinh'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'guong-dinh'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>🪞</span>
+                  <span>Gương Đính Gập & Đơn</span>
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-extrabold uppercase ${
+                    !isAdminView && activeTab === 'guong-dinh' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-600'
+                  }`}>
+                    Mới
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab(activeTab === 'macrame-pastel' ? 'all' : 'macrame-pastel'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'macrame-pastel'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>🌸</span>
+                  <span>Macrame Pastel</span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab(activeTab === 'vong-doi' ? 'all' : 'vong-doi'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'vong-doi'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>💫</span>
+                  <span>Vòng Đôi Dây Sáp</span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab(activeTab === 'day-do-may-man' ? 'all' : 'day-do-may-man'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'day-do-may-man'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>🏮</span>
+                  <span>Dây Đỏ Hộ Thân</span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab(activeTab === 'day-chuyen-vintage' ? 'all' : 'day-chuyen-vintage'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'day-chuyen-vintage'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>📿</span>
+                  <span>Dây Chuyền Vintage</span>
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (hasMovedNav.current) return;
+                    setActiveTab(activeTab === 'day-lua-co-phong' ? 'all' : 'day-lua-co-phong'); 
+                    if (isAdminView) onOpenAdmin(false); 
+                  }}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    !isAdminView && activeTab === 'day-lua-co-phong'
+                      ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                      : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                  }`}
+                >
+                  <span>🎋</span>
+                  <span>Dây Lụa Cổ Phong</span>
+                </button>
+              </div>
+
+              <div className="h-4 w-[1px] bg-[#E8DFD3] mx-0.5 shrink-0"></div>
+
+              {/* Customizer button card */}
+              <button
+                onClick={(e) => { 
+                  if (hasMovedNav.current) return;
+                  onOpenCustomizer(); 
+                }}
+                className="px-3.5 py-2 text-xs font-semibold rounded-2xl bg-[#FAF4ED] hover:bg-[#F2E5D5] text-[#B86244] border border-[#EADBCC] transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Tự Phối Vòng</span>
+              </button>
+
+              {/* AI Camera Stylist button card */}
+              <button
+                onClick={(e) => { 
+                  if (hasMovedNav.current) return;
+                  onOpenAICamera(); 
+                }}
+                className="px-3.5 py-2 text-xs font-semibold rounded-2xl bg-gradient-to-r from-[#B86244] to-[#A05237] hover:brightness-105 text-white transition-all duration-200 whitespace-nowrap inline-flex items-center gap-1.5 shadow-xs hover:shadow-md cursor-pointer shrink-0"
+                title="Quét cổ tay/cánh tay đo size & Tải ảnh gợi ý phối từ hạt và charm có sẵn"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+                <span>AI Quét & Gợi Ý Vòng</span>
+              </button>
+            </nav>
+
+            {/* Nút trượt sang phải */}
+            <button
+              type="button"
+              onClick={() => navRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
+              className={`absolute right-0 z-20 w-7 h-7 rounded-full bg-white/95 text-[#26211C] shadow-md border border-[#EADBCC] flex items-center justify-center transition-all cursor-pointer hover:scale-110 active:scale-95 ${
+                canScrollRight ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-75 pointer-events-none'
+              }`}
+              title="Trượt sang phải"
+            >
+              <ChevronRight className="w-4 h-4 text-[#B86244]" />
             </button>
-          </nav>
+          </div>
 
           {/* 3. RIGHT: Actions (Search, Wishlist, ĐĂNG NHẬP, QUẢN TRỊ, GIỎ HÀNG) */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-auto">
