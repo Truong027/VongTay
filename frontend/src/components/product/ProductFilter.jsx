@@ -30,7 +30,13 @@ export default function ProductFilter({
           return (
             <button
               key={cat.id}
-              onClick={() => onSelectCategory(cat.id)}
+              onClick={() => {
+                if (isSelected) {
+                  onSelectCategory('all');
+                } else {
+                  onSelectCategory(cat.id);
+                }
+              }}
               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ios-press ${
                 isSelected
                   ? 'btn-luxury-cta shadow-md'
@@ -38,7 +44,7 @@ export default function ProductFilter({
               }`}
             >
               <span>{cat.name}</span>
-              {cat.count && (
+              {cat.count !== undefined && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
                   isSelected ? 'bg-white/25 text-white' : 'bg-[#FAF4E8] text-[#C59B6D]'
                 }`}>
@@ -63,7 +69,13 @@ export default function ProductFilter({
             return (
               <button
                 key={m.id}
-                onClick={() => onSelectMenh(m.id)}
+                onClick={() => {
+                  if (isSelected && m.id !== 'all') {
+                    onSelectMenh('all');
+                  } else {
+                    onSelectMenh(m.id);
+                  }
+                }}
                 className={`px-3 py-1 rounded-xl font-semibold transition-all flex-shrink-0 cursor-pointer text-xs ios-press ${
                   isSelected
                     ? 'bg-[#C59B6D] text-white shadow-xs'

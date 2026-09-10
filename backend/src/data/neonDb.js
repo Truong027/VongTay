@@ -8,6 +8,7 @@ const { Pool } = pg;
 let pool = null;
 let isConnected = false;
 let connectingPromise = null;
+let tablesInitialized = false;
 let currentConnectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || 'postgresql://neondb_owner:npg_dxON2tr3BCTK@ep-blue-moon-b3pc0ls7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full';
 
 export const initNeonDb = async (connStr = null) => {
@@ -39,10 +40,11 @@ export const initNeonDb = async (connStr = null) => {
         ssl: {
           rejectUnauthorized: false
         },
-        max: 12,
+        max: 10,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000,
-        keepAlive: true
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000
       });
 
       // Test connection
@@ -56,8 +58,10 @@ export const initNeonDb = async (connStr = null) => {
       console.log('🐘 Đã kết nối thành công tới Neon PostgreSQL Database!');
       console.log('🕒 Thời gian máy chủ Neon:', res.rows[0].now);
 
-      // Auto-create tables
-      await createTables();
+      // Auto-create tables once
+      if (!tablesInitialized) {
+        await createTables();
+      }
 
       return { 
         success: true, 
@@ -89,7 +93,7 @@ export const ensureNeonConnected = async () => {
 };
 
 const createTables = async () => {
-  if (!pool) return;
+  if (!pool || tablesInitialized) return;
 
   const createTablesSql = `
     -- 1. USERS
@@ -307,10 +311,20 @@ const createTables = async () => {
         ALTER TABLE custom_designs ADD CONSTRAINT fk_custom_designs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
       END IF;
     END $$;
+
+    -- Tối ưu hóa chỉ mục (Indexes) giúp truy vấn tìm kiếm, lọc nhanh vượt trội
+    CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+    CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_products_is_hidden ON products(is_hidden);
+    CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+    CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);
+    CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
   `;
 
   try {
     await pool.query(createTablesSql);
+    tablesInitialized = true;
     console.log('✅ Toàn bộ 10 bảng dữ liệu (users, categories, products, orders, order_items, reviews, vouchers, wishlists, custom_designs, consultations) trên Neon PostgreSQL đã sẵn sàng.');
   } catch (err) {
     console.error('Lỗi khởi tạo 10 bảng Neon:', err.message);

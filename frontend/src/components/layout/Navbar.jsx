@@ -130,12 +130,12 @@ export default function Navbar({
           </div>
 
           {/* 2. CENTER: Luxury Boutique Category Cards & Actions */}
-          <nav className="hidden lg:flex items-center justify-center gap-1.5 xl:gap-2 flex-1 mx-2 xl:mx-4 overflow-x-auto no-scrollbar py-1">
+          <nav className="hidden lg:flex items-center justify-start gap-1.5 xl:gap-2 flex-1 mx-1 xl:mx-4 overflow-x-auto scrollbar-none py-1 min-w-0 touch-pan-x">
             {/* Category Cards Frosted Group */}
-            <div className="flex items-center gap-1 p-1 bg-[#FAF4ED]/95 backdrop-blur-md rounded-2xl border border-[#EADBCC] shadow-2xs">
+            <div className="flex items-center gap-1 p-1 bg-[#FAF4ED]/95 backdrop-blur-md rounded-2xl border border-[#EADBCC] shadow-2xs shrink-0">
               <button
                 onClick={() => { setActiveTab('all'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'all'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -146,8 +146,11 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                onClick={() => { 
+                  setActiveTab(activeTab === 'guong-dinh' ? 'all' : 'guong-dinh'); 
+                  if (isAdminView) onOpenAdmin(false); 
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'guong-dinh'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -163,8 +166,11 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                onClick={() => { 
+                  setActiveTab(activeTab === 'macrame-pastel' ? 'all' : 'macrame-pastel'); 
+                  if (isAdminView) onOpenAdmin(false); 
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'macrame-pastel'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -175,8 +181,11 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                onClick={() => { 
+                  setActiveTab(activeTab === 'vong-doi' ? 'all' : 'vong-doi'); 
+                  if (isAdminView) onOpenAdmin(false); 
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'vong-doi'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -187,8 +196,11 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                onClick={() => { 
+                  setActiveTab(activeTab === 'day-do-may-man' ? 'all' : 'day-do-may-man'); 
+                  if (isAdminView) onOpenAdmin(false); 
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'day-do-may-man'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -199,8 +211,11 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('day-chuyen-vintage'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                onClick={() => { 
+                  setActiveTab(activeTab === 'day-chuyen-vintage' ? 'all' : 'day-chuyen-vintage'); 
+                  if (isAdminView) onOpenAdmin(false); 
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'day-chuyen-vintage'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -211,8 +226,11 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('day-lua-co-phong'); if (isAdminView) onOpenAdmin(false); }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                onClick={() => { 
+                  setActiveTab(activeTab === 'day-lua-co-phong' ? 'all' : 'day-lua-co-phong'); 
+                  if (isAdminView) onOpenAdmin(false); 
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   !isAdminView && activeTab === 'day-lua-co-phong'
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
                     : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
@@ -529,8 +547,8 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('guong-dinh'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                onClick={() => { setActiveTab(activeTab === 'guong-dinh' ? 'all' : 'guong-dinh'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'guong-dinh' && !isAdminView 
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
                     : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
@@ -541,8 +559,8 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('macrame-pastel'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                onClick={() => { setActiveTab(activeTab === 'macrame-pastel' ? 'all' : 'macrame-pastel'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'macrame-pastel' && !isAdminView 
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
                     : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
@@ -553,8 +571,8 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('vong-doi'); if (isAdminView) onOpenAdmin(false); }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                onClick={() => { setActiveTab(activeTab === 'vong-doi' ? 'all' : 'vong-doi'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'vong-doi' && !isAdminView 
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
                     : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
@@ -565,8 +583,8 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('day-do-may-man'); if (isAdminView) onOpenAdmin(false); }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                onClick={() => { setActiveTab(activeTab === 'day-do-may-man' ? 'all' : 'day-do-may-man'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'day-do-may-man' && !isAdminView 
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
                     : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
@@ -577,8 +595,8 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('day-chuyen-vintage'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                onClick={() => { setActiveTab(activeTab === 'day-chuyen-vintage' ? 'all' : 'day-chuyen-vintage'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'day-chuyen-vintage' && !isAdminView 
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
                     : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
@@ -589,8 +607,8 @@ export default function Navbar({
               </button>
 
               <button
-                onClick={() => { setActiveTab('day-lua-co-phong'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                onClick={() => { setActiveTab(activeTab === 'day-lua-co-phong' ? 'all' : 'day-lua-co-phong'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
                   activeTab === 'day-lua-co-phong' && !isAdminView 
                     ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
                     : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
