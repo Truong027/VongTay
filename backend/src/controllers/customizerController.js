@@ -1,23 +1,31 @@
 import { customizerOptions } from '../data/seedData.js';
+import { dbGetCharms } from '../data/dbStore.js';
 
-export const getCustomizerOptions = (req, res) => {
+export const getCustomizerOptions = async (req, res) => {
   try {
+    const liveCharms = await dbGetCharms();
+    const options = {
+      ...customizerOptions,
+      charms: liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms
+    };
     res.json({
       success: true,
-      data: customizerOptions
+      data: options
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const calculateCustomPrice = (req, res) => {
+export const calculateCustomPrice = async (req, res) => {
   try {
     const { cordId, mainBeadId, secondaryBeadId, charmId, sizeId } = req.body;
+    const liveCharms = await dbGetCharms();
+    const availableCharms = liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms;
 
     const cord = customizerOptions.cords.find(c => c.id === cordId) || customizerOptions.cords[0];
     const mainBead = customizerOptions.beads.find(b => b.id === mainBeadId) || customizerOptions.beads[0];
-    const charm = customizerOptions.charms.find(c => c.id === charmId);
+    const charm = availableCharms.find(c => c.id === charmId);
     const size = customizerOptions.sizes.find(s => s.id === sizeId) || customizerOptions.sizes[1];
 
     let beadTotal = 0;

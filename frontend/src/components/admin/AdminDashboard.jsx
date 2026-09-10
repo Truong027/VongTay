@@ -45,10 +45,12 @@ import {
   Heart,
   HelpCircle,
   ArrowRight,
-  Coins
+  Coins,
+  Gem
 } from 'lucide-react';
 import { api } from '../../services/api';
 import ProductEditorView from './ProductEditorView';
+import CharmManagerView from './CharmManagerView';
 
 const schemaTables = [
   {
@@ -280,6 +282,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   // Orders state
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [charms, setCharms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -378,7 +381,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const loadAllAdminData = async () => {
     setLoading(true);
     try {
-      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes, telemRes] = await Promise.all([
+      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes, telemRes, charmsRes] = await Promise.all([
         api.getAdminStats().catch(() => ({ success: false })),
         api.getOrders().catch(() => ({ success: false })),
         api.getProducts({ includeHidden: true }).catch(() => ({ success: false })),
@@ -386,13 +389,15 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         api.getMe().catch(() => ({ success: false })),
         api.getVouchers(true).catch(() => ({ success: false })),
         api.getReviews().catch(() => ({ success: false })),
-        api.getDatabaseTelemetry().catch(() => ({ success: false }))
+        api.getDatabaseTelemetry().catch(() => ({ success: false })),
+        api.getCharms().catch(() => ({ success: false }))
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
       if (ordersRes.success) setOrders(ordersRes.data);
       if (productsRes.success) setProducts(productsRes.data);
       if (usersRes.success) setUsers(usersRes.data);
+      if (charmsRes.success && Array.isArray(charmsRes.data)) setCharms(charmsRes.data);
       if (telemRes.success && telemRes.data) {
         setDbStatus({
           isConnected: telemRes.data.isNeonConnected,
@@ -453,7 +458,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   // ================= PRODUCT HANDLERS =================
   const handleAutoAnalyzeImage = async (fileOrUrl, isFile = false) => {
     setIsAnalyzingCord(true);
-    setAiAnalysisStatus('Đang gửi hình ảnh đến AI Gemini Vision để bóc tách sợi dây, charm, nút thắt...');
+    setAiAnalysisStatus('Đang gửi hình ảnh đến AI Gemini Vision để thẩm định sản phẩm (Gương đính hoặc Vòng tay)...');
     try {
       let payload = {};
       if (isFile) {
@@ -468,7 +473,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         // Đặt preview ngay vào form ảnh
         setProductFormData(prev => ({
           ...prev,
-          images: [base64Data, ...(prev.images.slice(1))]
+          images: [base64Data, ...(Array.isArray(prev.images) ? prev.images.slice(1) : [])]
         }));
       } else {
         if (!fileOrUrl) {
@@ -476,36 +481,47 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           setIsAnalyzingCord(false);
           return;
         }
-        payload = { imageUrl: fileOrUrl };
+        if (typeof fileOrUrl === 'string' && fileOrUrl.startsWith('data:image/')) {
+          payload = { imageBase64: fileOrUrl };
+        } else {
+          payload = { imageUrl: fileOrUrl };
+        }
       }
 
-      setAiAnalysisStatus('AI đang bóc tách thành phần: sợi dây, kỹ thuật thắt, charm phụ kiện, độ bền...');
+      setAiAnalysisStatus('AI đang bóc tách chi tiết: thể loại sản phẩm (gương/vòng), khung/dây, charm đính kết, ý nghĩa...');
       const res = await api.analyzeBraceletCord(payload);
       if (res && res.success && res.data) {
         const aiData = res.data;
+        const isMirrorProduct = aiData.category === 'guong-dinh' || aiData.isMirror;
+
         setProductFormData(prev => ({
           ...prev,
-          name: aiData.name || prev.name || 'Vòng Tay Dây Thủ Công Vòng Tay Nhà Zy',
-          category: aiData.category || prev.category || 'macrame-pastel',
-          price: aiData.price || prev.price || 195000,
-          wholesalePrice: aiData.wholesalePrice || Math.round((aiData.price || prev.price || 195000) * 0.7),
-          wholesaleMinQty: aiData.wholesaleMinQty || prev.wholesaleMinQty || 5,
-          cordType: aiData.cordType || prev.cordType || '',
-          stoneType: aiData.stoneType || prev.stoneType || '',
-          tag: aiData.tag || prev.tag || 'AI Đề Xuất',
+          name: aiData.name || prev.name || (isMirrorProduct ? 'Gương Đính Vỏ Sò & Ngọc Trai Biển Vintage (Miền Biển Xuân)' : 'Vòng Tay Dây Thủ Công Vòng Tay Nhà Zy'),
+          category: aiData.category || (isMirrorProduct ? 'guong-dinh' : prev.category || 'macrame-pastel'),
+          price: aiData.price ? String(aiData.price) : prev.price || (isMirrorProduct ? '225000' : '195000'),
+          wholesalePrice: aiData.wholesalePrice ? String(aiData.wholesalePrice) : String(Math.round(Number(aiData.price || prev.price || 195000) * 0.7)),
+          wholesaleMinQty: aiData.wholesaleMinQty ? String(aiData.wholesaleMinQty) : prev.wholesaleMinQty || '5',
+          cordType: aiData.cordType || prev.cordType || (isMirrorProduct ? 'Khung gương kim loại mạ vintage gập 2 mặt' : 'Dây chỉ sáp dệt Macrame vintage'),
+          stoneType: aiData.stoneType || prev.stoneType || (isMirrorProduct ? 'Vỏ sò biển tự nhiên & ngọc trai ánh xà cừ' : 'Hạt ngọc pastel & charm'),
+          tag: aiData.tag || prev.tag || (isMirrorProduct ? 'Gương Đính Độc Bản' : 'Best Seller'),
+          wristSize: aiData.wristSize || prev.wristSize || (isMirrorProduct ? 'Đường kính 7.5cm (Bỏ túi mini)' : 'Freesize 13cm - 19cm'),
           description: aiData.description || prev.description || '',
           meaning: aiData.meaning || prev.meaning || '',
           cordComposition: aiData.cordComposition || prev.cordComposition || null,
           isBestSeller: aiData.isBestSeller ?? prev.isBestSeller ?? false,
-          salesCount: aiData.salesCount || prev.salesCount || 120
+          salesCount: aiData.salesCount ? String(aiData.salesCount) : prev.salesCount || '120'
         }));
-        setAiAnalysisStatus('Bóc tách thành phần dây thành công!');
-        triggerToast('AI Gemini đã tự động nhận diện & bóc tách cấu tạo dây!');
+
+        const successMsg = isMirrorProduct 
+          ? '🪞 AI đã nhận diện chính xác Gương Đính Thủ Công & phụ kiện vỏ sò!' 
+          : '✨ AI Gemini đã nhận diện & bóc tách cấu tạo sản phẩm thành công!';
+        setAiAnalysisStatus(successMsg);
+        triggerToast(successMsg);
       } else {
         throw new Error(res?.message || 'Không nhận được dữ liệu từ AI');
       }
     } catch (err) {
-      console.error('Lỗi phân tích hình ảnh dây:', err);
+      console.error('Lỗi phân tích hình ảnh sản phẩm:', err);
       alert('Không thể tự động phân tích ảnh: ' + (err.message || 'Lỗi kết nối AI'));
     } finally {
       setIsAnalyzingCord(false);
@@ -1122,6 +1138,18 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           >
             <Package className="w-4 h-4" />
             <span>Sản Phẩm ({products.length})</span>
+          </button>
+
+          <button
+            onClick={() => setAdminTab('charms')}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+              adminTab === 'charms'
+                ? 'bg-gradient-to-r from-[#C59B6D] to-[#B86244] text-white shadow-sm'
+                : 'bg-white text-[#6B6258] hover:bg-[#FAF4E8] border border-[#E8DFD3]'
+            }`}
+          >
+            <Gem className="w-4 h-4 text-amber-500" />
+            <span>Kho Charm ({charms.length})</span>
           </button>
 
           <button
@@ -1795,6 +1823,15 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
               </button>
             </div>
           </div>
+        )}
+
+        {/* ================= TAB: QUẢN LÝ CHARM & PHỤ KIỆN ================= */}
+        {adminTab === 'charms' && (
+          <CharmManagerView 
+            charms={charms} 
+            onRefresh={loadAllAdminData} 
+            triggerToast={triggerToast} 
+          />
         )}
 
         {/* ================= TAB 3: QUẢN LÝ TÀI KHOẢN ================= */}

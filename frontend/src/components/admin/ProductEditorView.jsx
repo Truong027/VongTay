@@ -463,10 +463,10 @@ export default function ProductEditorView({
                   }}
                   disabled={isAnalyzingCord || !productFormData.images?.[0]}
                   className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#C59B6D] to-[#B86244] text-white text-xs font-bold shadow-sm hover:opacity-90 disabled:opacity-40 flex items-center gap-1.5 transition-all cursor-pointer"
-                  title="Gửi ảnh đang chọn đến AI Gemini Vision để bóc tách loại dây, charm và kỹ thuật thắt"
+                  title="Gửi ảnh đang chọn đến AI Gemini Vision để thẩm định sản phẩm: tự động nhận diện Gương đính hoặc Vòng tay"
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${isAnalyzingCord ? 'animate-spin' : ''}`} />
-                  <span>{isAnalyzingCord ? 'AI Đang Phân Tích...' : 'AI Phân Tích Dây & Charm'}</span>
+                  <span>{isAnalyzingCord ? 'AI Đang Phân Tích...' : 'AI Nhận Diện Gương / Vòng'}</span>
                 </button>
               </div>
 
@@ -887,10 +887,12 @@ export default function ProductEditorView({
 
                 <div className="p-4 space-y-2">
                   <span className="text-[10px] text-[#948A7E] uppercase tracking-wider font-semibold">
-                    {productFormData.stoneType || 'Gốm men nung thủ công'}
+                    {productFormData.category === 'guong-dinh' 
+                      ? (productFormData.stoneType || 'Gương Đính Độc Bản Handmade') 
+                      : (productFormData.stoneType || 'Gốm men nung thủ công')}
                   </span>
                   <h4 className="font-serif-boutique text-base font-bold text-[#231F1C] leading-snug line-clamp-2">
-                    {productFormData.name || 'Tên sản phẩm vòng tay mẫu'}
+                    {productFormData.name || (productFormData.category === 'guong-dinh' ? 'Gương Đính Thủ Công Mẫu' : 'Tên sản phẩm vòng tay mẫu')}
                   </h4>
 
                   <div className="pt-2 flex items-baseline justify-between border-t border-[#F5EFE6]">

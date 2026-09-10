@@ -262,6 +262,24 @@ const createTables = async () => {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 11. CHARMS (Kho Charm Thủ Công cho Customizer Studio)
+    CREATE TABLE IF NOT EXISTS charms (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      material VARCHAR(100) NOT NULL DEFAULT 'Bạc 925',
+      category VARCHAR(100) DEFAULT 'Khác',
+      price NUMERIC NOT NULL DEFAULT 0,
+      image TEXT,
+      icon VARCHAR(50) DEFAULT 'Sparkles',
+      description TEXT,
+      meaning TEXT,
+      stock INTEGER DEFAULT 50,
+      in_stock BOOLEAN DEFAULT true,
+      menh JSONB DEFAULT '["Tất cả"]',
+      size_mm VARCHAR(50) DEFAULT '10mm',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- SAFE FOREIGN KEY REINFORCEMENTS ACROSS TABLES
     DO $$
     BEGIN

@@ -41,6 +41,19 @@ function CharmPreviewSVG({ charm, size = 40 }) {
 
   if (!charm) return null;
 
+  // Render real charm photo if available
+  if (charm.image) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-0.5 overflow-hidden rounded-xl">
+        <img 
+          src={charm.image} 
+          alt={charm.name} 
+          className="w-full h-full object-contain filter drop-shadow-sm transition-transform duration-300 group-hover:scale-110" 
+        />
+      </div>
+    );
+  }
+
   if (charm.id === 'charm-whale-blue') {
     return (
       <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
@@ -555,93 +568,114 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                     <circle cx="0" cy="-10" r="4.5" fill="none" stroke="url(#silverShine)" strokeWidth="2" />
                     <line x1="0" y1="-6" x2="0" y2="-1" stroke="url(#silverShine)" strokeWidth="2" />
 
-                    {/* Charm body via foreignObject for React SVG components */}
+                    {/* Charm body via real photo or SVG */}
                     <g transform="translate(-20, 0)">
-                      {selectedCharm.id === 'charm-whale-blue' && (
-                        <g>
-                          <path d="M -13 -2 C -11 -11 8 -11 13 -3 C 17 1 19 6 21 2 C 22 -1 23 7 19 8 C 13 10 0 11 -9 6 C -13 3 -15 1 -13 -2 Z" fill="#88C4E6" stroke="#FFFFFF" strokeWidth="0.8" />
-                          <circle cx="-6" cy="-2" r="1.5" fill="#1C2D37" />
-                          <circle cx="-7" cy="-3" r="0.5" fill="#FFFFFF" />
-                          <path d="M -3 2 C -2 4 1 4 2 2" stroke="#4A7C9A" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                      {selectedCharm.image ? (
+                        <g transform="translate(4, -8)">
+                          <clipPath id={`charm-canvas-clip-${selectedCharm.id}`}>
+                            <circle cx="16" cy="16" r="15" />
+                          </clipPath>
+                          <circle cx="16" cy="16" r="16.5" fill="#FFFFFF" stroke="#C59B6D" strokeWidth="1.8" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.3))" />
+                          <image 
+                            href={selectedCharm.image} 
+                            x="1" 
+                            y="1" 
+                            width="30" 
+                            height="30" 
+                            clipPath={`url(#charm-canvas-clip-${selectedCharm.id})`}
+                            preserveAspectRatio="xMidYMid slice" 
+                          />
+                          <circle cx="12" cy="10" r="3.5" fill="#FFFFFF" opacity="0.4" />
                         </g>
-                      )}
-                      {(charm => charm?.id === 'charm-mint-flower' || charm?.id === 'charm-lotus')(selectedCharm) && (
-                        <g>
-                          <circle cx="-8" cy="-4" r="6.5" fill="#A3E4D7" opacity="0.92" />
-                          <circle cx="8" cy="-4" r="6.5" fill="#A3E4D7" opacity="0.92" />
-                          <circle cx="-5" cy="8" r="6.5" fill="#A3E4D7" opacity="0.92" />
-                          <circle cx="5" cy="8" r="6.5" fill="#A3E4D7" opacity="0.92" />
-                          <circle cx="0" cy="-8" r="6.5" fill="#A3E4D7" opacity="0.92" />
-                          <circle cx="0" cy="1" r="5.5" fill="#F9E076" stroke="#E6C229" strokeWidth="0.8" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-flower-kv' && (
-                        <g>
-                          <circle cx="-8" cy="-4" r="6.5" fill="#F9D5E5" opacity="0.92" />
-                          <circle cx="8" cy="-4" r="6.5" fill="#F9D5E5" opacity="0.92" />
-                          <circle cx="-5" cy="8" r="6.5" fill="#FADDE8" opacity="0.92" />
-                          <circle cx="5" cy="8" r="6.5" fill="#FADDE8" opacity="0.92" />
-                          <circle cx="0" cy="-8" r="6.5" fill="#F9D5E5" opacity="0.92" />
-                          <circle cx="0" cy="1" r="5.5" fill="#FFE566" stroke="#F0CC22" strokeWidth="0.8" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-butterfly-hologram' && (
-                        <g>
-                          <path d="M 0 0 C -8 -15 -18 -11 -15 0 C -14 8 -3 8 0 2 Z" fill="#D4CEEB" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.9" />
-                          <path d="M 0 0 C 8 -15 18 -11 15 0 C 14 8 3 8 0 2 Z" fill="#D4CEEB" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.9" />
-                          <path d="M 0 2 C -5 6 -10 13 -3 13 C 0 13 0 6 0 2 Z" fill="#BDE6C8" stroke="#FFFFFF" strokeWidth="0.7" opacity="0.85" />
-                          <path d="M 0 2 C 5 6 10 13 3 13 C 0 13 0 6 0 2 Z" fill="#BDE6C8" stroke="#FFFFFF" strokeWidth="0.7" opacity="0.85" />
-                          <line x1="0" y1="-8" x2="0" y2="9" stroke="#7A6F9B" strokeWidth="1.2" strokeLinecap="round" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-clover' && (
-                        <g>
-                          <circle cx="-6" cy="-5" r="6" fill="#7DD87A" />
-                          <circle cx="6" cy="-5" r="6" fill="#7DD87A" />
-                          <circle cx="-6" cy="7" r="6" fill="#7DD87A" />
-                          <circle cx="6" cy="7" r="6" fill="#7DD87A" />
-                          <line x1="0" y1="1" x2="0" y2="14" stroke="#5BB855" strokeWidth="1.5" strokeLinecap="round" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-moon-star' && (
-                        <g>
-                          <path d="M 0 -11 C -3 -9 -3 -3 0 0 C 5 0 9 -4 9 -9 C 7 -12 3 -14 0 -11 Z" fill="#D4D8F0" stroke="#C8CCE8" strokeWidth="0.8" />
-                          <polygon points="13,-8 14.5,-3.5 19,-3.5 15.5,-0.5 16.5,4.5 13,2 9.5,4.5 10.5,-0.5 7,-3.5 11.5,-3.5" fill="#F9E876" stroke="#DDCC00" strokeWidth="0.4" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-pixiu' && (
-                        <g>
-                          <ellipse cx="0" cy="4" rx="10" ry="8" fill="#C09A58" stroke="#A07828" strokeWidth="0.8" />
-                          <circle cx="-5" cy="-6" r="4.5" fill="#D4B060" stroke="#A07828" strokeWidth="0.7" />
-                          <circle cx="5" cy="-6" r="4.5" fill="#D4B060" stroke="#A07828" strokeWidth="0.7" />
-                          <circle cx="-5" cy="-6" r="1.5" fill="#3A2200" />
-                          <circle cx="5" cy="-6" r="1.5" fill="#3A2200" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-magnet-heart' && (
-                        <g transform="translate(0, 3)">
-                          <path d="M 0 5 C -10 -1 -14 -7 -10 -12 C -6 -16 0 -13 0 -8 C 0 -13 6 -16 10 -12 C 14 -7 10 -1 0 5 Z" fill="#E85480" stroke="#C02060" strokeWidth="0.8" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-bell' && (
-                        <g>
-                          <path d="M 0 -12 C -8 -12 -12 -4 -12 4 L 12 4 C 12 -4 8 -12 0 -12 Z" fill="#D4C870" stroke="#AAA028" strokeWidth="0.8" />
-                          <rect x="-12" y="4" width="24" height="3" rx="1.5" fill="#AAA028" />
-                          <circle cx="0" cy="10" r="2.5" fill="#8B8020" />
-                        </g>
-                      )}
-                      {selectedCharm.id === 'charm-initial' && (
-                        <g>
-                          <circle cx="0" cy="0" r="13" fill="url(#silverShine)" stroke="#C8C8C8" strokeWidth="0.8" />
-                          <text x="0" y="5" textAnchor="middle" fill="#26211C" fontSize="13" fontWeight="bold" fontFamily="Georgia, serif">{customLetter}</text>
-                        </g>
-                      )}
-                      {/* fallback */}
-                      {!['charm-whale-blue','charm-mint-flower','charm-lotus','charm-flower-kv','charm-butterfly-hologram','charm-clover','charm-moon-star','charm-pixiu','charm-magnet-heart','charm-bell','charm-initial'].includes(selectedCharm.id) && (
-                        <g>
-                          <circle cx="0" cy="0" r="13" fill="url(#silverShine)" stroke="#C8C8C8" strokeWidth="0.8" />
-                          <text x="0" y="4" textAnchor="middle" fill="#26211C" fontSize="10" fontWeight="bold">925</text>
-                        </g>
+                      ) : (
+                        <>
+                          {selectedCharm.id === 'charm-whale-blue' && (
+                            <g>
+                              <path d="M -13 -2 C -11 -11 8 -11 13 -3 C 17 1 19 6 21 2 C 22 -1 23 7 19 8 C 13 10 0 11 -9 6 C -13 3 -15 1 -13 -2 Z" fill="#88C4E6" stroke="#FFFFFF" strokeWidth="0.8" />
+                              <circle cx="-6" cy="-2" r="1.5" fill="#1C2D37" />
+                              <circle cx="-7" cy="-3" r="0.5" fill="#FFFFFF" />
+                              <path d="M -3 2 C -2 4 1 4 2 2" stroke="#4A7C9A" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+                            </g>
+                          )}
+                          {(charm => charm?.id === 'charm-mint-flower' || charm?.id === 'charm-lotus')(selectedCharm) && (
+                            <g>
+                              <circle cx="-8" cy="-4" r="6.5" fill="#A3E4D7" opacity="0.92" />
+                              <circle cx="8" cy="-4" r="6.5" fill="#A3E4D7" opacity="0.92" />
+                              <circle cx="-5" cy="8" r="6.5" fill="#A3E4D7" opacity="0.92" />
+                              <circle cx="5" cy="8" r="6.5" fill="#A3E4D7" opacity="0.92" />
+                              <circle cx="0" cy="-8" r="6.5" fill="#A3E4D7" opacity="0.92" />
+                              <circle cx="0" cy="1" r="5.5" fill="#F9E076" stroke="#E6C229" strokeWidth="0.8" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-flower-kv' && (
+                            <g>
+                              <circle cx="-8" cy="-4" r="6.5" fill="#F9D5E5" opacity="0.92" />
+                              <circle cx="8" cy="-4" r="6.5" fill="#F9D5E5" opacity="0.92" />
+                              <circle cx="-5" cy="8" r="6.5" fill="#FADDE8" opacity="0.92" />
+                              <circle cx="5" cy="8" r="6.5" fill="#FADDE8" opacity="0.92" />
+                              <circle cx="0" cy="-8" r="6.5" fill="#F9D5E5" opacity="0.92" />
+                              <circle cx="0" cy="1" r="5.5" fill="#FFE566" stroke="#F0CC22" strokeWidth="0.8" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-butterfly-hologram' && (
+                            <g>
+                              <path d="M 0 0 C -8 -15 -18 -11 -15 0 C -14 8 -3 8 0 2 Z" fill="#D4CEEB" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.9" />
+                              <path d="M 0 0 C 8 -15 18 -11 15 0 C 14 8 3 8 0 2 Z" fill="#D4CEEB" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.9" />
+                              <path d="M 0 2 C -5 6 -10 13 -3 13 C 0 13 0 6 0 2 Z" fill="#BDE6C8" stroke="#FFFFFF" strokeWidth="0.7" opacity="0.85" />
+                              <path d="M 0 2 C 5 6 10 13 3 13 C 0 13 0 6 0 2 Z" fill="#BDE6C8" stroke="#FFFFFF" strokeWidth="0.7" opacity="0.85" />
+                              <line x1="0" y1="-8" x2="0" y2="9" stroke="#7A6F9B" strokeWidth="1.2" strokeLinecap="round" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-clover' && (
+                            <g>
+                              <circle cx="-6" cy="-5" r="6" fill="#7DD87A" />
+                              <circle cx="6" cy="-5" r="6" fill="#7DD87A" />
+                              <circle cx="-6" cy="7" r="6" fill="#7DD87A" />
+                              <circle cx="6" cy="7" r="6" fill="#7DD87A" />
+                              <line x1="0" y1="1" x2="0" y2="14" stroke="#5BB855" strokeWidth="1.5" strokeLinecap="round" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-moon-star' && (
+                            <g>
+                              <path d="M 0 -11 C -3 -9 -3 -3 0 0 C 5 0 9 -4 9 -9 C 7 -12 3 -14 0 -11 Z" fill="#D4D8F0" stroke="#C8CCE8" strokeWidth="0.8" />
+                              <polygon points="13,-8 14.5,-3.5 19,-3.5 15.5,-0.5 16.5,4.5 13,2 9.5,4.5 10.5,-0.5 7,-3.5 11.5,-3.5" fill="#F9E876" stroke="#DDCC00" strokeWidth="0.4" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-pixiu' && (
+                            <g>
+                              <ellipse cx="0" cy="4" rx="10" ry="8" fill="#C09A58" stroke="#A07828" strokeWidth="0.8" />
+                              <circle cx="-5" cy="-6" r="4.5" fill="#D4B060" stroke="#A07828" strokeWidth="0.7" />
+                              <circle cx="5" cy="-6" r="4.5" fill="#D4B060" stroke="#A07828" strokeWidth="0.7" />
+                              <circle cx="-5" cy="-6" r="1.5" fill="#3A2200" />
+                              <circle cx="5" cy="-6" r="1.5" fill="#3A2200" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-magnet-heart' && (
+                            <g transform="translate(0, 3)">
+                              <path d="M 0 5 C -10 -1 -14 -7 -10 -12 C -6 -16 0 -13 0 -8 C 0 -13 6 -16 10 -12 C 14 -7 10 -1 0 5 Z" fill="#E85480" stroke="#C02060" strokeWidth="0.8" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-bell' && (
+                            <g>
+                              <path d="M 0 -12 C -8 -12 -12 -4 -12 4 L 12 4 C 12 -4 8 -12 0 -12 Z" fill="#D4C870" stroke="#AAA028" strokeWidth="0.8" />
+                              <rect x="-12" y="4" width="24" height="3" rx="1.5" fill="#AAA028" />
+                              <circle cx="0" cy="10" r="2.5" fill="#8B8020" />
+                            </g>
+                          )}
+                          {selectedCharm.id === 'charm-initial' && (
+                            <g>
+                              <circle cx="0" cy="0" r="13" fill="url(#silverShine)" stroke="#C8C8C8" strokeWidth="0.8" />
+                              <text x="0" y="5" textAnchor="middle" fill="#26211C" fontSize="13" fontWeight="bold" fontFamily="Georgia, serif">{customLetter}</text>
+                            </g>
+                          )}
+                          {/* fallback */}
+                          {!['charm-whale-blue','charm-mint-flower','charm-lotus','charm-flower-kv','charm-butterfly-hologram','charm-clover','charm-moon-star','charm-pixiu','charm-magnet-heart','charm-bell','charm-initial'].includes(selectedCharm.id) && (
+                            <g>
+                              <circle cx="0" cy="0" r="13" fill="url(#silverShine)" stroke="#C8C8C8" strokeWidth="0.8" />
+                              <text x="0" y="4" textAnchor="middle" fill="#26211C" fontSize="10" fontWeight="bold">925</text>
+                            </g>
+                          )}
+                        </>
                       )}
                     </g>
                   </g>
@@ -869,7 +903,12 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                             <h5 className="font-bold text-xs text-[#26211C] leading-tight truncate">{charm.name}</h5>
                             <span className="text-xs font-bold text-[#B86244] shrink-0">+{charm.price.toLocaleString('vi-VN')}₫</span>
                           </div>
-                          <p className="text-[11px] text-[#6B6258] mt-0.5 leading-relaxed">{charm.desc}</p>
+                          {charm.material && (
+                            <span className="inline-block text-[9px] bg-[#FAF4E8] text-[#C59B6D] font-bold px-1.5 py-0.2 rounded mt-0.5 border border-[#EADBCC]">
+                              {charm.material}
+                            </span>
+                          )}
+                          <p className="text-[11px] text-[#6B6258] mt-0.5 leading-relaxed line-clamp-1">{charm.desc || charm.meaning}</p>
                         </div>
                         {isSelected && (
                           <div className="w-5 h-5 rounded-full bg-[#B86244] flex items-center justify-center shrink-0">

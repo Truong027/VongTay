@@ -283,11 +283,29 @@ export const ensureNeonTables = async () => {
       status VARCHAR(50) DEFAULT 'Chờ tư vấn',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- 11. CHARMS (Kho Charm Thủ Công cho Customizer Studio)
+    CREATE TABLE IF NOT EXISTS charms (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      material VARCHAR(100) NOT NULL DEFAULT 'Bạc 925',
+      category VARCHAR(100) DEFAULT 'Khác',
+      price NUMERIC NOT NULL DEFAULT 0,
+      image TEXT,
+      icon VARCHAR(50) DEFAULT 'Sparkles',
+      description TEXT,
+      meaning TEXT,
+      stock INTEGER DEFAULT 50,
+      in_stock BOOLEAN DEFAULT true,
+      menh JSONB DEFAULT '["Tất cả"]',
+      size_mm VARCHAR(50) DEFAULT '10mm',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
     await query(createTablesSql);
-    console.log('✅ Đã xác thực cấu trúc 10 bảng trên Neon PostgreSQL.');
+    console.log('✅ Đã xác thực cấu trúc 11 bảng trên Neon PostgreSQL.');
     return true;
   } catch (err) {
     console.error('Lỗi tạo bảng Neon:', err.message);
@@ -1803,7 +1821,7 @@ export const getDbTelemetry = async () => {
   };
 };
 
-// ==================== CUSTOMIZER OPTIONS CRUD ====================
+// ==================== CUSTOMIZER & CHARMS CRUD ====================
 
 export const dbGetCustomizerOptions = () => {
   return memoryData.customizerOptions;
@@ -1838,5 +1856,187 @@ export const dbDeleteCustomizerItem = (category, id) => {
   const deleted = memoryData.customizerOptions[category].length < before;
   if (deleted) saveToDisk();
   return deleted;
+};
+
+// Dedicated Charm Operations (Neon PostgreSQL + In-Memory + Disk)
+export const dbGetCharms = async (filters = {}) => {
+  let list = Array.isArray(memoryData.customizerOptions?.charms) 
+    ? [...memoryData.customizerOptions.charms] 
+    : [];
+
+  if (isNeonConnected()) {
+    try {
+      const res = await query('SELECT * FROM charms ORDER BY created_at ASC');
+      if (res.rows && res.rows.length > 0) {
+        list = res.rows.map(r => ({
+          id: r.id,
+          name: r.name,
+          material: r.material,
+          category: r.category,
+          price: Number(r.price) || 0,
+          image: r.image || '',
+          icon: r.icon || 'Sparkles',
+          desc: r.description || '',
+          description: r.description || '',
+          meaning: r.meaning || '',
+          stock: Number(r.stock) || 0,
+          inStock: r.in_stock !== false,
+          menh: Array.isArray(r.menh) ? r.menh : ['Tất cả'],
+          sizeMm: r.size_mm || '10mm',
+          createdAt: r.created_at
+        }));
+        // Update memory cache
+        if (memoryData.customizerOptions) {
+          memoryData.customizerOptions.charms = list;
+        }
+      }
+    } catch (e) {
+      console.warn('Neon dbGetCharms fallback to memory:', e.message);
+    }
+  }
+
+  // Filter in memory
+  if (filters.q) {
+    const qLower = filters.q.toLowerCase().trim();
+    list = list.filter(c => 
+      c.name?.toLowerCase().includes(qLower) || 
+      c.material?.toLowerCase().includes(qLower) ||
+      c.desc?.toLowerCase().includes(qLower) ||
+      c.category?.toLowerCase().includes(qLower)
+    );
+  }
+
+  if (filters.material && filters.material !== 'all') {
+    list = list.filter(c => c.material === filters.material);
+  }
+
+  if (filters.category && filters.category !== 'all') {
+    list = list.filter(c => c.category === filters.category);
+  }
+
+  if (filters.inStock !== undefined && filters.inStock !== 'all') {
+    const shouldBeInStock = filters.inStock === 'true' || filters.inStock === true;
+    list = list.filter(c => c.inStock === shouldBeInStock);
+  }
+
+  return list;
+};
+
+export const dbGetCharmById = async (id) => {
+  const charms = await dbGetCharms();
+  return charms.find(c => c.id === id) || null;
+};
+
+export const dbCreateCharm = async (charmData) => {
+  const id = charmData.id || `charm-${Date.now()}`;
+  const newCharm = {
+    id,
+    name: charmData.name?.trim() || 'Charm Thủ Công Mới',
+    material: charmData.material || 'Bạc 925',
+    category: charmData.category || 'Khác',
+    price: Number(charmData.price) || 0,
+    image: charmData.image || '',
+    icon: charmData.icon || 'Sparkles',
+    desc: charmData.desc || charmData.description || '',
+    description: charmData.desc || charmData.description || '',
+    meaning: charmData.meaning || '',
+    stock: Number(charmData.stock) || 30,
+    inStock: charmData.inStock !== false,
+    menh: Array.isArray(charmData.menh) && charmData.menh.length > 0 ? charmData.menh : ['Tất cả'],
+    sizeMm: charmData.sizeMm || '10mm',
+    createdAt: new Date().toISOString()
+  };
+
+  // 1. Neon DB
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `INSERT INTO charms (id, name, material, category, price, image, icon, description, meaning, stock, in_stock, menh, size_mm, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, material = EXCLUDED.material, category = EXCLUDED.category,
+           price = EXCLUDED.price, image = EXCLUDED.image, icon = EXCLUDED.icon,
+           description = EXCLUDED.description, meaning = EXCLUDED.meaning, stock = EXCLUDED.stock,
+           in_stock = EXCLUDED.in_stock, menh = EXCLUDED.menh, size_mm = EXCLUDED.size_mm`,
+        [
+          newCharm.id, newCharm.name, newCharm.material, newCharm.category, newCharm.price,
+          newCharm.image, newCharm.icon, newCharm.description, newCharm.meaning,
+          newCharm.stock, newCharm.inStock, JSON.stringify(newCharm.menh), newCharm.sizeMm, newCharm.createdAt
+        ]
+      );
+    } catch (e) {
+      console.warn('Neon dbCreateCharm fallback to disk:', e.message);
+    }
+  }
+
+  // 2. Memory & Disk
+  if (!memoryData.customizerOptions.charms) memoryData.customizerOptions.charms = [];
+  memoryData.customizerOptions.charms.push(newCharm);
+  saveToDisk();
+  return newCharm;
+};
+
+export const dbUpdateCharm = async (id, updates) => {
+  let existing = memoryData.customizerOptions.charms.find(c => c.id === id);
+  if (!existing) return null;
+
+  const updatedCharm = {
+    ...existing,
+    ...updates,
+    price: updates.price !== undefined ? Number(updates.price) : existing.price,
+    stock: updates.stock !== undefined ? Number(updates.stock) : existing.stock,
+    inStock: updates.inStock !== undefined ? Boolean(updates.inStock) : existing.inStock
+  };
+
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `UPDATE charms SET
+           name = COALESCE($2, name), material = COALESCE($3, material), category = COALESCE($4, category),
+           price = COALESCE($5, price), image = COALESCE($6, image), icon = COALESCE($7, icon),
+           description = COALESCE($8, description), meaning = COALESCE($9, meaning), stock = COALESCE($10, stock),
+           in_stock = COALESCE($11, in_stock), menh = COALESCE($12, menh), size_mm = COALESCE($13, size_mm)
+         WHERE id = $1`,
+        [
+          id, updatedCharm.name, updatedCharm.material, updatedCharm.category, updatedCharm.price,
+          updatedCharm.image, updatedCharm.icon, updatedCharm.description || updatedCharm.desc,
+          updatedCharm.meaning, updatedCharm.stock, updatedCharm.inStock,
+          JSON.stringify(updatedCharm.menh), updatedCharm.sizeMm
+        ]
+      );
+    } catch (e) {
+      console.warn('Neon dbUpdateCharm fallback:', e.message);
+    }
+  }
+
+  const idx = memoryData.customizerOptions.charms.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    memoryData.customizerOptions.charms[idx] = updatedCharm;
+  }
+  saveToDisk();
+  return updatedCharm;
+};
+
+export const dbDeleteCharm = async (id) => {
+  if (isNeonConnected()) {
+    try {
+      await query('DELETE FROM charms WHERE id = $1', [id]);
+    } catch (e) {
+      console.warn('Neon dbDeleteCharm fallback:', e.message);
+    }
+  }
+
+  const before = memoryData.customizerOptions.charms?.length || 0;
+  memoryData.customizerOptions.charms = (memoryData.customizerOptions.charms || []).filter(c => c.id !== id);
+  const deleted = memoryData.customizerOptions.charms.length < before;
+  if (deleted) saveToDisk();
+  return deleted;
+};
+
+export const dbToggleCharmStock = async (id) => {
+  const charm = memoryData.customizerOptions.charms?.find(c => c.id === id);
+  if (!charm) return null;
+  const newStockStatus = !charm.inStock;
+  return await dbUpdateCharm(id, { inStock: newStockStatus });
 };
 

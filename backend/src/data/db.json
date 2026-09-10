@@ -770,7 +770,8 @@
         "name": "Charm Cá Voi Xanh Men Gốm Pastel",
         "price": 55000,
         "icon": "Fish",
-        "desc": "Tự do & bình an biển cả (Ảnh Mẫu)"
+        "desc": "Tự do & bình an biển cả (Ảnh Mẫu)",
+        "inStock": false
       },
       {
         "id": "charm-mint-flower",

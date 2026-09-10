@@ -98,6 +98,66 @@ export const api = {
     return res.json();
   },
 
+  // Charms Management (Kho Charm Thủ Công)
+  async getCharms(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${BASE_URL}/charms${query ? `?${query}` : ''}`);
+    if (!res.ok) throw new Error('Không thể tải danh sách charm');
+    return res.json();
+  },
+
+  async getCharmById(id) {
+    const res = await fetch(`${BASE_URL}/charms/${id}`);
+    if (!res.ok) throw new Error('Không tìm thấy charm');
+    return res.json();
+  },
+
+  async createCharm(charmData) {
+    const res = await fetch(`${BASE_URL}/charms`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(charmData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi thêm charm mới');
+    }
+    clearCache('customizer:options');
+    return res.json();
+  },
+
+  async updateCharm(id, charmData) {
+    const res = await fetch(`${BASE_URL}/charms/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(charmData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi cập nhật charm');
+    }
+    clearCache('customizer:options');
+    return res.json();
+  },
+
+  async deleteCharm(id) {
+    const res = await fetch(`${BASE_URL}/charms/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Lỗi xóa charm');
+    clearCache('customizer:options');
+    return res.json();
+  },
+
+  async toggleCharmStock(id) {
+    const res = await fetch(`${BASE_URL}/charms/${id}/toggle-stock`, {
+      method: 'PATCH'
+    });
+    if (!res.ok) throw new Error('Lỗi đổi trạng thái kho charm');
+    clearCache('customizer:options');
+    return res.json();
+  },
+
   // Orders
   async getOrders(params = {}) {
     const query = new URLSearchParams(params).toString();

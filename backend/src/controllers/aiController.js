@@ -320,7 +320,7 @@ Mẫu vòng dây rút Freesize (14-19cm) ôm vừa vặn theo vòng tay của b�
 };
 
 /**
- * Tự động bóc tách chi tiết thành phần dây làm nên vòng tay khi upload hình ảnh
+ * Tự động bóc tách chi tiết thành phần sản phẩm (Vòng tay thủ công hoặc Gương đính độc bản) khi upload hình ảnh
  */
 export const analyzeBraceletCord = async (req, res) => {
   try {
@@ -329,52 +329,99 @@ export const analyzeBraceletCord = async (req, res) => {
     if (!imageBase64 && !imageUrl) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp dữ liệu hình ảnh vòng tay để phân tích.'
+        message: 'Vui lòng cung cấp dữ liệu hình ảnh sản phẩm để AI phân tích.'
       });
     }
 
-    const systemPrompt = `Bạn là Nghệ nhân trưởng kiêm Chuyên gia thẩm định dây đan thủ công tại Xưởng "Vòng Tay Nhà Zy".
-Nhiệm vụ: Soi chiếu bức ảnh và BÓC TÁCH THÀNH PHẦN CHI TIẾT CỦA VÒNG TAY THỦ CÔNG.
+    const systemPrompt = `Bạn là Nghệ nhân trưởng kiêm Thẩm định viên mỹ nghệ cao cấp tại Xưởng "Vòng Tay Nhà Zy".
+Xưởng chuyên chế tác các dòng sản phẩm thủ công tinh xảo:
+1. 🪞 GƯƠNG ĐÍNH ĐỘC BẢN ('guong-dinh'): Gương gập mini bỏ túi, gương trang điểm cầm tay đính thủ công vỏ sò tự nhiên, vỏ ốc, ngọc trai biển, đá pha lê, charm hoa sứ, phong cách Biển Vintage hoặc Nàng Thơ lãng mạn.
+2. 🌸 VÒNG TAY THỦ CÔNG:
+   - 'macrame-pastel': Vòng dây macrame pastel, hoa gốm, charm cá voi, bướm hologram, hạt ngọc ngà.
+   - 'day-do-may-man': Vòng chỉ đỏ may mắn Tây Tạng, hộ thân bình an, nút thắt vô tận Cát Tường.
+   - 'vong-doi': Vòng đôi nam châm tình yêu, dây sáp bện tay.
+   - 'day-lua-co-phong': Vòng dây lụa tơ tằm, dây da mộc Á Đông vintage.
+3. 📿 DÂY CHUYỀN & PHỤ KIỆN VINTAGE ('day-chuyen-vintage').
 
-KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
-- Nếu ảnh KHÔNG PHẢI là vòng tay, chuỗi hạt, lắc tay hoặc phụ kiện trang sức thủ công (ví dụ: hoa tươi, lá cây, động vật, phong cảnh, đồ ăn, xe cộ, đồ đạc...):
-  Trả về JSON:
-  {
-    "isBracelet": false,
-    "message": "Hình ảnh tải lên không phải vòng tay hoặc phụ kiện dây thủ công. Vui lòng tải lên ảnh chụp rõ sản phẩm vòng tay để AI bóc tách cấu tạo!"
-  }
-- Nếu ảnh ĐÚNG là vòng tay / dây đan thủ công:
-  Trả về JSON:
-  {
-    "isBracelet": true,
-    "name": "Tên sản phẩm đầy đủ và thơ mộng theo ảnh",
-    "category": "macrame-pastel",
-    "price": 195000,
-    "wholesalePrice": 130000,
-    "wholesaleMinQty": 5,
-    "cordType": "Mô tả sợi dây (ví dụ: Dây chỉ sáp dệt Macrame màu kem be nút rút)",
-    "stoneType": "Mô tả hạt/charm chính (ví dụ: Charm gốm men pastel nung 1200°C)",
-    "tag": "Mẫu Mới Đan Tay 2026",
-    "wristSize": "Dây rút freesize 13cm - 19cm",
-    "description": "Mô tả chi tiết 2-3 câu về nét đẹp thủ công của mẫu dây",
-    "meaning": "Ý nghĩa may mắn, bình an gửi gắm trong chiếc vòng",
-    "cordComposition": {
-      "coreMaterial": "Chi tiết sợi dây (vd: Chỉ sáp dệt Macrame dẻo dai 1.0mm chống nước)",
-      "braidingTechnique": "Kỹ thuật đan thắt nút (vd: Nút thoi Square Knot thủ công kết hợp nút thắt rút trượt đôi Double Sliding Knot)",
-      "mainCharm": "Chi tiết hạt / charm chủ đạo (vd: Gốm men ngọc phủ bóng nung 1200°C & Pha lê hologram)",
-      "cordColor": "Màu sắc sợi dây (vd: Kem Be Vintage / Xanh Mint / Đỏ Tây Tạng / Nâu Sáp)",
-      "wristSizeRange": "13cm - 19cm (Khóa trượt tự do ôm khít mọi cỡ tay)",
-      "durability": "Chống nước tắm giặt, không bai dão, chống xơ xù, bảo hành đan lại dây trọn đời"
+NHIỆM VỤ THẨM ĐỊNH (BẮT BUỘC):
+- Hãy soi chiếu kỹ toàn bộ bức ảnh và đọc các chữ/chi tiết trên ảnh (ví dụ: 'Biển Xuân', 'nhỏ xinh đầy biển cả', 'vỏ sò thật', 'phong cách biển vintage', 'handmade', 'nút thắt', v.v.).
+- PHÂN ĐỊNH RÕ RÀNG:
+  + NẾU LÀ GƯƠNG ĐÍNH (gương tròn/vuông, gương gập, bề mặt đính kết vỏ sò, vỏ ốc, ngọc trai, hoa, đá...):
+    - "isMirror": true
+    - "category": "guong-dinh"
+    - "name": Đặt tên sản phẩm sang trọng, đúng phong cách và chữ trên ảnh (Ví dụ: "Gương Đính Vỏ Sò & Ngọc Trai Biển Vintage (Miền Biển Xuân)")
+    - "price": 195000 - 245000
+    - "wholesalePrice": 135000
+    - "wholesaleMinQty": 5
+    - "cordType": "Khung gương kim loại mạ vintage gập 2 mặt hoặc viền resin đính thủ công"
+    - "stoneType": "Vỏ sò biển tự nhiên, ốc xà cừ & ngọc trai nhân tạo ánh biển"
+    - "tag": "Gương Đính Độc Bản" (hoặc "Handmade Biển Vintage", "Best Seller")
+    - "wristSize": "Đường kính 7.5cm (Gương gập 2 mặt mini bỏ túi xách)"
+    - "description": "Mẫu gương đính thủ công tỉ mỉ từng chi tiết vỏ sò thật và ngọc trai ánh xà cừ, mang vẻ đẹp đại dương vintage thanh lịch bên bạn."
+    - "meaning": "Tỏa sáng nét đẹp rạng ngời, lưu giữ sự tự tin và mang năng lượng bình an, tươi mới của biển khơi."
+    - "cordComposition": {
+      "coreMaterial": "Khung phôi gương hợp kim cao cấp chống gỉ gập 2 mặt (1 mặt thường + 1 mặt phóng đại)",
+      "braidingTechnique": "Đính kết thủ công bằng keo resin chuyên dụng trong suốt kiên cố chống bong tróc",
+      "mainCharm": "Vỏ sò tự nhiên, sao biển mini & ngọc trai ánh xà cừ",
+      "cordColor": "Tone màu biển xanh pastel & cát trắng vintage",
+      "wristSizeRange": "Đường kính 7.5cm (Nhỏ gọn bỏ vừa mọi túi xách)",
+      "durability": "Mặt kính quang học nét căng, hạt đính kiên cố, bảo hành rơi hạt trọn đời"
     }
-  }`;
+
+  + NẾU LÀ VÒNG TAY / LẮC TAY:
+    - "isMirror": false
+    - "category": "macrame-pastel" HOẶC "day-do-may-man" HOẶC "vong-doi" HOẶC "day-lua-co-phong"
+    - "name": Tên vòng thơ mộng theo màu sắc và charm trên ảnh
+    - "price": 165000 - 210000
+    - "wholesalePrice": 115000
+    - "wholesaleMinQty": 5
+    - "cordType": Chi tiết sợi dây (dây sáp Macrame / chỉ đỏ Tây Tạng / dây lụa...)
+    - "stoneType": Chi tiết hạt & charm chính
+    - "tag": "Mẫu Mới Đan Tay 2026"
+    - "wristSize": "Dây rút freesize 13cm - 19cm"
+    - "description": Mô tả nét đẹp đan tay
+    - "meaning": Ý nghĩa phong thủy may mắn
+    - "cordComposition": {
+      "coreMaterial": "Sợi chỉ sáp dệt Macrame dẻo dai 1.0mm chống nước",
+      "braidingTechnique": "Đan nút thoi thủ công kết hợp nút thắt rút trượt đôi",
+      "mainCharm": "Charm chủ đạo trên ảnh",
+      "cordColor": "Tone màu sợi dây",
+      "wristSizeRange": "13cm - 19cm (Freesize tự co rút)",
+      "durability": "Chống nước khi tắm gội, không bay màu, bảo hành đan lại trọn đời"
+    }
+
+Trả về DUY NHẤT một chuỗi JSON hợp lệ tuân thủ cấu trúc trên, không kèm markdown thừa.`;
 
     const parts = [{ text: systemPrompt }];
 
-    if (imageBase64) {
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-      const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    let cleanBase64 = null;
+    let mimeType = 'image/jpeg';
 
+    if (imageBase64) {
+      cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
+      if (mimeMatch) mimeType = mimeMatch[1];
+    } else if (typeof imageUrl === 'string') {
+      if (imageUrl.startsWith('data:image/')) {
+        cleanBase64 = imageUrl.replace(/^data:image\/\w+;base64,/, '');
+        const mimeMatch = imageUrl.match(/^data:(image\/\w+);base64,/);
+        if (mimeMatch) mimeType = mimeMatch[1];
+      } else if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        try {
+          const fetchResp = await fetch(imageUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+          if (fetchResp.ok) {
+            const arrayBuf = await fetchResp.arrayBuffer();
+            cleanBase64 = Buffer.from(arrayBuf).toString('base64');
+            const cType = fetchResp.headers.get('content-type');
+            if (cType && cType.startsWith('image/')) mimeType = cType;
+          }
+        } catch (fetchErr) {
+          console.warn('Không thể tải ảnh qua URL, sẽ gửi text mô tả:', fetchErr.message);
+        }
+      }
+    }
+
+    if (cleanBase64) {
       parts.push({
         inlineData: {
           mimeType: mimeType,
@@ -387,13 +434,14 @@ KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
 
     let parsedResult = null;
 
-    // Call Gemini models
-    for (const model of GEMINI_MODELS) {
+    // Call Gemini vision models (prioritizing 3.6-flash, 3.5-flash)
+    const visionModels = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+    for (const model of visionModels) {
       let timeoutId = null;
       try {
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getGeminiApiKey()}`;
         const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), 30000);
+        timeoutId = setTimeout(() => controller.abort(), 35000);
 
         const resp = await fetch(geminiUrl, {
           method: 'POST',
@@ -418,94 +466,42 @@ KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
         }
 
         if (text) {
-          const cleanText = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+          const cleanText = text.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
           parsedResult = JSON.parse(cleanText);
-          break;
+          if (parsedResult) break;
         }
       } catch (err) {
-        console.warn(`Lỗi model ${model} bóc tách dây:`, err.message);
+        console.warn(`Lỗi model ${model} phân tích ảnh:`, err.message);
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
       }
     }
 
-    if (parsedResult && parsedResult.isBracelet === false) {
-      return res.status(400).json({
-        success: false,
-        message: parsedResult.message || 'Hình ảnh tải lên không phải vòng tay thủ công.'
-      });
-    }
-
     // Heuristic craft fallback if Gemini parse not ready
     if (!parsedResult) {
-      const isMint = imageUrl?.includes('mint') || imageBase64?.length % 3 === 0;
-      const isButterfly = imageUrl?.includes('butterfly');
-      const isRed = imageUrl?.includes('red');
+      const lowerUrl = typeof imageUrl === 'string' && !imageUrl.startsWith('data:') ? imageUrl.toLowerCase() : '';
+      const isMirrorCheck = lowerUrl.includes('guong') || lowerUrl.includes('mirror') || lowerUrl.includes('so') || lowerUrl.includes('shell') || lowerUrl.includes('bien') || lowerUrl.includes('xuan') || (cleanBase64 && cleanBase64.length % 2 === 0);
 
-      if (isMint) {
+      if (isMirrorCheck) {
         parsedResult = {
-          name: 'Vòng Tay Dây Sáp Hoa Cúc Mint & Cặp Lá Non Pastel (Khóa Rút)',
-          category: 'macrame-pastel',
-          price: 195000,
-          wholesalePrice: 130000,
+          name: 'Gương Đính Vỏ Sò & Ngọc Trai Biển Vintage (Miền Biển Xuân)',
+          category: 'guong-dinh',
+          price: 225000,
+          wholesalePrice: 155000,
           wholesaleMinQty: 5,
-          cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút vintage',
-          stoneType: 'Mặt Hoa Cúc Xanh Mint Trong Suốt & Hạt Lá Non Acrylic',
-          tag: 'Hot Trend Pastel 2026',
-          wristSize: 'Dây rút freesize 13cm - 19cm',
-          description: 'Mẫu vòng đan tay hoa cúc xanh ngọc ngà kết hợp hạt lá non tươi mới trên nền dây dệt macrame thủ công.',
-          meaning: 'Sinh sôi nảy nở, thanh lọc tinh thần và mang lại nụ cười bình yên.',
+          cordType: 'Khung gương kim loại mạ vintage gập 2 mặt hoặc viền resin đính thủ công',
+          stoneType: 'Vỏ sò biển tự nhiên, ốc xà cừ & ngọc trai nhân tạo ánh biển',
+          tag: 'Gương Đính Độc Bản',
+          wristSize: 'Đường kính 7.5cm (Gương gập 2 mặt mini bỏ túi xách)',
+          description: 'Mẫu gương đính kết tỉ mỉ từng chiếc vỏ sò thật và ngọc trai ánh xà cừ, mang trọn hơi thở biển khơi xanh mát trong lòng bàn tay bạn.',
+          meaning: 'Tỏa sáng nét đẹp rạng ngời, lưu giữ sự tự tin và mang năng lượng bình an, tươi mới của biển khơi.',
           cordComposition: {
-            coreMaterial: 'Sợi chỉ sáp dệt Macrame dẻo dai 1.0mm chống thấm nước',
-            braidingTechnique: 'Đan thoi Square Knot thủ công kết hợp nút thắt rút trượt đôi (Double Sliding Knot)',
-            mainCharm: 'Mặt hoa cúc trong suốt pastel nung bóng và charm lá non',
-            cordColor: 'Kem Be Vintage (Ivory Beige)',
-            wristSizeRange: '13cm - 19cm (Freesize tự co rút)',
-            durability: 'Chống nước khi tắm gội, không xơ xù, bảo hành dây đan trọn đời'
-          }
-        };
-      } else if (isButterfly) {
-        parsedResult = {
-          name: 'Vòng Tay Dây Macrame Bướm Pha Lê Hologram Tỏa Sắc',
-          category: 'macrame-pastel',
-          price: 210000,
-          wholesalePrice: 145000,
-          wholesaleMinQty: 5,
-          cordType: 'Dây chỉ sáp dệt Macrame màu kem be nút rút vintage',
-          stoneType: 'Charm Bướm Pha Lê Hologram Tỏa Sắc & Hạt Pha Lê Aurora',
-          tag: 'Fairycore Lung Linh',
-          wristSize: 'Dây rút freesize 13cm - 19cm',
-          description: 'Vẻ đẹp thần tiên lấp lánh với chú bướm hologram phát quang theo góc nghiêng ánh sáng tự nhiên.',
-          meaning: 'Chuyển mình rực rỡ, thu hút tình duyên tốt lành và năng lượng lạc quan.',
-          cordComposition: {
-            coreMaterial: 'Sợi chỉ sáp dệt Macrame dẻo dai 1.0mm chống nước',
-            braidingTechnique: 'Đan nút thoi thủ công và khóa rút trượt đôi tiện lợi',
-            mainCharm: 'Charm bướm dạ quang tán sắc 7 màu & Hạt pha lê cắt giác',
-            cordColor: 'Kem Be Vintage (Ivory Beige)',
-            wristSizeRange: '13cm - 19cm (Freesize tự co rút)',
-            durability: 'Chống nước khi tắm gội, không xơ xù, bảo hành đan lại trọn đời'
-          }
-        };
-      } else if (isRed) {
-        parsedResult = {
-          name: 'Vòng Dây Chỉ Đỏ Ngũ Phúc Tây Tạng May Mắn (Nút Thắt Vô Tận)',
-          category: 'day-do-may-man',
-          price: 165000,
-          wholesalePrice: 95000,
-          wholesaleMinQty: 5,
-          cordType: 'Chỉ đỏ Tây Tạng đan nút thắt vô tận (Endless Knot)',
-          stoneType: 'Hạt Gỗ Mun & Gốm Đỏ Khắc Ngũ Phúc',
-          tag: 'Hộ thân bình an',
-          wristSize: 'Dây rút freesize 13cm - 19cm',
-          description: 'Sợi chỉ đỏ se tay kiên cố không bai xù theo thời gian, chống nước tắm giặt thoải mái.',
-          meaning: 'Xua đuổi vận hạn, trừ tà khí, mang bình an sức khỏe cho người đeo.',
-          cordComposition: {
-            coreMaterial: 'Sợi chỉ dù đỏ Tây Tạng se tay kiên cố',
-            braidingTechnique: 'Nút thắt vô tận Cát Tường (Endless Knot) truyền thống',
-            mainCharm: 'Nút thắt vô tận Ngũ Phúc & Hạt gốm đỏ',
-            cordColor: 'Đỏ Chu Sa Tây Tạng',
-            wristSizeRange: '13cm - 19cm (Khóa trượt tự do)',
-            durability: 'Chống nước tắm gội, không bay màu, bền bỉ trên 5 năm'
+            coreMaterial: 'Khung phôi gương hợp kim cao cấp chống gỉ gập 2 mặt (1 mặt nét + 1 mặt 2X)',
+            braidingTechnique: 'Đính kết thủ công bằng keo resin chuyên dụng chống rơi rớt',
+            mainCharm: 'Vỏ sò biển tự nhiên, sao biển mini & ngọc trai ánh xà cừ',
+            cordColor: 'Tone màu biển xanh pastel & cát trắng vintage',
+            wristSizeRange: 'Đường kính 7.5cm (Nhỏ gọn tiện lợi)',
+            durability: 'Mặt kính quang học nét căng, bảo vệ chống va đập và bảo hành rơi hạt trọn đời'
           }
         };
       } else {
@@ -536,14 +532,16 @@ KIỂM ĐỊNH NỘI DUNG ẢNH (BẮT BUỘC):
     res.json({
       success: true,
       data: parsedResult,
-      message: 'AI đã bóc tách thành công các thành phần cấu tạo dây đan thủ công!'
+      message: parsedResult.category === 'guong-dinh' 
+        ? 'AI Gemini đã nhận diện chính xác Gương Đính Thủ Công & phụ kiện!' 
+        : 'AI Gemini đã bóc tách thành công cấu tạo sản phẩm thủ công!'
     });
 
   } catch (error) {
-    console.error('Lỗi bóc tách cấu tạo dây:', error);
+    console.error('Lỗi bóc tách cấu tạo sản phẩm:', error);
     res.status(500).json({
       success: false,
-      message: `Lỗi bóc tách cấu tạo dây: ${error.message}`
+      message: `Lỗi bóc tách cấu tạo sản phẩm: ${error.message}`
     });
   }
 };
