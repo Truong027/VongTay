@@ -197,6 +197,30 @@ export default function Navbar({
                 <span>🏮</span>
                 <span>Dây Đỏ Hộ Thân</span>
               </button>
+
+              <button
+                onClick={() => { setActiveTab('day-chuyen-vintage'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'day-chuyen-vintage'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>📿</span>
+                <span>Dây Chuyền Vintage</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('day-lua-co-phong'); if (isAdminView) onOpenAdmin(false); }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 whitespace-nowrap flex items-center gap-1.5 ${
+                  !isAdminView && activeTab === 'day-lua-co-phong'
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white font-bold shadow-xs' 
+                    : 'text-[#5A5147] hover:text-[#26211C] hover:bg-white/90'
+                }`}
+              >
+                <span>🎋</span>
+                <span>Dây Lụa Cổ Phong</span>
+              </button>
             </div>
 
             <div className="h-4 w-[1px] bg-[#E8DFD3] mx-0.5"></div>
@@ -550,6 +574,30 @@ export default function Navbar({
               >
                 <span className="flex items-center gap-2"><span>🏮</span> Dây Đỏ Hộ Thân</span>
                 <span className="text-[10px] opacity-70">Bình an</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('day-chuyen-vintage'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'day-chuyen-vintage' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>📿</span> Dây Chuyền Vintage</span>
+                <span className="text-[10px] opacity-70">Boho</span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('day-lua-co-phong'); if (isAdminView) onOpenAdmin(false); setIsMobileMenuOpen(false); }}
+                className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                  activeTab === 'day-lua-co-phong' && !isAdminView 
+                    ? 'bg-gradient-to-r from-[#B86244] to-[#C86A45] text-white shadow-xs font-bold' 
+                    : 'bg-white/80 text-[#26211C] border border-[#EADBCC]/70 hover:bg-white'
+                }`}
+              >
+                <span className="flex items-center gap-2"><span>🎋</span> Dây Lụa Cổ Phong</span>
+                <span className="text-[10px] opacity-70">Cổ trang</span>
               </button>
             </div>
           </div>

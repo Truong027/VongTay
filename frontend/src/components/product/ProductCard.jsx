@@ -16,6 +16,19 @@ export default function ProductCard({ product, onQuickView }) {
     toggleWishlist(product.id);
   };
 
+  const categoryNameMap = {
+    'macrame-pastel': '🌸 Macrame Pastel',
+    'guong-dinh': '🪞 Gương Đính Độc Bản',
+    'vong-doi': '💞 Vòng Đôi Dây Sáp',
+    'day-do-may-man': '🏮 Dây Đỏ May Mắn',
+    'day-chuyen-vintage': '📿 Dây Chuyền Vintage',
+    'day-lua-co-phong': '🎋 Dây Lụa Cổ Phong'
+  };
+
+  const imageSrc = (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) 
+    ? product.images[0] 
+    : (product.image || '/images/products/bracelet-pastel-macrame-trio.jpg');
+
   return (
     <div 
       onClick={() => onQuickView(product)}
@@ -24,7 +37,7 @@ export default function ProductCard({ product, onQuickView }) {
       {/* Image Container with subtle inner rounded frame */}
       <div className="relative aspect-square overflow-hidden bg-[#F5EFE6]/80 m-2 sm:m-2.5 rounded-2xl sm:rounded-[1.4rem]">
         <img
-          src={product.images[0]}
+          src={imageSrc}
           alt={product.name}
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
           loading="lazy"
@@ -33,6 +46,11 @@ export default function ProductCard({ product, onQuickView }) {
 
         {/* Top Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10 items-start">
+          {product.category && categoryNameMap[product.category] && (
+            <span className="ios-pill bg-white/95 text-[#6B6258] text-[9.5px] font-bold px-2.5 py-0.5 rounded-full shadow-2xs border border-white/80">
+              {categoryNameMap[product.category]}
+            </span>
+          )}
           {product.isBestSeller && (
             <span className="bg-gradient-to-r from-amber-600 via-[#C59B6D] to-rose-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 animate-pulse">
               <Sparkles className="w-3 h-3 text-yellow-100" />

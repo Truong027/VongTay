@@ -91,38 +91,54 @@ function MainShop({ currentUser, setCurrentUser }) {
   }, [searchQuery]);
 
   // Fetch products and categories from backend
-  const loadShopData = async () => {
+  const loadShopData = async (forceBypass = false) => {
     setLoading(true);
     try {
-      const isWishlistTab = activeTab === 'wishlist';
-
-      // Luôn lấy toàn bộ danh mục sản phẩm nền nếu chưa có
+      // 1. Luôn tải toàn bộ sản phẩm mới nhất từ cơ sở dữ liệu để làm Master Pool
       const [prodRes, catRes] = await Promise.all([
-        api.getProducts(isWishlistTab ? {} : {
-          category: activeTab !== 'all' ? activeTab : undefined,
-          menh: selectedMenh !== 'all' ? selectedMenh : undefined,
-          sort: sortOption,
-          search: debouncedSearch
-        }),
-        api.getCategories()
+        api.getProducts({ all: 'true' }, forceBypass),
+        api.getCategories(forceBypass)
       ]);
 
       if (prodRes.success && Array.isArray(prodRes.data)) {
-        // Cập nhật kho sản phẩm tổng thể
-        setAllProductsMaster(prev => {
-          const map = new Map();
-          [...prev, ...prodRes.data].forEach(item => map.set(item.id, item));
-          return Array.from(map.values());
-        });
+        const freshAll = prodRes.data;
+        setAllProductsMaster(freshAll);
 
-        if (isWishlistTab) {
-          // Lọc chính xác các sản phẩm có id nằm trong danh sách yêu thích
-          const fullPool = prodRes.data.length > 0 ? prodRes.data : allProductsMaster;
-          const wishlisted = fullPool.filter(p => isWishlisted(p.id));
-          setProducts(wishlisted);
-        } else {
-          setProducts(prodRes.data);
+        // 2. Lọc sản phẩm theo tab, danh mục, mệnh, tìm kiếm và sắp xếp hiện tại
+        let filtered = [...freshAll];
+
+        if (activeTab === 'wishlist') {
+          filtered = filtered.filter(p => isWishlisted(p.id));
+        } else if (activeTab === 'best-seller') {
+          filtered = filtered.filter(p => p.isBestSeller);
+        } else if (activeTab !== 'all') {
+          filtered = filtered.filter(p => p.category === activeTab);
         }
+
+        if (selectedMenh !== 'all') {
+          filtered = filtered.filter(p => p.menh && (p.menh.includes(selectedMenh) || p.menh.includes('Tất cả')));
+        }
+
+        if (debouncedSearch) {
+          const q = debouncedSearch.toLowerCase().trim();
+          filtered = filtered.filter(p => 
+            (p.name && p.name.toLowerCase().includes(q)) || 
+            (p.stoneType && p.stoneType.toLowerCase().includes(q)) ||
+            (p.description && p.description.toLowerCase().includes(q))
+          );
+        }
+
+        if (sortOption === 'price-asc') {
+          filtered.sort((a, b) => a.price - b.price);
+        } else if (sortOption === 'price-desc') {
+          filtered.sort((a, b) => b.price - a.price);
+        } else if (sortOption === 'rating') {
+          filtered.sort((a, b) => b.rating - a.rating);
+        } else {
+          filtered.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0) || (b.reviewsCount || 0) - (a.reviewsCount || 0));
+        }
+
+        setProducts(filtered);
       }
       if (catRes.success) {
         setCategories(catRes.data);
@@ -134,13 +150,62 @@ function MainShop({ currentUser, setCurrentUser }) {
     }
   };
 
-  // Khi danh sách wishlist hoặc kho sản phẩm thay đổi, cập nhật ngay nếu đang xem tab wishlist
+  // Lắng nghe sự kiện cập nhật sản phẩm từ trang quản trị để đồng bộ ngay lập tức
   useEffect(() => {
-    if (activeTab === 'wishlist') {
-      const source = allProductsMaster.length > 0 ? allProductsMaster : products;
-      setProducts(source.filter(p => isWishlisted(p.id)));
+    const handleProductsUpdated = () => {
+      loadShopData(true);
+    };
+    window.addEventListener('viban_products_updated', handleProductsUpdated);
+    return () => window.removeEventListener('viban_products_updated', handleProductsUpdated);
+  }, [activeTab, selectedMenh, sortOption, debouncedSearch]);
+
+  // Khi thay đổi tab/mệnh/tìm kiếm/sắp xếp, lọc ngay tức thì từ Master Pool hoặc nạp lại
+  useEffect(() => {
+    if (allProductsMaster.length > 0) {
+      let filtered = [...allProductsMaster];
+      if (activeTab === 'wishlist') {
+        filtered = filtered.filter(p => isWishlisted(p.id));
+      } else if (activeTab === 'best-seller') {
+        filtered = filtered.filter(p => p.isBestSeller);
+      } else if (activeTab !== 'all') {
+        filtered = filtered.filter(p => p.category === activeTab);
+      }
+
+      if (selectedMenh !== 'all') {
+        filtered = filtered.filter(p => p.menh && (p.menh.includes(selectedMenh) || p.menh.includes('Tất cả')));
+      }
+
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase().trim();
+        filtered = filtered.filter(p => 
+          (p.name && p.name.toLowerCase().includes(q)) || 
+          (p.stoneType && p.stoneType.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q))
+        );
+      }
+
+      if (sortOption === 'price-asc') {
+        filtered.sort((a, b) => a.price - b.price);
+      } else if (sortOption === 'price-desc') {
+        filtered.sort((a, b) => b.price - a.price);
+      } else if (sortOption === 'rating') {
+        filtered.sort((a, b) => b.rating - a.rating);
+      } else {
+        filtered.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0) || (b.reviewsCount || 0) - (a.reviewsCount || 0));
+      }
+
+      setProducts(filtered);
+    } else {
+      loadShopData();
     }
-  }, [wishlist, activeTab, allProductsMaster]);
+  }, [activeTab, selectedMenh, sortOption, debouncedSearch, allProductsMaster]);
+
+  // Khi danh sách wishlist thay đổi, cập nhật ngay nếu đang xem tab wishlist
+  useEffect(() => {
+    if (activeTab === 'wishlist' && allProductsMaster.length > 0) {
+      setProducts(allProductsMaster.filter(p => isWishlisted(p.id)));
+    }
+  }, [wishlist, activeTab]);
 
   // Tự động cuộn xuống phần sản phẩm khi mở tab wishlist
   useEffect(() => {
@@ -151,10 +216,6 @@ function MainShop({ currentUser, setCurrentUser }) {
       }
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    loadShopData();
-  }, [activeTab, selectedMenh, sortOption, debouncedSearch]);
 
   const handleProceedToCheckout = (data) => {
     setCheckoutData(data);
@@ -188,7 +249,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         <AdminDashboard
           onBackToStore={() => {
             setIsAdminView(false);
-            loadShopData();
+            loadShopData(true);
           }}
           currentUser={currentUser}
           onOpenAuth={() => setIsAuthOpen(true)}
@@ -222,7 +283,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         onOpenAdmin={(targetState) => {
           if (targetState === false) {
             setIsAdminView(false);
-            loadShopData();
+            loadShopData(true);
           } else {
             if (currentUser?.role === 'admin') {
               setIsAdminView(true);
@@ -276,14 +337,20 @@ function MainShop({ currentUser, setCurrentUser }) {
                   `Vòng Dây Yêu Thích (${products.length})`
                 ) : activeTab === 'best-seller' ? (
                   'Top Vòng Tay Dây Bán Chạy Nhất (Best Sellers)'
+                ) : activeTab === 'guong-dinh' ? (
+                  '🪞 Gương Đính Gập & Đơn (Boutique Độc Bản)'
                 ) : activeTab === 'macrame-pastel' ? (
                   'Vòng Dây Macrame Pastel (Cá Voi, Hoa Cúc & Bướm Tiên)'
                 ) : activeTab === 'vong-doi' ? (
                   'Vòng Đôi Dây Sáp Nam Châm Khắc Tên'
                 ) : activeTab === 'day-do-may-man' ? (
                   'Vòng Dây Chỉ Đỏ Tây Tạng Hộ Thân Bình An'
+                ) : activeTab === 'day-chuyen-vintage' ? (
+                  'Dây Chuyền & Choker Boho Vintage'
                 ) : activeTab === 'day-lua-co-phong' ? (
                   'Vòng Dây Lụa Cổ Phong & Dây Da Bò Mộc'
+                ) : categories.find(c => c.id === activeTab)?.name ? (
+                  categories.find(c => c.id === activeTab).name
                 ) : (
                   'Các Mẫu Vòng Tay Dây Đan Thủ Công Mới Nhất'
                 )}

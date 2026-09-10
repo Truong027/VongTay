@@ -46,7 +46,12 @@ export const api = {
       if (cached) return cached;
     }
 
-    const res = await fetch(`${BASE_URL}/products${query ? `?${query}` : ''}`);
+    const tParam = bypassCache ? `_t=${Date.now()}` : '';
+    const fullQuery = [query, tParam].filter(Boolean).join('&');
+    const res = await fetch(`${BASE_URL}/products${fullQuery ? `?${fullQuery}` : ''}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Không thể tải danh sách sản phẩm');
     const data = await res.json();
     setCached(cacheKey, data);
@@ -54,7 +59,9 @@ export const api = {
   },
 
   async getProductById(id) {
-    const res = await fetch(`${BASE_URL}/products/${id}`);
+    const res = await fetch(`${BASE_URL}/products/${id}`, {
+      cache: 'no-store'
+    });
     if (!res.ok) throw new Error('Không tìm thấy sản phẩm');
     return res.json();
   },
@@ -66,7 +73,10 @@ export const api = {
       if (cached) return cached;
     }
 
-    const res = await fetch(`${BASE_URL}/products/categories`);
+    const res = await fetch(`${BASE_URL}/products/categories${bypassCache ? `?_t=${Date.now()}` : ''}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     if (!res.ok) throw new Error('Không thể tải danh mục');
     const data = await res.json();
     setCached(cacheKey, data);
@@ -285,7 +295,10 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi thêm sản phẩm');
-    clearClientCache('products');
+    clearClientCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
+    }
     return data;
   },
 
@@ -297,7 +310,10 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật sản phẩm');
-    clearClientCache('products');
+    clearClientCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
+    }
     return data;
   },
 
@@ -307,7 +323,10 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi xóa sản phẩm');
-    clearClientCache('products');
+    clearClientCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: { id } }));
+    }
     return data;
   },
 
@@ -317,7 +336,10 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi ẩn/hiện sản phẩm');
-    clearClientCache('products');
+    clearClientCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
+    }
     return data;
   },
 
@@ -327,7 +349,10 @@ export const api = {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi đặt sản phẩm xu hướng');
-    clearClientCache('products');
+    clearClientCache();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
+    }
     return data;
   },
 

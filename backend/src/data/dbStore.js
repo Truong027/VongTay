@@ -328,7 +328,7 @@ let productsCache = {
   dataPublicOnly: null,
   lastFetched: 0
 };
-const CACHE_TTL_MS = 20000; // 20s Tier-1 cache for instant response
+const CACHE_TTL_MS = 2000; // 2s short cache for fast response while preventing stale data
 
 export const invalidateProductsCache = () => {
   productsCache.dataWithHidden = null;
@@ -761,8 +761,12 @@ export const dbUpdateProduct = async (id, updates) => {
           cord_composition = COALESCE($15, cord_composition),
           images = COALESCE($16, images),
           is_hidden = COALESCE($17, is_hidden),
-          is_trending = COALESCE($18, is_trending)
-         WHERE id = $19
+          is_trending = COALESCE($18, is_trending),
+          menh = COALESCE($19, menh),
+          bead_size = COALESCE($20, bead_size),
+          artisan_name = COALESCE($21, artisan_name),
+          lead_time = COALESCE($22, lead_time)
+         WHERE id = $23
          RETURNING *`,
         [
           formattedUpdates.name !== undefined ? formattedUpdates.name : null,
@@ -783,6 +787,10 @@ export const dbUpdateProduct = async (id, updates) => {
           formattedUpdates.images !== undefined ? JSON.stringify(formattedUpdates.images) : null,
           formattedUpdates.isHidden !== undefined ? formattedUpdates.isHidden : null,
           formattedUpdates.isTrending !== undefined ? formattedUpdates.isTrending : null,
+          formattedUpdates.menh !== undefined ? JSON.stringify(formattedUpdates.menh) : null,
+          formattedUpdates.beadSize !== undefined ? formattedUpdates.beadSize : null,
+          formattedUpdates.artisanName !== undefined ? formattedUpdates.artisanName : null,
+          formattedUpdates.leadTime !== undefined ? formattedUpdates.leadTime : null,
           cleanId
         ]
       );
@@ -793,6 +801,7 @@ export const dbUpdateProduct = async (id, updates) => {
           id: r.id,
           name: r.name,
           category: r.category,
+          menh: r.menh,
           price: Number(r.price),
           originalPrice: Number(r.original_price || r.price),
           wholesalePrice: Number(r.wholesale_price || 0),
@@ -804,12 +813,19 @@ export const dbUpdateProduct = async (id, updates) => {
           tag: r.tag,
           stoneType: r.stone_type,
           cordType: r.cord_type,
+          beadSize: r.bead_size,
+          artisanName: r.artisan_name,
+          leadTime: r.lead_time,
           cordComposition: r.cord_composition,
           images: r.images,
           meaning: r.meaning,
           isHidden: Boolean(r.is_hidden),
           description: r.description
         };
+        if (idx !== -1) {
+          memoryData.products[idx] = updated;
+          saveToDisk();
+        }
       }
     } catch (err) {
       console.error('Lỗi cập nhật product Neon:', err.message);

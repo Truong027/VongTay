@@ -44,6 +44,14 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(morgan('dev'));
 
+// Ensure API responses are always fresh and never cached by browser/CDN with 304
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // Routes across all 11 tables
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);

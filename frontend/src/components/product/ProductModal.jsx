@@ -251,7 +251,17 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
               
               {/* Product Title & Brand */}
               <div>
-                <div className="flex items-center gap-2 flex-wrap mb-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  {product.category && (
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#845339] border border-[#EADBCC] shadow-2xs">
+                      {product.category === 'guong-dinh' ? '🪞 Gương Đính Độc Bản' :
+                       product.category === 'macrame-pastel' ? '🌸 Macrame Pastel' :
+                       product.category === 'vong-doi' ? '💞 Vòng Đôi Dây Sáp' :
+                       product.category === 'day-do-may-man' ? '🏮 Dây Đỏ May Mắn' :
+                       product.category === 'day-chuyen-vintage' ? '📿 Dây Chuyền Vintage' :
+                       product.category === 'day-lua-co-phong' ? '🎋 Dây Lụa Cổ Phong' : product.category}
+                    </span>
+                  )}
                   {product.menh && product.menh.map((m, idx) => (
                     <span key={idx} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FAF4ED] text-[#B86244] border border-[#EADBCC]">
                       Hợp Mệnh {m}
@@ -293,12 +303,16 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                   <span className="text-2xl sm:text-3xl font-extrabold text-[#B86244]">
                     {product.price.toLocaleString('vi-VN')}₫
                   </span>
-                  <span className="text-xs sm:text-sm text-[#8C8276] line-through">
-                    {originalPrice.toLocaleString('vi-VN')}₫
-                  </span>
-                  <span className="text-[10px] font-bold bg-[#B86244] text-white px-2 py-0.5 rounded uppercase">
-                    -20% GIẢM
-                  </span>
+                  {originalPrice && originalPrice > product.price && (
+                    <span className="text-xs sm:text-sm text-[#8C8276] line-through">
+                      {originalPrice.toLocaleString('vi-VN')}₫
+                    </span>
+                  )}
+                  {originalPrice && originalPrice > product.price && (
+                    <span className="text-[10px] font-bold bg-[#B86244] text-white px-2 py-0.5 rounded uppercase">
+                      -{Math.round(((originalPrice - product.price) / originalPrice) * 100)}% GIẢM
+                    </span>
+                  )}
                 </div>
 
                 {/* Wholesale Tier Highlight */}

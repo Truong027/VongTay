@@ -75,10 +75,58 @@ export const getProductById = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   try {
-    const cats = await dbGetCategories();
+    const allProducts = await dbGetProducts(false);
+    const dbCats = await dbGetCategories();
+
+    const standardMasterTabs = [
+      { id: 'all', name: 'Tất Cả Sản Phẩm', icon: 'Sparkles', count: allProducts.length },
+      { id: 'best-seller', name: '🔥 Bán Chạy Nhất', icon: 'Flame', count: allProducts.filter(p => p.isBestSeller).length }
+    ];
+
+    // Merge base categories
+    const baseSource = dbCats && dbCats.length > 0 ? dbCats : categories;
+    const cleanList = baseSource.filter(c => c.id !== 'all' && c.id !== 'best-seller' && c.slug !== 'all' && c.slug !== 'best-seller');
+
+    const mappedCats = cleanList.map(c => {
+      const catId = c.slug || c.id;
+      const count = allProducts.filter(p => p.category === catId).length;
+      return {
+        id: catId,
+        name: c.name,
+        slug: catId,
+        icon: c.icon || 'Sparkles',
+        description: c.description || c.name,
+        count
+      };
+    });
+
+    // Ensure all categories present on any product are represented
+    const existingCatIds = new Set(mappedCats.map(c => c.id));
+    const knownLabels = {
+      'macrame-pastel': 'Vòng Dây Macrame Pastel',
+      'guong-dinh': '🪞 Gương Đính Gập & Đơn',
+      'vong-doi': 'Vòng Đôi & Summer Set',
+      'day-do-may-man': 'Vòng Dây Chỉ Đỏ May Mắn',
+      'day-chuyen-vintage': 'Dây Chuyền & Choker Boho',
+      'day-lua-co-phong': 'Vòng Dây Lụa Cổ Phong'
+    };
+
+    allProducts.forEach(p => {
+      if (p.category && !existingCatIds.has(p.category)) {
+        existingCatIds.add(p.category);
+        mappedCats.push({
+          id: p.category,
+          name: knownLabels[p.category] || p.category,
+          slug: p.category,
+          icon: 'Sparkles',
+          count: allProducts.filter(x => x.category === p.category).length
+        });
+      }
+    });
+
     res.json({
       success: true,
-      data: cats && cats.length > 0 ? cats : categories
+      data: [...standardMasterTabs, ...mappedCats]
     });
   } catch (error) {
     res.json({
