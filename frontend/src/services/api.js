@@ -29,6 +29,30 @@ export const clearClientCache = (prefix = '') => {
   }
 };
 
+const SESSION_TOKEN_KEY = 'viban_session_token';
+
+export const getSessionToken = () => {
+  try {
+    return localStorage.getItem(SESSION_TOKEN_KEY) || sessionStorage.getItem(SESSION_TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+export const setSessionToken = (token) => {
+  try {
+    if (token) {
+      localStorage.setItem(SESSION_TOKEN_KEY, token);
+      sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(SESSION_TOKEN_KEY);
+      sessionStorage.removeItem(SESSION_TOKEN_KEY);
+    }
+  } catch (err) {
+    console.warn('Lỗi ghi session token:', err);
+  }
+};
+
 export const api = {
   // Products & Categories
   async getProducts(params = {}, bypassCache = false) {
@@ -239,34 +263,97 @@ export const api = {
 
   // Auth & User
   async login(email, password) {
+    const deviceInfo = typeof navigator !== 'undefined' ? `${navigator.platform || ''} - ${navigator.userAgent || ''}`.substring(0, 200) : '';
     const res = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, deviceInfo })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi đăng nhập');
+    if (data?.data?.token) {
+      setSessionToken(data.data.token);
+    }
     return data;
   },
 
   async register(userData) {
+    const deviceInfo = typeof navigator !== 'undefined' ? `${navigator.platform || ''} - ${navigator.userAgent || ''}`.substring(0, 200) : '';
     const res = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData)
+      body: JSON.stringify({ ...userData, deviceInfo })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Lỗi đăng ký');
+    if (data?.data?.token) {
+      setSessionToken(data.data.token);
+    }
     return data;
   },
 
+  async validateSession(userId, token) {
+    const activeToken = token || getSessionToken();
+    if (!userId || !activeToken) {
+      return { valid: true, guest: true };
+    }
+    try {
+      const res = await fetch(`${BASE_URL}/auth/validate-session`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${activeToken}`
+        },
+        body: JSON.stringify({ userId, token: activeToken })
+      });
+      const data = await res.json();
+      if (res.status === 401 && (data.code === 'CONCURRENT_DEVICE_LOGIN' || data.sessionExpired)) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('viban_session_expired', { detail: data }));
+        }
+        return { valid: false, sessionExpired: true, ...data };
+      }
+      return data;
+    } catch {
+      return { valid: true, networkError: true };
+    }
+  },
+
+  async logout(userId) {
+    try {
+      const activeToken = getSessionToken();
+      await fetch(`${BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${activeToken}`
+        },
+        body: JSON.stringify({ userId })
+      });
+    } catch (e) {
+      console.warn('Logout notice:', e);
+    } finally {
+      setSessionToken('');
+    }
+  },
+
   async updateProfile(profileData) {
+    const activeToken = getSessionToken();
     const res = await fetch(`${BASE_URL}/auth/profile`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${activeToken}`
+      },
       body: JSON.stringify(profileData)
     });
     const data = await res.json();
+    if (res.status === 401 && data.sessionExpired) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('viban_session_expired', { detail: data }));
+      }
+      throw new Error(data.message || 'Phiên làm việc đã bị gián đoạn do đăng nhập từ thiết bị khác');
+    }
     if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật thông tin tài khoản');
     return data;
   },

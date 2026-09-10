@@ -8,7 +8,10 @@
       "phone": "0988668899",
       "address": "Xưởng Chế Tác Vòng Tay Nhà Zy, 128 Nguyễn Trãi, Hà Nội",
       "role": "admin",
-      "createdAt": "2026-09-01T08:00:00.000Z"
+      "createdAt": "2026-09-01T08:00:00.000Z",
+      "sessionToken": "sess_device2_1789006006681",
+      "deviceInfo": "Safari iPhone iOS",
+      "lastLoginAt": "2026-09-10T02:06:46.681Z"
     },
     {
       "id": "user-01",
@@ -595,6 +598,12 @@
       "userId": "user-admin",
       "productId": "vt-butterfly-fairy",
       "createdAt": "2026-09-08T00:02:51.470Z"
+    },
+    {
+      "id": "w-0627",
+      "userId": "user-admin",
+      "productId": "zy-vt-may-man-thank-you",
+      "createdAt": "2026-09-10T02:02:00.627Z"
     }
   ],
   "customDesigns": [],

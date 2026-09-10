@@ -14,7 +14,7 @@ import {
   LogIn,
   UserPlus
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, setSessionToken } from '../../services/api';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) {
   if (!isOpen) return null;
@@ -47,6 +47,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
       if (isLogin) {
         const res = await api.login(email, password);
         if (res.success && res.data) {
+          if (res.data.token) {
+            setSessionToken(res.data.token);
+          }
           sessionStorage.setItem('viban_user', JSON.stringify(res.data.user));
           if (res.data.user.role === 'admin') {
             sessionStorage.setItem('viban_admin_user', JSON.stringify(res.data.user));
@@ -75,6 +78,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           address: address.trim()
         });
         if (res.success && res.data) {
+          if (res.data.token) {
+            setSessionToken(res.data.token);
+          }
           sessionStorage.setItem('viban_user', JSON.stringify(res.data.user));
           sessionStorage.setItem('viban_customer_user', JSON.stringify(res.data.user));
           localStorage.setItem('viban_user', JSON.stringify(res.data.user));

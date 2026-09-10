@@ -2,15 +2,18 @@ import {
   dbGetUsers, 
   dbCreateUser, 
   dbFindUserByEmail, 
+  dbFindUserById,
   dbUpdateUserRole, 
   dbUpdateUserProfile,
-  dbDeleteUser 
+  dbDeleteUser,
+  dbUpdateUserSession,
+  dbValidateUserSession
 } from '../data/dbStore.js';
 import { initNeonDb, getConnectionInfo, isNeonConnected, ensureNeonConnected } from '../data/neonDb.js';
 
 export const register = async (req, res) => {
   try {
-    const { email, password, fullName, phone, address } = req.body;
+    const { email, password, fullName, phone, address, deviceInfo } = req.body;
 
     if (!email || !password || !fullName) {
       return res.status(400).json({ 
@@ -27,14 +30,18 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email này đã được đăng ký tài khoản.' });
     }
 
-    // Yêu cầu 3: Form đăng ký chỉ đăng ký tài khoản khách ('customer'), không cần tài khoản nhân viên
+    const newSessionToken = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
+    const clientDevice = (deviceInfo || req.headers['user-agent'] || 'Trình duyệt Web').substring(0, 250);
+
     const newUser = await dbCreateUser({
       email: cleanEmail,
       password,
       fullName: fullName.trim(),
       phone: (phone || '').trim(),
       address: (address || '').trim(),
-      role: 'customer'
+      role: 'customer',
+      sessionToken: newSessionToken,
+      deviceInfo: clientDevice
     });
 
     res.status(201).json({
@@ -50,7 +57,7 @@ export const register = async (req, res) => {
           role: newUser.role,
           createdAt: newUser.createdAt
         },
-        token: `token-${newUser.id}`
+        token: newUser.sessionToken || newSessionToken
       }
     });
   } catch (error) {
@@ -60,7 +67,7 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceInfo } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập email và mật khẩu.' });
@@ -76,9 +83,16 @@ export const login = async (req, res) => {
       });
     }
 
+    // Tạo mã phiên độc nhất cho thiết bị đăng nhập mới này
+    const newSessionToken = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
+    const clientDevice = (deviceInfo || req.headers['user-agent'] || 'Trình duyệt Web').substring(0, 250);
+
+    // Vô hiệu hóa thiết bị trước và chỉ cho phép thiết bị mới này hoạt động
+    await dbUpdateUserSession(user.id, newSessionToken, clientDevice);
+
     res.json({
       success: true,
-      message: 'Đăng nhập thành công!',
+      message: 'Đăng nhập thành công! Thiết bị của bạn hiện là phiên duy nhất hoạt động.',
       data: {
         user: {
           id: user.id,
@@ -89,7 +103,7 @@ export const login = async (req, res) => {
           role: user.role,
           createdAt: user.createdAt
         },
-        token: `token-${user.id}`
+        token: newSessionToken
       }
     });
   } catch (error) {
@@ -241,6 +255,64 @@ export const updateDatabaseConnection = async (req, res) => {
     } else {
       res.status(400).json({ success: false, message: result.message });
     }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const validateSession = async (req, res) => {
+  try {
+    let token = '';
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7).trim();
+    }
+    if (!token && req.body && req.body.token) {
+      token = req.body.token;
+    }
+    if (!token && req.query && req.query.token) {
+      token = req.query.token;
+    }
+
+    const userId = req.body?.userId || req.query?.userId || req.headers['x-user-id'];
+
+    if (!userId || !token) {
+      return res.status(200).json({
+        success: true,
+        valid: true,
+        guest: true,
+        message: 'Chưa có phiên làm việc đăng nhập.'
+      });
+    }
+
+    const validation = await dbValidateUserSession(userId, token);
+    if (!validation.valid) {
+      return res.status(401).json({
+        success: false,
+        valid: false,
+        sessionExpired: true,
+        code: validation.code || 'CONCURRENT_DEVICE_LOGIN',
+        message: validation.message || 'Tài khoản của bạn đã được đăng nhập từ một thiết bị khác. Phiên làm việc trên thiết bị này đã kết thúc.'
+      });
+    }
+
+    res.json({
+      success: true,
+      valid: true,
+      message: 'Phiên làm việc hợp lệ.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const userId = req.body?.userId || req.headers['x-user-id'];
+    if (userId) {
+      await dbUpdateUserSession(userId, null, '');
+    }
+    res.json({ success: true, message: 'Đăng xuất thành công.' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

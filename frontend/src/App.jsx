@@ -34,6 +34,8 @@ import AICameraModal from './components/ai/AICameraModal';
 import AuthModal from './components/auth/AuthModal';
 import UserProfileModal from './components/auth/UserProfileModal';
 import PersonalizedSection from './components/personalization/PersonalizedSection';
+import ConcurrentSessionModal from './components/auth/ConcurrentSessionModal';
+import { getSessionToken, setSessionToken } from './services/api';
 
 function MainShop({ currentUser, setCurrentUser }) {
   const { wishlist, isWishlisted } = useCart();
@@ -64,6 +66,44 @@ function MainShop({ currentUser, setCurrentUser }) {
   const [aiModalMode, setAiModalMode] = useState('wrist');
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [aiCustomPreset, setAiCustomPreset] = useState(null);
+  const [sessionConflict, setSessionConflict] = useState(null);
+
+  // Single active session enforcement: Mỗi tài khoản chỉ đăng nhập trên 1 thiết bị duy nhất
+  useEffect(() => {
+    const handleSessionExpired = (e) => {
+      const detail = e.detail || {};
+      handleLogout();
+      setSessionConflict({
+        isOpen: true,
+        message: detail.message || 'Tài khoản của bạn vừa được đăng nhập trên một thiết bị khác.'
+      });
+    };
+
+    window.addEventListener('viban_session_expired', handleSessionExpired);
+    return () => window.removeEventListener('viban_session_expired', handleSessionExpired);
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    // Định kỳ gửi heartbeat để kiểm tra tài khoản có bị đăng nhập bởi thiết bị khác không
+    const checkSession = async () => {
+      const token = getSessionToken();
+      if (!token) return;
+      try {
+        await api.validateSession(currentUser.id, token);
+      } catch (err) {
+        console.warn('Kiểm tra phiên đăng nhập:', err);
+      }
+    };
+
+    // Kiểm tra ngay lập tức khi vào trang
+    checkSession();
+
+    // Heartbeat định kỳ mỗi 6 giây
+    const interval = setInterval(checkSession, 6000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
 
   const handleOpenAiWrist = () => {
     setAiModalMode('wrist');
@@ -230,7 +270,10 @@ function MainShop({ currentUser, setCurrentUser }) {
   };
 
   const handleLogout = () => {
+    setSessionToken('');
     sessionStorage.removeItem('viban_user');
+    sessionStorage.removeItem('viban_admin_user');
+    sessionStorage.removeItem('viban_customer_user');
     localStorage.removeItem('viban_user');
     setCurrentUser(null);
     setIsAdminView(false);
@@ -261,6 +304,15 @@ function MainShop({ currentUser, setCurrentUser }) {
           onAuthSuccess={(user) => {
             setCurrentUser(user);
             setIsAuthOpen(false);
+          }}
+        />
+        <ConcurrentSessionModal
+          isOpen={!!sessionConflict?.isOpen}
+          message={sessionConflict?.message}
+          onClose={() => setSessionConflict(null)}
+          onReLogin={() => {
+            setSessionConflict(null);
+            setIsAuthOpen(true);
           }}
         />
       </>
@@ -586,6 +638,17 @@ function MainShop({ currentUser, setCurrentUser }) {
         }}
       />
 
+      {/* Cross-Device Single Session Notification Modal */}
+      <ConcurrentSessionModal
+        isOpen={!!sessionConflict?.isOpen}
+        message={sessionConflict?.message}
+        onClose={() => setSessionConflict(null)}
+        onReLogin={() => {
+          setSessionConflict(null);
+          setIsAuthOpen(true);
+        }}
+      />
+
     </div>
   );
 }
@@ -613,6 +676,7 @@ export default function App() {
         sessionStorage.setItem('viban_customer_user', JSON.stringify(user));
       }
     } else {
+      setSessionToken('');
       sessionStorage.removeItem('viban_user');
       sessionStorage.removeItem('viban_admin_user');
       sessionStorage.removeItem('viban_customer_user');

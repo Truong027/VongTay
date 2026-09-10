@@ -126,6 +126,9 @@ export const ensureNeonTables = async () => {
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS session_token VARCHAR(255);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS device_info VARCHAR(255);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
 
     -- 2. CATEGORIES
     CREATE TABLE IF NOT EXISTS categories (
@@ -927,7 +930,7 @@ export const dbGetUsers = async () => {
   await ensureNeonConnected();
   if (isNeonConnected()) {
     try {
-      const res = await query('SELECT id, email, full_name, phone, address, role, created_at FROM users ORDER BY created_at DESC');
+      const res = await query('SELECT id, email, full_name, phone, address, role, session_token, device_info, last_login_at, created_at FROM users ORDER BY created_at DESC');
       if (res && Array.isArray(res.rows)) {
         return res.rows.map(r => ({
           id: r.id,
@@ -936,6 +939,9 @@ export const dbGetUsers = async () => {
           phone: r.phone || '',
           address: r.address || '',
           role: r.role,
+          sessionToken: r.session_token || null,
+          deviceInfo: r.device_info || '',
+          lastLoginAt: r.last_login_at || null,
           createdAt: r.created_at
         }));
       }
@@ -950,12 +956,17 @@ export const dbGetUsers = async () => {
     phone: u.phone || '',
     address: u.address || '',
     role: u.role,
+    sessionToken: u.sessionToken || null,
+    deviceInfo: u.deviceInfo || '',
+    lastLoginAt: u.lastLoginAt || null,
     createdAt: u.createdAt
   }));
 };
 
 export const dbCreateUser = async (userData) => {
   await ensureNeonConnected();
+  const sessionToken = userData.sessionToken || ('sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10));
+  const now = new Date().toISOString();
   const newUser = {
     id: userData.id || `user-${Date.now()}`,
     email: userData.email.trim().toLowerCase(),
@@ -964,7 +975,10 @@ export const dbCreateUser = async (userData) => {
     phone: userData.phone || '',
     address: userData.address || '',
     role: userData.role || 'customer',
-    createdAt: new Date().toISOString()
+    sessionToken: sessionToken,
+    deviceInfo: userData.deviceInfo || '',
+    lastLoginAt: now,
+    createdAt: now
   };
 
   const existingIdx = memoryData.users.findIndex(u => u.email.toLowerCase() === newUser.email);
@@ -978,11 +992,13 @@ export const dbCreateUser = async (userData) => {
   if (isNeonConnected()) {
     try {
       await query(
-        `INSERT INTO users (id, email, password_hash, full_name, phone, address, role, created_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO users (id, email, password_hash, full_name, phone, address, role, session_token, device_info, last_login_at, created_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          ON CONFLICT (email) DO UPDATE 
-         SET full_name = EXCLUDED.full_name, phone = EXCLUDED.phone, address = EXCLUDED.address, password_hash = EXCLUDED.password_hash`,
-        [newUser.id, newUser.email, newUser.password, newUser.fullName, newUser.phone, newUser.address, newUser.role, newUser.createdAt]
+         SET full_name = EXCLUDED.full_name, phone = EXCLUDED.phone, address = EXCLUDED.address, 
+             password_hash = EXCLUDED.password_hash, session_token = EXCLUDED.session_token,
+             device_info = EXCLUDED.device_info, last_login_at = EXCLUDED.last_login_at`,
+        [newUser.id, newUser.email, newUser.password, newUser.fullName, newUser.phone, newUser.address, newUser.role, newUser.sessionToken, newUser.deviceInfo, newUser.lastLoginAt, newUser.createdAt]
       );
     } catch (err) {
       console.error('Lỗi tạo user Neon:', err.message);
@@ -996,6 +1012,7 @@ export const dbCreateUser = async (userData) => {
     phone: newUser.phone,
     address: newUser.address,
     role: newUser.role,
+    sessionToken: newUser.sessionToken,
     createdAt: newUser.createdAt
   };
 };
@@ -1130,6 +1147,9 @@ export const dbFindUserByEmail = async (email) => {
           phone: r.phone || '',
           address: r.address || '',
           role: r.role,
+          sessionToken: r.session_token || null,
+          deviceInfo: r.device_info || '',
+          lastLoginAt: r.last_login_at || null,
           createdAt: r.created_at
         };
         // sync to memoryData if missing
@@ -1146,6 +1166,106 @@ export const dbFindUserByEmail = async (email) => {
     }
   }
   return memoryData.users.find(u => u.email.toLowerCase() === cleanEmail);
+};
+
+export const dbFindUserById = async (id) => {
+  if (!id) return null;
+  await ensureNeonConnected();
+
+  if (isNeonConnected()) {
+    try {
+      const res = await query('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
+      if (res && res.rows && res.rows.length > 0) {
+        const r = res.rows[0];
+        const userObj = {
+          id: r.id,
+          email: r.email,
+          password: r.password_hash,
+          fullName: r.full_name,
+          phone: r.phone || '',
+          address: r.address || '',
+          role: r.role,
+          sessionToken: r.session_token || null,
+          deviceInfo: r.device_info || '',
+          lastLoginAt: r.last_login_at || null,
+          createdAt: r.created_at
+        };
+        const idx = memoryData.users.findIndex(u => u.id === r.id);
+        if (idx >= 0) {
+          memoryData.users[idx] = { ...memoryData.users[idx], ...userObj };
+        } else {
+          memoryData.users.push(userObj);
+        }
+        return userObj;
+      }
+    } catch (err) {
+      console.warn('Lỗi tìm user theo id Neon DB:', err.message);
+    }
+  }
+  return memoryData.users.find(u => u.id === id) || null;
+};
+
+export const dbUpdateUserSession = async (userId, sessionToken, deviceInfo = '') => {
+  if (!userId) return null;
+  await ensureNeonConnected();
+
+  const now = new Date().toISOString();
+
+  // Update memory
+  const user = memoryData.users.find(u => u.id === userId);
+  if (user) {
+    user.sessionToken = sessionToken;
+    user.deviceInfo = deviceInfo;
+    user.lastLoginAt = now;
+  }
+  saveToDisk();
+
+  // Update Neon DB
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `UPDATE users 
+         SET session_token = $1, device_info = $2, last_login_at = $3 
+         WHERE id = $4`,
+        [sessionToken, deviceInfo, now, userId]
+      );
+    } catch (err) {
+      console.warn('Lỗi cập nhật session user trên Neon:', err.message);
+    }
+  }
+
+  return user || null;
+};
+
+export const dbValidateUserSession = async (userId, sessionToken) => {
+  if (!userId) {
+    return { valid: false, code: 'INVALID_REQUEST', message: 'Thiếu thông tin tài khoản người dùng.' };
+  }
+  if (!sessionToken) {
+    return { valid: false, code: 'NO_TOKEN', message: 'Phiên làm việc chưa được cung cấp mã xác thực.' };
+  }
+
+  const user = await dbFindUserById(userId);
+  if (!user) {
+    return { valid: false, code: 'USER_NOT_FOUND', message: 'Tài khoản không tồn tại trên hệ thống.' };
+  }
+
+  // If user has not had a session token bound yet, bind this token as the active single session
+  if (!user.sessionToken) {
+    await dbUpdateUserSession(userId, sessionToken, 'Thiết bị hiện tại');
+    return { valid: true };
+  }
+
+  // Strict check: current token MUST match the active session token stored in DB
+  if (user.sessionToken !== sessionToken) {
+    return {
+      valid: false,
+      code: 'CONCURRENT_DEVICE_LOGIN',
+      message: 'Tài khoản của bạn đã được đăng nhập từ một thiết bị khác. Để đảm bảo an toàn, hệ thống chỉ cho phép 1 thiết bị hoạt động tại một thời điểm. Phiên làm việc trên thiết bị này đã tự động kết thúc.'
+    };
+  }
+
+  return { valid: true };
 };
 
 // ==================== ORDERS REPOSITORY ====================

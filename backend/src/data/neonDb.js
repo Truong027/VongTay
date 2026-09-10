@@ -109,6 +109,9 @@ const createTables = async () => {
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS session_token VARCHAR(255);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS device_info VARCHAR(255);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE;
 
     -- 2. CATEGORIES
     CREATE TABLE IF NOT EXISTS categories (
