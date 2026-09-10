@@ -57,6 +57,7 @@ export const products = [
     "wholesalePrice": 115000,
     "wholesaleMinQty": 5,
     "isBestSeller": true,
+    "isTrending": true,
     "salesCount": 350,
     "rating": 5.0,
     "reviewsCount": 42,

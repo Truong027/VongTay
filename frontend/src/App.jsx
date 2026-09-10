@@ -243,11 +243,11 @@ function MainShop({ currentUser, setCurrentUser }) {
       {/* Hero Section (only on default view) */}
       {activeTab === 'all' && !searchQuery && (
         <HeroSection
+          products={allProductsMaster.length > 0 ? allProductsMaster : products}
           onExplore={handleScrollToProducts}
           onOpenCustomizer={() => setIsCustomizerOpen(true)}
-          onQuickViewFeatured={() => {
-            const featured = products.find(p => p.id === 'vt-pastel-whale') || products[0];
-            if (featured) setSelectedProduct(featured);
+          onQuickViewFeatured={(prod) => {
+            if (prod) setSelectedProduct(prod);
           }}
         />
       )}

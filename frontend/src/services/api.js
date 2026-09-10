@@ -237,6 +237,16 @@ export const api = {
     return data;
   },
 
+  async setHeroTrending(id) {
+    const res = await fetch(`${BASE_URL}/products/${id}/set-hero-trending`, {
+      method: 'PATCH'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Lỗi đặt sản phẩm xu hướng');
+    clearClientCache('products');
+    return data;
+  },
+
   // Admin User Management
   async getUsers() {
     const res = await fetch(`${BASE_URL}/admin/users`);

@@ -5,6 +5,7 @@ import {
   dbUpdateProduct, 
   dbDeleteProduct,
   dbToggleProductVisibility,
+  dbSetHeroTrending,
   dbGetCategories
 } from '../data/dbStore.js';
 
@@ -156,6 +157,22 @@ export const toggleProductVisibility = async (req, res) => {
       message: result.isHidden 
         ? 'Đã ẩn sản phẩm khỏi gian hàng thành công (chỉ lưu hiển thị trong trang quản trị).' 
         : 'Đã hiển thị sản phẩm trở lại gian hàng cho khách hàng đặt mua.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const setHeroTrending = async (req, res) => {
+  try {
+    const updated = await dbSetHeroTrending(req.params.id);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
+    }
+    res.json({
+      success: true,
+      data: updated,
+      message: `Đã đặt "${updated.name}" làm sản phẩm xu hướng đầu trang chủ!`
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

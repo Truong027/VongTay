@@ -6,7 +6,8 @@ import {
   createProduct, 
   updateProduct, 
   deleteProduct,
-  toggleProductVisibility 
+  toggleProductVisibility,
+  setHeroTrending
 } from '../controllers/productController.js';
 
 const router = Router();
@@ -17,6 +18,7 @@ router.get('/:id', getProductById);
 router.post('/', createProduct);
 router.put('/:id', updateProduct);
 router.patch('/:id/toggle-visibility', toggleProductVisibility);
+router.patch('/:id/set-hero-trending', setHeroTrending);
 router.delete('/:id', deleteProduct);
 
 export default router;

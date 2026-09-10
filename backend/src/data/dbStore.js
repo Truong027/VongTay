@@ -84,8 +84,14 @@ try {
     if (parsed.consultations) memoryData.consultations = parsed.consultations;
     if (parsed.orderItems) memoryData.orderItems = parsed.orderItems;
     if (parsed.customizerOptions) memoryData.customizerOptions = parsed.customizerOptions;
+    if (memoryData.products && memoryData.products.length > 0 && !memoryData.products.some(p => p.isTrending)) {
+      memoryData.products[0].isTrending = true;
+    }
     console.log('📁 Đã nạp dữ liệu từ tệp lưu trữ vật lý local db.json (11 bảng).');
   } else {
+    if (memoryData.products && memoryData.products.length > 0) {
+      memoryData.products[0].isTrending = true;
+    }
     fs.writeFileSync(DB_FILE, JSON.stringify(memoryData, null, 2), 'utf8');
     console.log('📁 Đã khởi tạo tệp cơ sở dữ liệu vật lý db.json (11 bảng).');
   }
@@ -155,6 +161,7 @@ export const ensureNeonTables = async () => {
       wholesale_price NUMERIC,
       wholesale_min_qty INTEGER DEFAULT 5,
       is_best_seller BOOLEAN DEFAULT false,
+      is_trending BOOLEAN DEFAULT false,
       sales_count INTEGER DEFAULT 0,
       cord_composition JSONB,
       images JSONB,
@@ -163,6 +170,7 @@ export const ensureNeonTables = async () => {
     ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesale_price NUMERIC;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesale_min_qty INTEGER DEFAULT 5;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS is_best_seller BOOLEAN DEFAULT false;
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS is_trending BOOLEAN DEFAULT false;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS sales_count INTEGER DEFAULT 0;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS cord_composition JSONB;
     ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB;
@@ -569,6 +577,7 @@ export const dbGetProducts = async (includeHidden = false) => {
           wholesalePrice: r.wholesale_price ? Number(r.wholesale_price) : Math.round(Number(r.price) * 0.7),
           wholesaleMinQty: r.wholesale_min_qty ? Number(r.wholesale_min_qty) : 5,
           isBestSeller: Boolean(r.is_best_seller),
+          isTrending: Boolean(r.is_trending),
           salesCount: Number(r.sales_count || 0),
           cordComposition: r.cord_composition || {},
           rating: Number(r.rating),
@@ -638,6 +647,7 @@ export const dbCreateProduct = async (productData) => {
     wholesalePrice: parsedWholesalePrice,
     wholesaleMinQty: parsedWholesaleMinQty,
     isBestSeller: Boolean(productData.isBestSeller),
+    isTrending: Boolean(productData.isTrending),
     salesCount: parsedSalesCount,
     cordComposition: productData.cordComposition || {},
     rating: 5.0,
@@ -666,14 +676,14 @@ export const dbCreateProduct = async (productData) => {
       await query(
         `INSERT INTO products (
           id, name, category, menh, price, original_price, wholesale_price, wholesale_min_qty,
-          is_best_seller, sales_count, cord_composition, rating, reviews_count,
+          is_best_seller, is_trending, sales_count, cord_composition, rating, reviews_count,
           tag, stone_type, cord_type, bead_size, artisan_name, lead_time,
           description, meaning, stock, images, is_hidden, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)`,
         [
           newProduct.id, newProduct.name, newProduct.category, JSON.stringify(newProduct.menh),
           newProduct.price, newProduct.originalPrice, newProduct.wholesalePrice, newProduct.wholesaleMinQty,
-          newProduct.isBestSeller, newProduct.salesCount, JSON.stringify(newProduct.cordComposition),
+          newProduct.isBestSeller, newProduct.isTrending, newProduct.salesCount, JSON.stringify(newProduct.cordComposition),
           newProduct.rating, newProduct.reviewsCount,
           newProduct.tag, newProduct.stoneType, newProduct.cordType, newProduct.beadSize,
           newProduct.artisanName, newProduct.leadTime,
@@ -702,6 +712,7 @@ export const dbUpdateProduct = async (id, updates) => {
   if (updates.stock !== undefined && updates.stock !== '') formattedUpdates.stock = Number(updates.stock);
   if (updates.salesCount !== undefined && updates.salesCount !== '') formattedUpdates.salesCount = Number(updates.salesCount);
   if (updates.isBestSeller !== undefined) formattedUpdates.isBestSeller = Boolean(updates.isBestSeller);
+  if (updates.isTrending !== undefined) formattedUpdates.isTrending = Boolean(updates.isTrending);
   if (updates.isHidden !== undefined) formattedUpdates.isHidden = Boolean(updates.isHidden);
 
   if (idx !== -1) {
@@ -731,8 +742,9 @@ export const dbUpdateProduct = async (id, updates) => {
           cord_type = COALESCE($14, cord_type),
           cord_composition = COALESCE($15, cord_composition),
           images = COALESCE($16, images),
-          is_hidden = COALESCE($17, is_hidden)
-         WHERE id = $18
+          is_hidden = COALESCE($17, is_hidden),
+          is_trending = COALESCE($18, is_trending)
+         WHERE id = $19
          RETURNING *`,
         [
           formattedUpdates.name !== undefined ? formattedUpdates.name : null,
@@ -752,6 +764,7 @@ export const dbUpdateProduct = async (id, updates) => {
           formattedUpdates.cordComposition !== undefined ? JSON.stringify(formattedUpdates.cordComposition) : null,
           formattedUpdates.images !== undefined ? JSON.stringify(formattedUpdates.images) : null,
           formattedUpdates.isHidden !== undefined ? formattedUpdates.isHidden : null,
+          formattedUpdates.isTrending !== undefined ? formattedUpdates.isTrending : null,
           cleanId
         ]
       );
@@ -767,6 +780,7 @@ export const dbUpdateProduct = async (id, updates) => {
           wholesalePrice: Number(r.wholesale_price || 0),
           wholesaleMinQty: Number(r.wholesale_min_qty || 5),
           isBestSeller: Boolean(r.is_best_seller),
+          isTrending: Boolean(r.is_trending),
           salesCount: Number(r.sales_count || 0),
           stock: r.stock,
           tag: r.tag,
@@ -845,6 +859,32 @@ export const dbToggleProductVisibility = async (id) => {
 
   invalidateProductsCache();
   return { id: cleanId, isHidden: newHiddenState };
+};
+
+export const dbSetHeroTrending = async (id) => {
+  const cleanId = String(id).trim();
+  let targetProduct = null;
+  
+  memoryData.products.forEach(p => {
+    const isTarget = String(p.id).trim() === cleanId;
+    p.isTrending = isTarget;
+    if (isTarget) targetProduct = p;
+  });
+  saveToDisk();
+
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `UPDATE products SET is_trending = CASE WHEN id = $1 THEN true ELSE false END`,
+        [cleanId]
+      );
+    } catch (err) {
+      console.error('Lỗi đặt hero trending Neon:', err.message);
+    }
+  }
+
+  invalidateProductsCache();
+  return targetProduct;
 };
 
 // ==================== USERS REPOSITORY ====================

@@ -15,8 +15,29 @@ import {
   Package,
   Upload,
   RefreshCw,
-  X
+  X,
+  Trash2,
+  Plus,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Flame
 } from 'lucide-react';
+
+const defaultAngleLabels = [
+  'Góc chính diện (Ảnh bìa)',
+  'Cận cảnh charm & hạt',
+  'Góc đeo trên cổ tay',
+  'Mặt sau & nút rút freesize',
+  'Kèm hộp quà lụa & phụ kiện',
+  'Góc nghiêng 45 độ nghệ thuật'
+];
+
+const getAngleLabel = (idx) => {
+  if (idx === 0) return 'Ảnh Bìa Chính';
+  if (idx < defaultAngleLabels.length) return defaultAngleLabels[idx];
+  return `Góc chụp ${idx + 1}`;
+};
 
 export default function ProductEditorView({
   editingProduct,
@@ -31,19 +52,8 @@ export default function ProductEditorView({
   aiAnalysisStatus
 }) {
   const [activeSubTab, setActiveSubTab] = useState('all'); // 'all' | 'pricing' | 'images' | 'attributes'
-  const [imageInputMode, setImageInputMode] = useState('url'); // 'url' | 'sample'
-
-  // Thư viện ảnh mẫu có sẵn độ phân giải cao cho vòng tay & phụ kiện
-  const sampleImages = [
-    { url: '/images/products/vong-dia-chuon-chuon-logo.jpg', label: 'Vòng Đĩa Chuồn Chuồn Logo' },
-    { url: '/images/products/vong-dia-hoa-nhi-logo.jpg', label: 'Vòng Đĩa Hoa Nhí Logo' },
-    { url: '/images/products/bracelet-pastel-macrame-trio.jpg', label: 'Trio Pastel Macrame Vintage' },
-    { url: '/images/products/vong-tay-hoa-anh-dao.jpg', label: 'Vòng Hoa Anh Đào Pastel' },
-    { url: '/images/products/vong-tay-charm-ca-voi-xanh.jpg', label: 'Vòng Charm Cá Voi Xanh' },
-    { url: '/images/products/vong-tay-da-mat-trang-moonstone.jpg', label: 'Vòng Đá Mặt Trăng Moonstone' },
-    { url: '/images/products/vong-tay-thach-anh-dau-tay.jpg', label: 'Vòng Thạch Anh Dâu Tây' },
-    { url: '/images/products/vong-tay-thach-anh-toc-vang.jpg', label: 'Vòng Thạch Anh Tóc Vàng' }
-  ];
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   const categories = [
     { id: 'macrame-pastel', label: '🌸 Vòng Dây Macrame Pastel & Hoa Gốm' },
@@ -79,20 +89,87 @@ export default function ProductEditorView({
     setProductFormData({ ...productFormData, menh: updated });
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result;
-      if (base64) {
-        setProductFormData(prev => ({
+  // Tải nhiều ảnh cùng lúc ở các góc độ khác nhau
+  const handleMultipleFilesUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const readPromises = files.map(file => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target?.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    });
+
+    const newBase64List = (await Promise.all(readPromises)).filter(Boolean);
+    if (newBase64List.length > 0) {
+      setProductFormData(prev => {
+        const existing = Array.isArray(prev.images) ? prev.images : [];
+        return {
           ...prev,
-          images: [base64, ...(prev.images || []).filter(img => img !== base64)]
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
+          images: [...existing, ...newBase64List]
+        };
+      });
+    }
+    e.target.value = '';
+  };
+
+  // Thêm ảnh từ liên kết URL
+  const handleAddImageUrl = () => {
+    const trimmed = newImageUrl.trim();
+    if (!trimmed) return;
+    setProductFormData(prev => {
+      const existing = Array.isArray(prev.images) ? prev.images : [];
+      if (existing.includes(trimmed)) return prev;
+      return {
+        ...prev,
+        images: [...existing, trimmed]
+      };
+    });
+    setNewImageUrl('');
+  };
+
+  // Xóa ảnh ở góc chụp cụ thể
+  const handleRemoveImage = (indexToRemove) => {
+    setProductFormData(prev => {
+      const existing = Array.isArray(prev.images) ? prev.images : [];
+      return {
+        ...prev,
+        images: existing.filter((_, idx) => idx !== indexToRemove)
+      };
+    });
+    setPreviewImageIndex(prev => Math.max(0, prev >= indexToRemove ? prev - 1 : prev));
+  };
+
+  // Đặt làm ảnh đại diện chính (Ảnh bìa)
+  const handleSetPrimaryImage = (indexToPrimary) => {
+    setProductFormData(prev => {
+      const existing = Array.isArray(prev.images) ? [...prev.images] : [];
+      if (indexToPrimary <= 0 || indexToPrimary >= existing.length) return prev;
+      const [chosen] = existing.splice(indexToPrimary, 1);
+      return {
+        ...prev,
+        images: [chosen, ...existing]
+      };
+    });
+    setPreviewImageIndex(0);
+  };
+
+  // Đổi thứ tự góc ảnh
+  const handleMoveImage = (fromIndex, toIndex) => {
+    setProductFormData(prev => {
+      const existing = Array.isArray(prev.images) ? [...prev.images] : [];
+      if (toIndex < 0 || toIndex >= existing.length) return prev;
+      const [item] = existing.splice(fromIndex, 1);
+      existing.splice(toIndex, 0, item);
+      return {
+        ...prev,
+        images: existing
+      };
+    });
+    setPreviewImageIndex(toIndex);
   };
 
   const retailPrice = Number(productFormData.price) || 0;
@@ -352,7 +429,7 @@ export default function ProductEditorView({
               </div>
             </div>
 
-            {/* CARD 3: HÌNH ẢNH & AI GEMINI VISION */}
+            {/* CARD 3: HÌNH ẢNH SẢN PHẨM & GÓC CHỤP ĐA CHIỀU */}
             <div className="glass-card-luxury p-5 sm:p-6 rounded-3xl space-y-4">
               <div className="flex items-center justify-between border-b border-[#E8DFD3]/60 pb-3 flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -360,10 +437,19 @@ export default function ProductEditorView({
                     <ImageIcon className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-serif-boutique text-lg font-bold text-[#231F1C]">
-                      Hình Ảnh Sản Phẩm & AI Bóc Tách
-                    </h3>
-                    <p className="text-[11px] text-[#948A7E]">Tải ảnh lên, chọn ảnh mẫu hoặc phân tích tự động</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-serif-boutique text-lg font-bold text-[#231F1C]">
+                        Hình Ảnh Sản Phẩm & Góc Chụp Đa Chiều
+                      </h3>
+                      {productFormData.images && productFormData.images.length > 0 && (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                          {productFormData.images.length} góc ảnh
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[#948A7E]">
+                      Tải lên nhiều ảnh ở các góc chụp khác nhau (chính diện, cận cảnh charm, đeo trên tay, mặt sau)
+                    </p>
                   </div>
                 </div>
 
@@ -371,12 +457,13 @@ export default function ProductEditorView({
                 <button
                   type="button"
                   onClick={() => {
-                    const currentImg = productFormData.images?.[0];
+                    const currentImg = productFormData.images?.[previewImageIndex] || productFormData.images?.[0];
                     if (currentImg) handleAutoAnalyzeImage(currentImg, false);
-                    else alert('Vui lòng nhập hoặc chọn ảnh trước khi phân tích AI');
+                    else alert('Vui lòng tải lên hoặc nhập liên kết ảnh trước khi phân tích AI');
                   }}
                   disabled={isAnalyzingCord || !productFormData.images?.[0]}
                   className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#C59B6D] to-[#B86244] text-white text-xs font-bold shadow-sm hover:opacity-90 disabled:opacity-40 flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Gửi ảnh đang chọn đến AI Gemini Vision để bóc tách loại dây, charm và kỹ thuật thắt"
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${isAnalyzingCord ? 'animate-spin' : ''}`} />
                   <span>{isAnalyzingCord ? 'AI Đang Phân Tích...' : 'AI Phân Tích Dây & Charm'}</span>
@@ -391,51 +478,178 @@ export default function ProductEditorView({
                 </div>
               )}
 
-              {/* URL Input & Upload */}
+              {/* KHUNG TẢI NHIỀU ẢNH CÙNG LÚC & NHẬP URL */}
               <div className="space-y-3">
+                {/* 1. Drag & drop / Click to upload multiple files */}
+                <label className="cursor-pointer group flex flex-col sm:flex-row items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-[#FAF7F2] to-[#FAF4E8] border-2 border-dashed border-[#C59B6D]/50 hover:border-[#C59B6D] transition-all gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3 text-center sm:text-left">
+                    <div className="w-10 h-10 rounded-xl bg-white text-[#C59B6D] flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#231F1C]">
+                        Tải Lên Nhiều Ảnh Cùng Lúc (Đa Góc Độ)
+                      </p>
+                      <p className="text-[11px] text-[#8C8276]">
+                        Bấm để chọn nhiều ảnh từ máy tính hoặc điện thoại (.jpg, .png, .webp)
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-4 py-2 rounded-xl bg-white border border-[#E8DFD3] text-xs font-bold text-[#231F1C] group-hover:bg-[#C59B6D] group-hover:text-white transition-colors shadow-2xs shrink-0">
+                    + Chọn Tệp Ảnh
+                  </span>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleMultipleFilesUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* 2. Direct URL Input */}
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Nhập đường dẫn ảnh trực tiếp (VD: /images/products/... hoặc https://...)"
-                    value={productFormData.images?.[0] || ''}
-                    onChange={(e) => setProductFormData({ ...productFormData, images: [e.target.value] })}
+                    placeholder="Hoặc dán đường dẫn ảnh trực tiếp (VD: /images/... hoặc https://...)"
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddImageUrl(); } }}
                     className="flex-1 glass-input p-3 rounded-2xl text-xs font-medium text-[#231F1C]"
                   />
-                  <label className="px-4 py-3 rounded-2xl bg-white/90 hover:bg-white text-[#231F1C] border border-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 transition-all">
-                    <Upload className="w-3.5 h-3.5 text-[#C59B6D]" />
-                    <span className="hidden sm:inline">Tải File Lên</span>
-                    <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddImageUrl}
+                    disabled={!newImageUrl.trim()}
+                    className="px-4 py-3 rounded-2xl bg-[#FAF4E8] hover:bg-[#F2E8D8] text-[#8C6239] border border-[#EADBCC] text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer shrink-0 transition-all disabled:opacity-40"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm URL</span>
+                  </button>
                 </div>
 
-                {/* Thư viện ảnh mẫu chọn nhanh */}
-                <div>
-                  <span className="text-[11px] font-bold text-[#6B6258] block mb-2">
-                    Hoặc chọn nhanh từ thư viện ảnh chụp xưởng:
-                  </span>
-                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                    {sampleImages.map((s, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setProductFormData({ ...productFormData, images: [s.url] })}
-                        className={`group relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
-                          productFormData.images?.[0] === s.url
-                            ? 'border-[#C59B6D] ring-2 ring-[#C59B6D]/30 scale-95'
-                            : 'border-white/80 hover:border-[#C59B6D]/60'
-                        }`}
-                        title={s.label}
-                      >
-                        <img src={s.url} alt={s.label} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                        {productFormData.images?.[0] === s.url && (
-                          <div className="absolute inset-0 bg-[#C59B6D]/30 flex items-center justify-center text-white">
-                            <Check className="w-4 h-4 stroke-[3]" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                {/* Gợi ý các góc chụp tiêu chuẩn */}
+                <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-[#8C8276]">
+                  <span className="font-semibold text-[#6B6258]">Gợi ý góc chụp chuẩn xưởng:</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-[#E8DFD3]/80">📷 Chính diện</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-[#E8DFD3]/80">🔍 Cận cảnh hạt & charm</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-[#E8DFD3]/80">🖐️ Đeo trên cổ tay</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-[#E8DFD3]/80">🔄 Nút rút mặt sau</span>
+                  <span className="px-2 py-0.5 rounded-md bg-white border border-[#E8DFD3]/80">🎁 Kèm hộp gấm</span>
                 </div>
+
+                {/* 3. LƯỚI HIỂN THỊ TẤT CẢ ẢNH ĐÃ THÊM VÀO */}
+                <div className="pt-2">
+                  {productFormData.images && productFormData.images.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-[#231F1C]">
+                          Thư viện ảnh đã thêm ({productFormData.images.length} ảnh):
+                        </span>
+                        <span className="text-[11px] text-[#8C8276]">
+                          Ảnh đầu tiên là ảnh bìa chính hiển thị ngoài gian hàng
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {productFormData.images.map((imgUrl, idx) => (
+                          <div
+                            key={idx}
+                            className={`group relative rounded-2xl overflow-hidden border-2 bg-white shadow-xs transition-all flex flex-col justify-between ${
+                              idx === 0
+                                ? 'border-[#C59B6D] ring-2 ring-[#C59B6D]/20 shadow-sm'
+                                : 'border-[#E8DFD3] hover:border-[#C59B6D]/60'
+                            }`}
+                          >
+                            {/* Ảnh Thumbnail */}
+                            <div className="relative aspect-square overflow-hidden bg-[#FAF7F2]">
+                              <img
+                                src={imgUrl}
+                                alt={`Góc ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                onError={(e) => { e.target.src = '/images/products/bracelet-pastel-macrame-trio.jpg'; }}
+                              />
+
+                              {/* Badge nhãn góc chụp */}
+                              <div className="absolute top-2 left-2">
+                                {idx === 0 ? (
+                                  <span className="bg-gradient-to-r from-amber-600 to-[#C59B6D] text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                                    <Star className="w-2.5 h-2.5 fill-current" />
+                                    <span>ẢNH BÌA CHÍNH</span>
+                                  </span>
+                                ) : (
+                                  <span className="bg-[#231F1C]/80 backdrop-blur-xs text-white text-[9px] font-medium px-2 py-0.5 rounded-full">
+                                    {getAngleLabel(idx)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Nút Xóa ảnh góc này */}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(idx)}
+                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer shadow-sm"
+                                title="Xóa ảnh góc này"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            {/* Toolbar quản lý góc ảnh */}
+                            <div className="p-2 bg-[#FAF7F2] border-t border-[#E8DFD3]/60 flex items-center justify-between gap-1 text-[10px]">
+                              {idx > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetPrimaryImage(idx)}
+                                  className="text-[#C59B6D] hover:text-[#A05237] font-bold hover:underline truncate"
+                                  title="Đặt ảnh này lên làm ảnh đại diện chính ngoài gian hàng"
+                                >
+                                  ⭐ Đặt làm ảnh chính
+                                </button>
+                              ) : (
+                                <span className="text-amber-700 font-bold">Đang là ảnh bìa</span>
+                              )}
+
+                              <div className="flex items-center gap-0.5">
+                                {idx > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveImage(idx, idx - 1)}
+                                    className="p-1 rounded-md bg-white border border-[#E8DFD3] text-[#6B6258] hover:text-[#231F1C] cursor-pointer"
+                                    title="Di chuyển sang trái"
+                                  >
+                                    <ChevronLeft className="w-3 h-3" />
+                                  </button>
+                                )}
+                                {idx < productFormData.images.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoveImage(idx, idx + 1)}
+                                    className="p-1 rounded-md bg-white border border-[#E8DFD3] text-[#6B6258] hover:text-[#231F1C] cursor-pointer"
+                                    title="Di chuyển sang phải"
+                                  >
+                                    <ChevronRight className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-2xl bg-[#FAF7F2] border border-dashed border-[#E8DFD3] text-center space-y-1.5 text-[#948A7E]">
+                      <ImageIcon className="w-8 h-8 mx-auto text-[#C59B6D]/60" />
+                      <p className="text-xs font-semibold text-[#6B6258]">
+                        Chưa có hình ảnh nào được thêm vào
+                      </p>
+                      <p className="text-[11px]">
+                        Hãy tải ảnh lên từ máy tính hoặc nhập liên kết ảnh phía trên để hiển thị các góc độ sản phẩm.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
 
@@ -550,27 +764,40 @@ export default function ProductEditorView({
                 />
               </div>
 
-              {/* Tùy chọn ẩn hiện & best seller */}
-              <div className="flex items-center gap-6 pt-2 border-t border-[#E8DFD3]/60">
+              {/* Tùy chọn ẩn hiện, best seller & ghim xu hướng */}
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-2 border-t border-[#E8DFD3]/60">
                 <label className="flex items-center gap-2 text-xs font-semibold text-[#231F1C] cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={productFormData.isBestSeller}
+                    checked={productFormData.isBestSeller || false}
                     onChange={(e) => setProductFormData({ ...productFormData, isBestSeller: e.target.checked })}
                     className="w-4 h-4 text-[#C59B6D] rounded-md"
                   />
-                  <span>Đánh dấu là Bán Chạy (Best Seller)</span>
+                  <span>Bán Chạy (Best Seller)</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-xs font-semibold text-[#231F1C] cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={productFormData.isHidden}
+                    checked={productFormData.isTrending || false}
+                    onChange={(e) => setProductFormData({ ...productFormData, isTrending: e.target.checked })}
+                    className="w-4 h-4 text-amber-600 rounded-md"
+                  />
+                  <span className={productFormData.isTrending ? 'text-amber-800 font-bold flex items-center gap-1' : 'flex items-center gap-1 text-[#4A4238]'}>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Ghim Xu Hướng Đầu Trang (Hero)</span>
+                  </span>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs font-semibold text-[#231F1C] cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={productFormData.isHidden || false}
                     onChange={(e) => setProductFormData({ ...productFormData, isHidden: e.target.checked })}
                     className="w-4 h-4 text-rose-600 rounded-md"
                   />
                   <span className={productFormData.isHidden ? 'text-rose-600 font-bold' : ''}>
-                    Ẩn tạm thời khỏi gian hàng
+                    Ẩn tạm thời
                   </span>
                 </label>
               </div>
@@ -595,18 +822,32 @@ export default function ProductEditorView({
 
               {/* Card Mô Phỏng Giống Ngoài Gian Hàng */}
               <div className="bg-white/90 rounded-3xl overflow-hidden border border-white shadow-lg flex flex-col">
-                <div className="relative aspect-square bg-[#F5EFE6] overflow-hidden">
-                  <img
-                    src={productFormData.images?.[0] || '/images/products/bracelet-pastel-macrame-trio.jpg'}
-                    alt={productFormData.name || 'Xem trước'}
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.target.src = '/images/products/bracelet-pastel-macrame-trio.jpg'; }}
-                  />
+                <div className="relative aspect-square bg-[#FAF7F2] overflow-hidden">
+                  {productFormData.images && productFormData.images.length > 0 ? (
+                    <img
+                      src={productFormData.images[previewImageIndex] || productFormData.images[0]}
+                      alt={productFormData.name || 'Xem trước'}
+                      className="w-full h-full object-cover transition-all"
+                      onError={(e) => { e.target.src = '/images/products/bracelet-pastel-macrame-trio.jpg'; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-[#948A7E] p-6 text-center space-y-2">
+                      <ImageIcon className="w-10 h-10 stroke-[1.5] text-[#C59B6D]/60" />
+                      <p className="text-xs font-semibold text-[#6B6258]">Chưa có ảnh sản phẩm</p>
+                      <p className="text-[10px] text-[#B0A699]">Tải ảnh lên ở cột bên trái để xem trước các góc độ</p>
+                    </div>
+                  )}
 
                   {/* Badges */}
                   <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
-                    {productFormData.isBestSeller && (
+                    {productFormData.isTrending && (
                       <span className="bg-gradient-to-r from-amber-600 to-[#C59B6D] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                        <Flame className="w-3 h-3 text-yellow-200" />
+                        <span>HERO TRENDING</span>
+                      </span>
+                    )}
+                    {productFormData.isBestSeller && (
+                      <span className="bg-gradient-to-r from-[#B86244] to-[#8C6239] text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                         <Sparkles className="w-3 h-3 text-yellow-200" />
                         <span>BEST SELLER</span>
                       </span>
@@ -623,6 +864,26 @@ export default function ProductEditorView({
                     )}
                   </div>
                 </div>
+
+                {/* Thanh chọn góc ảnh xem trước */}
+                {productFormData.images && productFormData.images.length > 1 && (
+                  <div className="p-2.5 bg-[#FAF7F2] border-t border-[#E8DFD3]/60 flex items-center gap-1.5 overflow-x-auto">
+                    <span className="text-[10px] text-[#948A7E] font-bold shrink-0 mr-1">Các góc:</span>
+                    {productFormData.images.map((img, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setPreviewImageIndex(idx)}
+                        className={`w-9 h-9 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                          previewImageIndex === idx ? 'border-[#C59B6D] ring-2 ring-[#C59B6D]/30 scale-105' : 'border-white opacity-70 hover:opacity-100'
+                        }`}
+                        title={getAngleLabel(idx)}
+                      >
+                        <img src={img} alt={`Góc ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <div className="p-4 space-y-2">
                   <span className="text-[10px] text-[#948A7E] uppercase tracking-wider font-semibold">
@@ -662,8 +923,12 @@ export default function ProductEditorView({
                   <div className={`flex items-center gap-1.5 ${retailPrice > 0 ? 'text-emerald-700' : 'text-amber-600'}`}>
                     <span>{retailPrice > 0 ? '✓ Đã nhập giá bán hợp lệ' : '⚠ Chưa nhập giá bán'}</span>
                   </div>
-                  <div className={`flex items-center gap-1.5 ${productFormData.images?.[0] ? 'text-emerald-700' : 'text-amber-600'}`}>
-                    <span>{productFormData.images?.[0] ? '✓ Đã có ảnh đại diện' : '⚠ Chưa có ảnh'}</span>
+                  <div className={`flex items-center gap-1.5 ${(productFormData.images && productFormData.images.length > 0) ? 'text-emerald-700' : 'text-amber-600'}`}>
+                    <span>
+                      {(productFormData.images && productFormData.images.length > 0)
+                        ? `✓ Đã nạp ${productFormData.images.length} ảnh (${productFormData.images.length} góc độ)`
+                        : '⚠ Chưa có ảnh sản phẩm'}
+                    </span>
                   </div>
                 </div>
               </div>

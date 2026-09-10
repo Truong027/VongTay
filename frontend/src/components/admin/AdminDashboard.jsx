@@ -541,10 +541,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       beadSize: '8mm',
       menh: ['Tất cả'],
       tag: 'Mới ra mắt',
-      images: ['/images/products/bracelet-pastel-macrame-trio.jpg'],
+      images: [],
       description: 'Mẫu vòng tay thắt dây chỉ kem macrame kết hợp hạt pastel vintage và charm thủ công Vòng Tay Nhà Zy.',
       meaning: 'Bình an, may mắn và tràn đầy năng lượng tích cực.',
       isBestSeller: false,
+      isTrending: false,
       salesCount: '0',
       cordComposition: {
         coreMaterial: 'Sợi chỉ sáp dệt Macrame 1.0mm chống nước tắm gội',
@@ -575,16 +576,33 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       beadSize: prod.beadSize || '8mm',
       menh: prod.menh || ['Tất cả'],
       tag: prod.tag || '',
-      images: prod.images && prod.images.length > 0 ? prod.images : ['/images/products/bracelet-pastel-macrame-trio.jpg'],
+      images: Array.isArray(prod.images) ? prod.images : [],
       description: prod.description || '',
       meaning: prod.meaning || '',
       isBestSeller: Boolean(prod.isBestSeller ?? prod.is_best_seller),
+      isTrending: Boolean(prod.isTrending ?? prod.is_trending),
       salesCount: String(prod.salesCount ?? prod.sales_count ?? 0),
       cordComposition: prod.cordComposition || prod.cord_composition || null,
       isHidden: Boolean(prod.isHidden)
     });
     setIsAdvancedProductOpen(false);
     setAdminTab('product-editor');
+  };
+
+  const handleSetHeroTrending = async (prod) => {
+    try {
+      const res = await api.setHeroTrending(prod.id);
+      if (res && res.success) {
+        setProducts(prev => prev.map(p => ({
+          ...p,
+          isTrending: String(p.id).trim() === String(prod.id).trim(),
+          is_trending: String(p.id).trim() === String(prod.id).trim()
+        })));
+        triggerToast(`Đã ghim "${prod.name}" làm sản phẩm xu hướng đầu trang chủ!`);
+      }
+    } catch (err) {
+      alert('Không thể ghim xu hướng: ' + err.message);
+    }
   };
 
   const handleSaveProduct = async (e) => {
@@ -620,6 +638,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           : 20,
         salesCount: Number(productFormData.salesCount) || 0,
         isBestSeller: Boolean(productFormData.isBestSeller),
+        isTrending: Boolean(productFormData.isTrending),
         isHidden: Boolean(productFormData.isHidden)
       };
 
@@ -1650,6 +1669,12 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                             <span>ĐANG HIỆN</span>
                           </span>
                         )}
+                        {(prod.isTrending || prod.is_trending) && (
+                          <span className="bg-gradient-to-r from-amber-600 to-[#C59B6D] text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow flex items-center gap-1">
+                            <Flame className="w-2.5 h-2.5 text-yellow-200" />
+                            <span>HERO TRENDING</span>
+                          </span>
+                        )}
                         {(prod.isBestSeller || prod.is_best_seller) && (
                           <span className="bg-amber-600 text-white text-[9px] px-2 py-0.5 rounded-full font-bold shadow flex items-center gap-1">
                             <Flame className="w-2.5 h-2.5" />
@@ -1712,6 +1737,20 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     </div>
 
                     <div className="flex items-center gap-1.5">
+                      {/* Nút Ghim Xu Hướng Đầu Trang */}
+                      <button
+                        type="button"
+                        onClick={() => handleSetHeroTrending(prod)}
+                        className={`p-2 rounded-xl transition-all shadow-xs cursor-pointer ${
+                          (prod.isTrending || prod.is_trending)
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300 ring-2 ring-amber-400/50'
+                            : 'bg-[#FAF4ED] text-[#8C6239] hover:bg-amber-100 border border-[#EADBCC]'
+                        }`}
+                        title={(prod.isTrending || prod.is_trending) ? 'Sản phẩm đang hiển thị ở vị trí Xu Hướng đầu trang chủ' : 'Bấm để ghim sản phẩm này làm Xu Hướng đầu trang chủ (Hero Spotlight)'}
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${(prod.isTrending || prod.is_trending) ? 'text-amber-600 fill-amber-500' : 'text-[#8C6239]'}`} />
+                      </button>
+
                       <button
                         onClick={() => handleToggleProductVisibility(prod)}
                         className={`p-2 rounded-xl transition-all shadow-sm ${
