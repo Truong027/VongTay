@@ -35,7 +35,13 @@ export const calculateCustomPrice = async (req, res) => {
     let beadTotal = 0;
     const totalBeads = size.beadCount || 21;
 
-    if (secondaryBeadId) {
+    if (Array.isArray(beadSlots) && beadSlots.length > 0) {
+      beadTotal = beadSlots.reduce((sum, slot) => {
+        const beadId = typeof slot === 'string' ? slot : slot?.id;
+        const b = availableBeads.find(x => x.id === beadId) || mainBead;
+        return sum + (b?.pricePerBead || 800);
+      }, 0);
+    } else if (secondaryBeadId) {
       const secondaryBead = availableBeads.find(b => b.id === secondaryBeadId) || mainBead;
       const mainCount = Math.ceil(totalBeads * 0.7);
       const secondaryCount = totalBeads - mainCount;

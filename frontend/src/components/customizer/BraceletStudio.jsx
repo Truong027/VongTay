@@ -17,7 +17,12 @@ import {
   ArrowLeft,
   Star,
   Zap,
-  Gift
+  Gift,
+  Shuffle,
+  RotateCcw,
+  Palette,
+  Wand2,
+  Plus
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
@@ -317,8 +322,9 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
   const [loading, setLoading] = useState(true);
 
   const [selectedCord, setSelectedCord] = useState(null);
-  const [selectedMainBead, setSelectedMainBead] = useState(null);
-  const [selectedSecondaryBead, setSelectedSecondaryBead] = useState(null);
+  const [beadSlots, setBeadSlots] = useState([]);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
+  const [autoAdvance, setAutoAdvance] = useState(true);
   const [selectedCharm, setSelectedCharm] = useState(null);
   const [selectedSize, setSelectedSize] = useState(null);
   const [customLetter, setCustomLetter] = useState('A');
@@ -327,6 +333,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
   const [isAdded, setIsAdded] = useState(false);
   const [charmWiggling, setCharmWiggling] = useState(false);
   const [beadMenhFilter, setBeadMenhFilter] = useState('all');
+  const [slotFeedback, setSlotFeedback] = useState(null);
 
   const getPrimaryMenh = (menh) => {
     if (!menh) return 'Tất cả';
@@ -358,15 +365,38 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
         const defaultSecondaryBead = (initialPreset?.secondaryBeadId && res.data.beads.find(b => b.id === initialPreset.secondaryBeadId)) || null;
         const defaultCharm = (initialPreset?.charmId && res.data.charms.find(c => c.id === initialPreset.charmId)) || res.data.charms[0];
         const defaultSize = (initialPreset?.sizeId && res.data.sizes.find(s => s.id === initialPreset.sizeId)) || res.data.sizes[1];
+        
         setSelectedCord(defaultCord);
-        setSelectedMainBead(defaultBead);
-        setSelectedSecondaryBead(defaultSecondaryBead);
         setSelectedCharm(defaultCharm);
         setSelectedSize(defaultSize);
+
+        const count = defaultSize?.beadCount || 21;
+        const initialSlots = Array.from({ length: count }, (_, i) => {
+          if (defaultSecondaryBead && i % 3 === 0) return defaultSecondaryBead;
+          return defaultBead;
+        });
+        setBeadSlots(initialSlots);
+
         if (initialPreset?.mainBeadId) setActiveStep('bead');
       }
     }).catch(console.error).finally(() => setLoading(false));
   }, [initialPreset]);
+
+  // Adjust beadSlots length when selectedSize changes
+  useEffect(() => {
+    if (!selectedSize || !options?.beads || beadSlots.length === 0) return;
+    const targetCount = selectedSize.beadCount || 21;
+    if (beadSlots.length === targetCount) return;
+
+    setBeadSlots(prev => {
+      if (prev.length < targetCount) {
+        const fillBead = prev[prev.length - 1] || options.beads[0];
+        return [...prev, ...Array.from({ length: targetCount - prev.length }, () => fillBead)];
+      }
+      return prev.slice(0, targetCount);
+    });
+    setSelectedSlotIndex(prev => Math.min(prev, targetCount - 1));
+  }, [selectedSize]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -377,25 +407,111 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Per-slot assign & magic preset handlers
+  const handleAssignBeadToSlot = (bead, slotIdx = selectedSlotIndex) => {
+    if (!bead || slotIdx < 0 || slotIdx >= beadSlots.length) return;
+    setBeadSlots(prev => {
+      const next = [...prev];
+      next[slotIdx] = bead;
+      return next;
+    });
+    setSlotFeedback(`Đã gắn ${bead.name} vào vị trí #${slotIdx + 1}`);
+    setTimeout(() => setSlotFeedback(null), 1500);
+
+    if (autoAdvance) {
+      setSelectedSlotIndex(prev => (prev + 1) % beadSlots.length);
+    }
+  };
+
+  const handleApplyToAllSlots = (bead) => {
+    if (!bead || beadSlots.length === 0) return;
+    setBeadSlots(Array(beadSlots.length).fill(bead));
+    setSlotFeedback(`Đã phủ ${bead.name} cho toàn bộ ${beadSlots.length} hạt`);
+    setTimeout(() => setSlotFeedback(null), 1800);
+  };
+
+  const handleAlternateWithBead = (secondBead) => {
+    if (!secondBead || beadSlots.length === 0) return;
+    const firstBead = beadSlots[selectedSlotIndex] || beadSlots[0] || options?.beads?.[0];
+    setBeadSlots(prev => prev.map((_, i) => (i % 2 === 0 ? firstBead : secondBead)));
+    setSlotFeedback(`Đã xen kẽ: ${firstBead?.name?.split(' ')?.[0]} & ${secondBead?.name?.split(' ')?.[0]}`);
+    setTimeout(() => setSlotFeedback(null), 1800);
+  };
+
+  const handleApplyFiveElements = () => {
+    if (!options?.beads || options.beads.length === 0) return;
+    const kim = options.beads.find(b => b.menh?.includes('Kim')) || options.beads[0];
+    const moc = options.beads.find(b => b.menh?.includes('Mộc')) || options.beads[1] || kim;
+    const thuy = options.beads.find(b => b.menh?.includes('Thủy')) || options.beads[2] || kim;
+    const hoa = options.beads.find(b => b.menh?.includes('Hỏa')) || options.beads[3] || kim;
+    const tho = options.beads.find(b => b.menh?.includes('Thổ')) || options.beads[4] || kim;
+    const elements = [kim, moc, thuy, hoa, tho];
+
+    setBeadSlots(prev => prev.map((_, i) => elements[i % elements.length]));
+    setSlotFeedback('Đã phối Ngũ Hành 5 Mệnh luân chuyển!');
+    setTimeout(() => setSlotFeedback(null), 1800);
+  };
+
+  const handleRandomizeMix = () => {
+    if (!options?.beads || options.beads.length === 0) return;
+    const pool = options.beads;
+    setBeadSlots(prev => prev.map(() => pool[Math.floor(Math.random() * pool.length)]));
+    setSlotFeedback('Đã tạo bản phối hạt đa sắc độc bản!');
+    setTimeout(() => setSlotFeedback(null), 1800);
+  };
+
+  const handleResetToDefault = () => {
+    if (!options?.beads || options.beads.length === 0) return;
+    const defaultBead = options.beads[0];
+    setBeadSlots(Array(beadSlots.length).fill(defaultBead));
+    setSelectedSlotIndex(0);
+    setSlotFeedback('Đã đặt lại hạt về màu mặc định');
+    setTimeout(() => setSlotFeedback(null), 1500);
+  };
+
   const priceData = useMemo(() => {
-    if (!selectedCord || !selectedMainBead || !selectedSize) return { total: 0, cordCost: 0, beadCost: 0, charmCost: 0, craftFee: 0, beadCount: 21 };
-    const count = selectedSize.beadCount || 21;
-    let beadCost = 0;
-    if (selectedSecondaryBead) {
-      const mainCount = Math.ceil(count * 0.7);
-      const secCount = count - mainCount;
-      beadCost = (mainCount * selectedMainBead.pricePerBead) + (secCount * selectedSecondaryBead.pricePerBead);
-    } else {
-      beadCost = count * selectedMainBead.pricePerBead;
+    if (!selectedCord || !selectedSize || beadSlots.length === 0) {
+      return { total: 0, cordCost: 0, beadCost: 0, charmCost: 0, craftFee: 0, beadCount: 21, beadSummaryList: [] };
     }
     const cordCost = selectedCord.price || 0;
     const charmCost = selectedCharm ? selectedCharm.price : 0;
-    const craftFee = 0; // Tặng miễn phí công xâu thủ công
-    return { total: cordCost + beadCost + charmCost + craftFee, cordCost, beadCost, charmCost, craftFee, beadCount: count };
-  }, [selectedCord, selectedMainBead, selectedSecondaryBead, selectedCharm, selectedSize]);
+    const craftFee = 0; // Tặng miễn phí công xâu đan thủ công
+
+    let beadCost = 0;
+    const beadMap = {};
+    beadSlots.forEach(slot => {
+      const bId = slot?.id || 'unknown';
+      if (!beadMap[bId]) {
+        beadMap[bId] = {
+          id: bId,
+          name: slot?.name || 'Hạt đá',
+          color: slot?.color || '#C59B6D',
+          pricePerBead: slot?.pricePerBead || 800,
+          count: 0,
+          total: 0
+        };
+      }
+      beadMap[bId].count += 1;
+      beadMap[bId].total += (slot?.pricePerBead || 800);
+      beadCost += (slot?.pricePerBead || 800);
+    });
+
+    const beadSummaryList = Object.values(beadMap);
+    const total = cordCost + beadCost + charmCost + craftFee;
+
+    return {
+      total,
+      cordCost,
+      beadCost,
+      charmCost,
+      craftFee,
+      beadCount: beadSlots.length,
+      beadSummaryList
+    };
+  }, [selectedCord, selectedSize, beadSlots, selectedCharm]);
 
   const beadPositions = useMemo(() => {
-    const count = selectedSize?.beadCount || 21;
+    const count = beadSlots.length || selectedSize?.beadCount || 21;
     const radius = 118;
     const cx = 160;
     const cy = 148;
@@ -404,21 +520,22 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
       const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
       const x = cx + radius * Math.cos(angle);
       const y = cy + radius * Math.sin(angle);
-      let beadColor = selectedMainBead?.color || '#EAA9A9';
-      let isSec = false;
-      if (selectedSecondaryBead && i % 3 === 0) {
-        beadColor = selectedSecondaryBead.color;
-        isSec = true;
-      }
-      positions.push({ x, y, beadColor, isSec, index: i });
+      const bead = beadSlots[i] || options?.beads?.[0] || { color: '#EAA9A9', id: 'default', name: 'Hạt đá' };
+      positions.push({ x, y, bead, index: i });
     }
     return positions;
-  }, [selectedSize, selectedMainBead, selectedSecondaryBead]);
+  }, [beadSlots, selectedSize, options]);
 
   const handleAddCustomToCart = () => {
+    const uniqueStones = priceData.beadSummaryList.map(b => `${b.count}x ${b.name}`).join(', ');
+    const isMultiStone = priceData.beadSummaryList.length > 1;
+    const titleName = isMultiStone 
+      ? `Vòng Tay Tự Phối Đa Sắc (${priceData.beadSummaryList.length} Loại Đá) & ${selectedCharm?.name || 'Charm Thủ Công'}`
+      : `Vòng Tay Tự Phối: ${beadSlots[0]?.name || 'Đá Phong Thủy'} & ${selectedCharm?.name || 'Charm Thủ Công'}`;
+
     const customBracelet = {
       id: `custom-bracelet-${Date.now()}`,
-      name: `Vòng Tay Tự Phối: ${selectedMainBead?.name} & ${selectedCharm?.name || 'Charm Thủ Công'}`,
+      name: titleName,
       price: priceData.total,
       images: ['/images/products/bracelet-strawberry-quartz.webp'],
       leadTime: 'Làm thủ công 2-3h'
@@ -429,12 +546,13 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
       note: customNote,
       customDetails: {
         cord: selectedCord?.name,
-        mainBead: selectedMainBead?.name,
-        secondaryBead: selectedSecondaryBead ? selectedSecondaryBead.name : 'Không xen kẽ',
+        beadCount: priceData.beadCount,
+        varietyCount: priceData.beadSummaryList.length,
+        beadSummary: uniqueStones,
+        beadSlots: beadSlots.map((b, idx) => ({ slot: idx + 1, name: b.name, color: b.color, id: b.id })),
         charm: selectedCharm?.name,
         letter: selectedCharm?.id === 'charm-initial' ? customLetter : null,
         size: selectedSize?.label,
-        beadCount: priceData.beadCount
       }
     });
     setIsAdded(true);
@@ -538,14 +656,16 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
             <div className="relative w-full max-w-[280px] sm:max-w-[310px] aspect-square flex items-center justify-center mx-auto animate-floatBead">
               <svg viewBox="0 0 320 296" className="w-full h-full drop-shadow-xl">
                 <defs>
-                  <radialGradient id="mainBeadGrad" cx="33%" cy="33%" r="67%">
+                  {options?.beads?.map(b => (
+                    <radialGradient key={b.id} id={`beadGrad-${b.id}`} cx="33%" cy="33%" r="67%">
+                      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
+                      <stop offset="38%" stopColor={b.color || '#EAA9A9'} />
+                      <stop offset="100%" stopColor="#1C1C1C" stopOpacity="0.75" />
+                    </radialGradient>
+                  ))}
+                  <radialGradient id="beadGrad-default" cx="33%" cy="33%" r="67%">
                     <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
-                    <stop offset="38%" stopColor={selectedMainBead?.color || '#EAA9A9'} />
-                    <stop offset="100%" stopColor="#1C1C1C" stopOpacity="0.75" />
-                  </radialGradient>
-                  <radialGradient id="secBeadGrad" cx="33%" cy="33%" r="67%">
-                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.85" />
-                    <stop offset="38%" stopColor={selectedSecondaryBead?.color || '#73B4C8'} />
+                    <stop offset="38%" stopColor="#EAA9A9" />
                     <stop offset="100%" stopColor="#1C1C1C" stopOpacity="0.75" />
                   </radialGradient>
                   <radialGradient id="silverShine" cx="30%" cy="30%" r="70%">
@@ -574,14 +694,65 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                   opacity="0.6"
                 />
 
-                {/* Beads */}
-                {beadPositions.map(pos => (
-                  <g key={pos.index} filter="url(#bead-shadow)">
-                    <circle cx={pos.x} cy={pos.y} r="11" fill={pos.isSec ? 'url(#secBeadGrad)' : 'url(#mainBeadGrad)'} stroke="rgba(255,255,255,0.35)" strokeWidth="0.5" />
-                    <circle cx={pos.x - 3.5} cy={pos.y - 3.5} r="3" fill="#FFFFFF" opacity="0.55" />
-                    <circle cx={pos.x - 1.5} cy={pos.y - 1.5} r="1" fill="#FFFFFF" opacity="0.35" />
-                  </g>
-                ))}
+                {/* Interactive Beads around circle */}
+                {beadPositions.map(pos => {
+                  const isSelected = selectedSlotIndex === pos.index;
+                  return (
+                    <g
+                      key={pos.index}
+                      filter="url(#bead-shadow)"
+                      className="cursor-pointer group/bead"
+                      onClick={() => {
+                        setSelectedSlotIndex(pos.index);
+                        if (activeStep !== 'bead') setActiveStep('bead');
+                      }}
+                    >
+                      {/* Active slot pulse & glow ring */}
+                      {isSelected && (
+                        <>
+                          <circle cx={pos.x} cy={pos.y} r="18" fill="none" stroke="#B86244" strokeWidth="2.5" strokeDasharray="4 2.5" />
+                          <circle cx={pos.x} cy={pos.y} r="15" fill="#B86244" fillOpacity="0.25" />
+                        </>
+                      )}
+
+                      {/* Main bead sphere */}
+                      <circle
+                        cx={pos.x}
+                        cy={pos.y}
+                        r={isSelected ? "12" : "10.5"}
+                        fill={`url(#beadGrad-${pos.bead?.id || 'default'})`}
+                        stroke={isSelected ? "#FFFFFF" : "rgba(255,255,255,0.4)"}
+                        strokeWidth={isSelected ? "1.5" : "0.5"}
+                        className="transition-all duration-200"
+                      />
+                      <circle cx={pos.x - 3.5} cy={pos.y - 3.5} r="3" fill="#FFFFFF" opacity="0.6" pointerEvents="none" />
+                      <circle cx={pos.x - 1.5} cy={pos.y - 1.5} r="1" fill="#FFFFFF" opacity="0.35" pointerEvents="none" />
+
+                      {/* Number index inside bead */}
+                      <text
+                        x={pos.x}
+                        y={pos.y + 3}
+                        textAnchor="middle"
+                        fill={isSelected ? "#FFFFFF" : "rgba(255,255,255,0.8)"}
+                        fontSize="7.5"
+                        fontWeight="bold"
+                        pointerEvents="none"
+                      >
+                        {pos.index + 1}
+                      </text>
+
+                      {/* Active slot floating pin */}
+                      {isSelected && (
+                        <g transform={`translate(${pos.x}, ${pos.y - (pos.y < 148 ? 17 : -21)})`} pointerEvents="none">
+                          <rect x="-16" y="-7" width="32" height="14" rx="4" fill="#26211C" stroke="#B86244" strokeWidth="1" />
+                          <text x="0" y="3" textAnchor="middle" fill="#FFEAA0" fontSize="8" fontWeight="bold">
+                            #{pos.index + 1}
+                          </text>
+                        </g>
+                      )}
+                    </g>
+                  );
+                })}
 
                 {/* Charm at bottom */}
                 {selectedCharm && (
@@ -704,43 +875,53 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                 )}
 
                 {/* Center info label */}
-                <text x="160" y="138" textAnchor="middle" fill="#8C8276" fontSize="9" fontFamily="sans-serif" fontWeight="600" letterSpacing="0.5">VÒNG TAY</text>
-                <text x="160" y="153" textAnchor="middle" fill="#26211C" fontSize="11" fontFamily="Georgia, serif" fontWeight="bold">{selectedMainBead?.name?.split(' ').slice(0,2).join(' ')}</text>
-                <text x="160" y="166" textAnchor="middle" fill="#B86244" fontSize="9" fontFamily="sans-serif">{priceData.beadCount} hạt · {selectedSize?.label?.split(' ')[0]}</text>
+                <text x="160" y="132" textAnchor="middle" fill="#8C8276" fontSize="8.5" fontFamily="sans-serif" fontWeight="600" letterSpacing="0.5">VÒNG TAY TỰ PHỐI</text>
+                <text x="160" y="148" textAnchor="middle" fill="#26211C" fontSize="11" fontFamily="Georgia, serif" fontWeight="bold">
+                  Hạt #{selectedSlotIndex + 1}: {beadSlots[selectedSlotIndex]?.name?.split(' ').slice(0, 2).join(' ') || 'Đá Phong Thủy'}
+                </text>
+                <text x="160" y="162" textAnchor="middle" fill="#B86244" fontSize="9" fontFamily="sans-serif">
+                  {priceData.beadCount} hạt · {priceData.beadSummaryList.length} loại đá
+                </text>
               </svg>
             </div>
 
             {/* Live price summary card */}
-            <div className="w-full mt-3 p-3 bg-white/80 rounded-2xl border border-[#E8DFD3] shadow-sm text-xs space-y-1.5">
+            <div className="w-full mt-3 p-3 bg-white/90 rounded-2xl border border-[#E8DFD3] shadow-sm text-xs space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-[#8C8276]">Dây:</span>
+                <span className="text-[#8C8276]">Dây kết:</span>
                 <div className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded-full border border-black/15" style={{ backgroundColor: selectedCord?.color }} />
-                  <span className="font-semibold text-[#26211C] truncate max-w-[110px]">{selectedCord?.name?.split(' ').slice(0,3).join(' ')}</span>
+                  <span className="font-semibold text-[#26211C] truncate max-w-[120px]">{selectedCord?.name?.split(' ').slice(0,3).join(' ')}</span>
                 </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[#8C8276]">Đá chủ đạo:</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: selectedMainBead?.color }} />
-                  <span className="font-semibold text-[#26211C] truncate max-w-[100px]">{selectedMainBead?.name?.split(' ').slice(0,2).join(' ')}</span>
+
+              <div className="pt-1.5 border-t border-[#F0E8DE]/80">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[#8C8276] font-medium">Hạt đá ({priceData.beadCount} hạt):</span>
+                  <span className="text-[10px] text-[#4E6857] font-bold bg-[#EDF3EF] px-2 py-0.5 rounded-full">
+                    {priceData.beadSummaryList.length} loại đá phối
+                  </span>
+                </div>
+                <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                  {priceData.beadSummaryList.map(item => (
+                    <div key={item.id} className="flex justify-between items-center text-[11px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-[#26211C] truncate">{item.count}x {item.name}</span>
+                      </div>
+                      <span className="font-semibold text-[#B86244] shrink-0">{item.total.toLocaleString('vi-VN')}₫</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              {selectedSecondaryBead && (
-                <div className="flex justify-between items-center">
-                  <span className="text-[#8C8276]">Đá xen kẽ:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: selectedSecondaryBead?.color }} />
-                    <span className="font-semibold text-[#4E6857] truncate max-w-[100px]">{selectedSecondaryBead?.name?.split(' ').slice(0,2).join(' ')}</span>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-between items-center">
+
+              <div className="flex justify-between items-center pt-1.5 border-t border-[#F0E8DE]/80">
                 <span className="text-[#8C8276]">Charm:</span>
-                <span className="font-semibold text-[#B86244] truncate max-w-[120px]">
-                  {selectedCharm?.name?.split(' ').slice(0,3).join(' ')} {selectedCharm?.id === 'charm-initial' ? `(${customLetter})` : ''}
+                <span className="font-semibold text-[#B86244] truncate max-w-[130px]">
+                  {selectedCharm ? `${selectedCharm.name?.split(' ').slice(0,3).join(' ')} (${selectedCharm.price.toLocaleString('vi-VN')}₫)` : 'Không gắn charm'}
                 </span>
               </div>
+
               <div className="flex justify-between items-center pt-1.5 border-t border-[#F0E8DE]">
                 <span className="text-[#8C8276] font-medium">Tổng cộng:</span>
                 <span className="font-bold text-[#B86244] text-sm">{priceData.total.toLocaleString('vi-VN')}₫</span>
@@ -805,118 +986,247 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
               </div>
             )}
 
-            {/* ── STEP 2: BEADS ── */}
+            {/* ── STEP 2: BEADS (PHỐI TỪNG VỊ TRÍ HẠT TỰ DO) ── */}
             {activeStep === 'bead' && (
               <div className="animate-revealStep space-y-4">
                 <div>
-                  <h4 className="font-serif-boutique text-lg sm:text-xl font-bold text-[#26211C]">Bước 2 — Chọn Hạt Đá Phong Thủy</h4>
-                  <p className="text-xs text-[#6B6258] mt-1">Đá thiên nhiên chính và tùy chọn đá phụ xen kẽ tạo hiệu ứng màu sắc độc đáo</p>
+                  <h4 className="font-serif-boutique text-lg sm:text-xl font-bold text-[#26211C]">
+                    Bước 2 — Tự Phối Vị Trí Hạt Đá Tự Do
+                  </h4>
+                  <p className="text-xs text-[#6B6258] mt-0.5">
+                    Bấm vào từng hạt trên mô phỏng hoặc dải số dưới đây để gắn đá theo vị trí. Bạn có thể phối thoải mái nhiều loại đá khác nhau!
+                  </p>
                 </div>
 
-                {/* Bộ lọc mệnh phong thủy */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                  <span className="text-[11px] font-bold text-[#6B6258] shrink-0 mr-1">Lọc Mệnh:</span>
-                  {[
-                    { id: 'all', label: 'Tất cả' },
-                    { id: 'Kim', label: 'Kim' },
-                    { id: 'Mộc', label: 'Mộc' },
-                    { id: 'Thủy', label: 'Thủy' },
-                    { id: 'Hỏa', label: 'Hỏa' },
-                    { id: 'Thổ', label: 'Thổ' }
-                  ].map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setBeadMenhFilter(m.id)}
-                      className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all shrink-0 ${
-                        beadMenhFilter === m.id
-                          ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm'
-                          : 'bg-white text-[#6B6258] border-[#E8DFD3] hover:border-[#B86244] hover:text-[#B86244]'
-                      }`}
-                    >
-                      {m.id === 'all' ? 'Tất cả' : `Mệnh ${m.label}`}
-                    </button>
-                  ))}
-                </div>
+                {/* 1. Dải Vị Trí Hạt & Bộ Điều Khiển Vị Trí (Interactive Slot Strip) */}
+                <div className="bg-white p-3 rounded-2xl border border-[#E8DFD3] shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-[#26211C] text-white text-[10px] font-bold">
+                        Vị trí #{selectedSlotIndex + 1} / {beadSlots.length}
+                      </span>
+                      <span className="text-xs font-bold text-[#26211C] flex items-center gap-1.5 truncate">
+                        <span
+                          className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0 shadow-2xs"
+                          style={{ backgroundColor: beadSlots[selectedSlotIndex]?.color || '#C59B6D' }}
+                        />
+                        <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                          {beadSlots[selectedSlotIndex]?.name || 'Hạt đá phong thủy'}
+                        </span>
+                      </span>
+                    </div>
 
-                <div>
-                  <label className="text-xs font-bold text-[#26211C] block mb-2 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-[#B86244] text-white text-[9px] font-bold flex items-center justify-center">1</span>
-                    Đá Chủ Đạo (Chiếm đa số vòng):
-                  </label>
-                  {filteredBeads.length === 0 ? (
-                    <div className="p-4 text-center bg-white rounded-xl border border-[#E8DFD3] text-xs text-[#8C8276]">
-                      Không có loại hạt đá nào phù hợp mệnh đã chọn.{' '}
-                      <button onClick={() => setBeadMenhFilter('all')} className="text-[#B86244] font-bold underline ml-1">
-                        Xem tất cả hạt đá
+                    {/* Điều hướng chuyển vị trí hạt (< và >) */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSlotIndex(prev => (prev - 1 + beadSlots.length) % beadSlots.length)}
+                        className="w-7 h-7 rounded-lg border border-[#E8DFD3] hover:bg-[#FAF7F2] flex items-center justify-center text-[#26211C] transition-all cursor-pointer"
+                        title="Hạt trước"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSlotIndex(prev => (prev + 1) % beadSlots.length)}
+                        className="w-7 h-7 rounded-lg border border-[#E8DFD3] hover:bg-[#FAF7F2] flex items-center justify-center text-[#26211C] transition-all cursor-pointer"
+                        title="Hạt tiếp theo"
+                      >
+                        <ChevronRight className="w-4 h-4" />
                       </button>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {filteredBeads.map(bead => (
+                  </div>
+
+                  {/* Dải số hạt cuộn ngang bấm chọn nhanh */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin">
+                    {beadSlots.map((slot, idx) => {
+                      const isSel = selectedSlotIndex === idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setSelectedSlotIndex(idx)}
+                          className={`flex flex-col items-center gap-1 p-1.5 rounded-xl border transition-all shrink-0 min-w-[38px] cursor-pointer ${
+                            isSel
+                              ? 'bg-[#FBEFEA] border-[#B86244] shadow-xs ring-1 ring-[#B86244]/40 scale-105'
+                              : 'bg-white border-[#E8DFD3] hover:border-[#CFC1B0] hover:bg-[#FAF7F2]'
+                          }`}
+                        >
+                          <span className={`text-[9px] font-bold ${isSel ? 'text-[#B86244]' : 'text-[#8C8276]'}`}>
+                            #{idx + 1}
+                          </span>
+                          <span
+                            className="w-4 h-4 rounded-full border border-black/15 shadow-2xs"
+                            style={{ backgroundColor: slot?.color || '#C59B6D' }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Tự động chuyển tiếp hạt & thông báo */}
+                  <div className="flex items-center justify-between pt-1 border-t border-[#F0E8DE] text-[11px]">
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-[#6B6258] hover:text-[#26211C]">
+                      <input
+                        type="checkbox"
+                        checked={autoAdvance}
+                        onChange={e => setAutoAdvance(e.target.checked)}
+                        className="w-3.5 h-3.5 text-[#B86244] rounded border-[#E8DFD3] focus:ring-0"
+                      />
+                      <span>Tự động chuyển sang hạt kế tiếp khi chọn đá</span>
+                    </label>
+                    {slotFeedback && (
+                      <span className="text-[#4E6857] font-bold animate-fadeIn text-[10px] bg-[#EDF3EF] px-2 py-0.5 rounded-md">
+                        ✓ {slotFeedback}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Công cụ phối nhanh & phép màu nghệ nhân (Magic Presets) */}
+                <div className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-[#6B6258] uppercase tracking-wider flex items-center gap-1">
+                    <Wand2 className="w-3 h-3 text-[#B86244]" />
+                    Công cụ phối nhanh tiện lợi:
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyToAllSlots(beadSlots[selectedSlotIndex])}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#FAF7F2] border border-[#E8DFD3] hover:border-[#B86244] text-[11px] font-bold text-[#26211C] flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="Gán loại đá đang chọn cho toàn bộ vòng"
+                    >
+                      <Palette className="w-3.5 h-3.5 text-[#B86244]" />
+                      <span>Phủ Toàn Bộ</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleApplyFiveElements}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#FAF7F2] border border-[#E8DFD3] hover:border-[#4E6857] text-[11px] font-bold text-[#26211C] flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="Phối 5 màu phong thủy Kim - Mộc - Thủy - Hỏa - Thổ luân phiên"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Ngũ Hành 5 Mệnh</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRandomizeMix}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#FAF7F2] border border-[#E8DFD3] hover:border-[#73B4C8] text-[11px] font-bold text-[#26211C] flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="Trộn ngẫu nhiên các loại đá phong thủy tạo chiếc vòng độc bản"
+                    >
+                      <Shuffle className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Phối Ngẫu Nhiên</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleResetToDefault}
+                      className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#FAF7F2] border border-[#E8DFD3] hover:border-[#8C8276] text-[11px] font-bold text-[#6B6258] flex items-center justify-center gap-1.5 transition-all shadow-2xs active:scale-95 cursor-pointer"
+                      title="Khôi phục toàn bộ hạt về loại đá mặc định"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-[#8C8276]" />
+                      <span>Đặt Lại Màu</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Kho hạt đá thiên nhiên để gắn vào vị trí */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#26211C] flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-[#B86244] text-white text-[9px] font-bold flex items-center justify-center">
+                        ✦
+                      </span>
+                      Chọn loại đá gắn vào Vị Trí #{selectedSlotIndex + 1}:
+                    </label>
+                  </div>
+
+                  {/* Bộ lọc mệnh phong thủy */}
+                  <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+                    {[
+                      { id: 'all', label: 'Tất cả' },
+                      { id: 'Kim', label: 'Kim' },
+                      { id: 'Mộc', label: 'Mộc' },
+                      { id: 'Thủy', label: 'Thủy' },
+                      { id: 'Hỏa', label: 'Hỏa' },
+                      { id: 'Thổ', label: 'Thổ' }
+                    ].map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setBeadMenhFilter(m.id)}
+                        className={`px-2.5 py-1 rounded-full text-[10.5px] font-bold border transition-all shrink-0 cursor-pointer ${
+                          beadMenhFilter === m.id
+                            ? 'bg-[#B86244] text-white border-[#B86244] shadow-2xs'
+                            : 'bg-white text-[#6B6258] border-[#E8DFD3] hover:border-[#B86244] hover:text-[#B86244]'
+                        }`}
+                      >
+                        {m.id === 'all' ? 'Tất cả' : `Mệnh ${m.label}`}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Danh sách thẻ hạt đá */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-1">
+                    {filteredBeads.map(bead => {
+                      const currentUsageCount = beadSlots.filter(s => s?.id === bead.id).length;
+                      const isCurrentSlot = beadSlots[selectedSlotIndex]?.id === bead.id;
+                      return (
                         <button
                           key={bead.id}
                           type="button"
-                          onClick={() => setSelectedMainBead(bead)}
-                          className={`odoo-card p-2.5 rounded-xl border text-left transition-all ${
-                            selectedMainBead?.id === bead.id
-                              ? 'border-[#B86244] bg-[#FBEFEA] ring-1 ring-[#B86244]/30 shadow-sm'
+                          onClick={() => handleAssignBeadToSlot(bead)}
+                          className={`odoo-card p-2.5 rounded-xl border text-left transition-all relative cursor-pointer ${
+                            isCurrentSlot
+                              ? 'border-[#B86244] bg-[#FBEFEA] ring-1 ring-[#B86244]/40 shadow-xs'
                               : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 mb-1.5">
+                          <div className="flex items-center justify-between gap-1 mb-1">
                             <span
-                              className="w-5 h-5 rounded-full border border-black/10 shadow-sm shrink-0"
+                              className="w-5 h-5 rounded-full border border-black/10 shadow-2xs shrink-0"
                               style={{ backgroundColor: bead.color }}
                             />
                             <span className="text-[9px] text-[#4E6857] font-bold bg-[#EDF3EF] px-1.5 py-0.5 rounded-full">
                               Mệnh {getPrimaryMenh(bead.menh)}
                             </span>
                           </div>
+
                           <p className="font-bold text-xs text-[#26211C] leading-tight truncate">{bead.name}</p>
-                          <p className="text-[11px] text-[#B86244] font-semibold mt-0.5">{bead.pricePerBead.toLocaleString('vi-VN')}₫/hạt</p>
-                          <p className="text-[10px] text-[#8C8276] truncate">{bead.desc}</p>
+
+                          <div className="flex items-center justify-between mt-1 text-[10px]">
+                            <span className="text-[#B86244] font-bold">{bead.pricePerBead.toLocaleString('vi-VN')}₫</span>
+                            {currentUsageCount > 0 && (
+                              <span className="text-[9px] bg-[#FAF4ED] text-[#B86244] font-bold px-1.5 py-0.2 rounded border border-[#EADBCC]">
+                                {currentUsageCount} hạt
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[9.5px] text-[#8C8276] truncate mt-0.5">{bead.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Xen kẽ nhanh với 1 loại đá khác */}
+                  <div className="pt-2 border-t border-[#F0E8DE] flex items-center justify-between text-xs">
+                    <span className="text-[#6B6258] text-[11px] font-medium">Xen kẽ 1-1 với:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto max-w-[70%]">
+                      {options.beads.slice(0, 4).map(b => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => handleAlternateWithBead(b)}
+                          className="px-2 py-0.5 rounded-lg border border-[#E8DFD3] hover:border-[#B86244] bg-white text-[10px] font-bold text-[#26211C] flex items-center gap-1 shrink-0 cursor-pointer"
+                          title={`Xen kẽ 1-1 với ${b.name}`}
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full border border-black/10" style={{ backgroundColor: b.color }} />
+                          <span className="truncate max-w-[65px]">{b.name.split(' ')[0]}</span>
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                <div className="pt-2 border-t border-[#F0E8DE]">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-bold text-[#26211C] flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full bg-[#8C8276] text-white text-[9px] font-bold flex items-center justify-center">2</span>
-                      Đá Phối Xen Kẽ (Tùy chọn):
-                    </label>
-                    {selectedSecondaryBead && (
-                      <button onClick={() => setSelectedSecondaryBead(null)} className="text-[11px] text-[#B86244] hover:underline font-medium">
-                        × Bỏ xen kẽ
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-                    <button
-                      onClick={() => setSelectedSecondaryBead(null)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border shrink-0 transition-all ${
-                        !selectedSecondaryBead ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244]' : 'bg-white text-[#6B6258] border-[#E8DFD3] hover:bg-[#FAF7F2]'
-                      }`}
-                    >
-                      Đơn sắc
-                    </button>
-                    {options.beads.filter(b => b.id !== selectedMainBead?.id).map(bead => (
-                      <button
-                        key={bead.id}
-                        onClick={() => setSelectedSecondaryBead(bead)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 shrink-0 transition-all ${
-                          selectedSecondaryBead?.id === bead.id
-                            ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244]'
-                            : 'bg-white text-[#26211C] border-[#E8DFD3] hover:bg-[#FAF7F2]'
-                        }`}
-                      >
-                        <span className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: bead.color }} />
-                        <span>{bead.name.split(' ').slice(0, 2).join(' ')}</span>
-                      </button>
-                    ))}
                   </div>
                 </div>
 
