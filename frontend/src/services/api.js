@@ -29,6 +29,8 @@ export const clearClientCache = (prefix = '') => {
   }
 };
 
+export const clearCache = clearClientCache;
+
 const SESSION_TOKEN_KEY = 'viban_session_token';
 
 export const getSessionToken = () => {
@@ -156,7 +158,8 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Lỗi thêm charm mới');
     }
-    clearCache('customizer:options');
+    clearClientCache('customizer:options');
+    clearClientCache('/charms');
     return res.json();
   },
 
@@ -170,7 +173,8 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || 'Lỗi cập nhật charm');
     }
-    clearCache('customizer:options');
+    clearClientCache('customizer:options');
+    clearClientCache('/charms');
     return res.json();
   },
 
@@ -179,7 +183,8 @@ export const api = {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Lỗi xóa charm');
-    clearCache('customizer:options');
+    clearClientCache('customizer:options');
+    clearClientCache('/charms');
     return res.json();
   },
 
@@ -188,7 +193,8 @@ export const api = {
       method: 'PATCH'
     });
     if (!res.ok) throw new Error('Lỗi đổi trạng thái kho charm');
-    clearCache('customizer:options');
+    clearClientCache('customizer:options');
+    clearClientCache('/charms');
     return res.json();
   },
 
