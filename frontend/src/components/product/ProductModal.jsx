@@ -297,7 +297,8 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                 <div className="flex items-center gap-2 flex-wrap mb-1.5">
                   {product.category && (
                     <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white text-[#845339] border border-[#EADBCC] shadow-2xs">
-                      {product.category === 'guong-dinh' ? '🪞 Gương Đính Độc Bản' :
+                      {product.category === 'day-deo-dien-thoai' ? '📱 Dây Đeo Điện Thoại' :
+                       product.category === 'guong-dinh' ? '🪞 Gương Đính Độc Bản' :
                        product.category === 'macrame-pastel' ? '🌸 Macrame Pastel' :
                        product.category === 'vong-doi' ? '💞 Vòng Đôi Dây Sáp' :
                        product.category === 'day-do-may-man' ? '🏮 Dây Đỏ May Mắn' :

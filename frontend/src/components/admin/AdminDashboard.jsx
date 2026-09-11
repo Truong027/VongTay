@@ -691,7 +691,13 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         }
       }
     } catch (err) {
-      alert('Lỗi lưu sản phẩm: ' + err.message);
+      console.error('Lỗi lưu sản phẩm chi tiết:', err);
+      const errMsg = String(err?.message || '');
+      if (errMsg.includes('pattern') || err?.name === 'SyntaxError') {
+        alert('Trình duyệt của bạn đang lưu bộ nhớ tạm phiên bản cũ. Vui lòng tải lại trang (vuốt xuống hoặc nhấn F5) để hệ thống tự động cập nhật phiên bản mới nhất nhé!');
+      } else {
+        alert('Lỗi lưu sản phẩm: ' + errMsg);
+      }
     } finally {
       setIsSavingProduct(false);
     }
@@ -1501,6 +1507,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                 >
                   <option value="all">Tất cả danh mục sản phẩm</option>
                   <option value="best-seller">🔥 Sản Phẩm Bán Chạy Nhất (Best Sellers)</option>
+                  <option value="day-deo-dien-thoai">📱 Dây Đeo Điện Thoại Handmade</option>
                   <option value="macrame-pastel">🌸 Vòng Dây Macrame Pastel & Hoa Gốm</option>
                   <option value="guong-dinh">🪞 Gương Đính Gập & Đơn (Bestseller)</option>
                   <option value="vong-doi">💞 Vòng Đôi Dây Sáp Nam Châm</option>

@@ -103,6 +103,7 @@ export const getCategories = async (req, res) => {
     // Ensure all categories present on any product are represented
     const existingCatIds = new Set(mappedCats.map(c => c.id));
     const knownLabels = {
+      'day-deo-dien-thoai': '📱 Dây Đeo Điện Thoại Handmade',
       'macrame-pastel': 'Vòng Dây Macrame Pastel',
       'guong-dinh': '🪞 Gương Đính Gập & Đơn',
       'vong-doi': 'Vòng Đôi & Summer Set',

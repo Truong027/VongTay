@@ -18,6 +18,7 @@ export default function ProductCard({ product, onQuickView }) {
   };
 
   const categoryNameMap = {
+    'day-deo-dien-thoai': '📱 Dây Điện Thoại',
     'macrame-pastel': '🌸 Macrame Pastel',
     'guong-dinh': '🪞 Gương Đính Độc Bản',
     'vong-doi': '💞 Vòng Đôi Dây Sáp',

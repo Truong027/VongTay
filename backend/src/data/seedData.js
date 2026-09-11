@@ -36,6 +36,12 @@ export const categories = [
     "count": 2
   },
   {
+    "id": "day-deo-dien-thoai",
+    "name": "📱 Dây Đeo Điện Thoại Handmade",
+    "icon": "Smartphone",
+    "count": 2
+  },
+  {
     "id": "day-chuyen-vintage",
     "name": "Dây Chuyền & Choker Boho",
     "icon": "Compass",
@@ -44,6 +50,88 @@ export const categories = [
 ];
 
 export const products = [
+  {
+    "id": "zy-phone-strap-clover-green",
+    "name": "Dây Đeo Điện Thoại Handmade Cỏ 4 Lá May Mắn (Tone Xanh Pastel)",
+    "category": "day-deo-dien-thoai",
+    "menh": [
+      "Mộc",
+      "Hỏa",
+      "Tất cả"
+    ],
+    "price": 85000,
+    "originalPrice": 110000,
+    "wholesalePrice": 59000,
+    "wholesaleMinQty": 5,
+    "isBestSeller": true,
+    "isTrending": true,
+    "salesCount": 142,
+    "rating": 5.0,
+    "reviewsCount": 38,
+    "tag": "Hot Trend Điện Thoại",
+    "stoneType": "Charm Cỏ 4 Lá May Mắn & Hạt Ngọc Trong Suốt Bướm Pastel",
+    "cordType": "Dây dù dệt sợi Macrame kem be chịu lực gắn ốp mọi dòng máy",
+    "beadSize": "8mm - 12mm",
+    "artisanName": "Nghệ nhân Vòng Tay Nhà Zy",
+    "leadTime": "Đan thủ công 1h",
+    "description": "Mẫu dây đeo điện thoại handmade phối charm cỏ 4 lá xanh ngọc mang lại may mắn, bình an. Kết hợp hạt bướm và hoa pha lê trong suốt tinh xảo, chất liệu dây dù dệt macrame bền đẹp, đeo cổ tay êm ái, phù hợp mọi ốp lưng điện thoại iPhone, Samsung.",
+    "meaning": "May mắn, hạnh phúc và năng lượng tích cực mỗi ngày khi cầm điện thoại.",
+    "stock": 35,
+    "images": [
+      "/images/products/phone-strap-green-clover.jpg"
+    ],
+    "cordComposition": {
+      "coreMaterial": "Sợi chỉ dù Macrame 1.0mm dệt chịu lực 5kg bền bỉ",
+      "braidingTechnique": "Thắt bướm macrame đôi & vòng móc đeo ốp điện thoại chắc chắn",
+      "mainCharm": "Charm Cỏ 4 Lá men ngọc thủ công & bướm ngọc pastel",
+      "cordColor": "Màu kem be vintage pastel nhẹ nhàng",
+      "wristSizeRange": "Chiều dài 22cm - gắn vừa khít mọi dòng ốp lưng điện thoại",
+      "durability": "Chống đứt, không phai màu, bảo hành đan lại dây trọn đời"
+    },
+    "isHidden": false,
+    "createdAt": "2026-09-11T07:00:00.000Z"
+  },
+  {
+    "id": "zy-phone-strap-shell-pink",
+    "name": "Dây Đeo Điện Thoại Handmade Nàng Thơ Vỏ Sò & Hoa Biển (Little Charm Big Happiness)",
+    "category": "day-deo-dien-thoai",
+    "menh": [
+      "Kim",
+      "Thủy",
+      "Tất cả"
+    ],
+    "price": 85000,
+    "originalPrice": 110000,
+    "wholesalePrice": 59000,
+    "wholesaleMinQty": 5,
+    "isBestSeller": true,
+    "isTrending": false,
+    "salesCount": 118,
+    "rating": 5.0,
+    "reviewsCount": 29,
+    "tag": "Tiểu Thư Xinh Xắn",
+    "stoneType": "Charm Vỏ Sò Biển Hồng & Hạt Hoa Pastel Tinh Xảo",
+    "cordType": "Dây dù dệt sợi Macrame kem be chịu lực gắn ốp mọi dòng máy",
+    "beadSize": "8mm - 12mm",
+    "artisanName": "Nghệ nhân Vòng Tay Nhà Zy",
+    "leadTime": "Đan thủ công 1h",
+    "description": "Dây đeo điện thoại handmade phong cách nàng thơ vintage tone hồng pastel nhẹ nhàng. Đính kết charm vỏ sò biển điệu đà, chi tiết lá xanh và hạt chuỗi pha lê lấp lánh mang lại cảm giác ngọt ngào, xinh xắn mỗi ngày.",
+    "meaning": "Niềm vui nhỏ bé, tình yêu ngọt ngào và may mắn bình yên.",
+    "stock": 40,
+    "images": [
+      "/images/products/phone-strap-pink-shell.jpg"
+    ],
+    "cordComposition": {
+      "coreMaterial": "Sợi chỉ dù Macrame 1.0mm dệt chịu lực 5kg bền bỉ",
+      "braidingTechnique": "Thắt nút hoa macrame đôi & vòng móc đeo ốp điện thoại chắc chắn",
+      "mainCharm": "Charm vỏ sò hồng gốm men & hoa pha lê pastel",
+      "cordColor": "Màu kem be vintage pastel nhẹ nhàng",
+      "wristSizeRange": "Chiều dài 22cm - gắn vừa khít mọi dòng ốp lưng điện thoại",
+      "durability": "Chống đứt, không phai màu, bảo hành đan lại dây trọn đời"
+    },
+    "isHidden": false,
+    "createdAt": "2026-09-11T07:01:00.000Z"
+  },
   {
     "id": "zy-guong-gap-vo-so",
     "name": "Gương Đính Gập Vỏ Sò & Ngọc Trai Biển Pastel (Kèm Vòng Tay Dây Rút)",

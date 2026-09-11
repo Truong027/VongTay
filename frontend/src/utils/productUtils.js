@@ -18,6 +18,9 @@ export const isBraceletProduct = (product) => {
   if (
     category === 'guong-dinh' ||
     category.includes('guong') ||
+    category === 'day-deo-dien-thoai' ||
+    category.includes('dien-thoai') ||
+    category.includes('phone') ||
     category === 'day-chuyen-vintage' ||
     category.includes('chuyen') ||
     category.includes('choker') ||
@@ -33,6 +36,8 @@ export const isBraceletProduct = (product) => {
   // 2. Tên sản phẩm chứa các từ khóa không phải vòng tay
   if (
     name.includes('gương') ||
+    name.includes('điện thoại') ||
+    name.includes('phone') ||
     name.includes('dây chuyền') ||
     name.includes('choker') ||
     name.includes('móc khóa') ||

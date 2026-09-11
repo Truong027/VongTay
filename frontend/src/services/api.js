@@ -117,8 +117,7 @@ export const api = {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' }
     });
-    if (!res.ok) throw new Error('Không thể tải danh sách sản phẩm');
-    const data = await res.json();
+    const data = await safeParseResponse(res, 'Không thể tải danh sách sản phẩm');
     setCached(cacheKey, data);
     return data;
   },
@@ -127,8 +126,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/products/${id}`, {
       cache: 'no-store'
     });
-    if (!res.ok) throw new Error('Không tìm thấy sản phẩm');
-    return res.json();
+    return safeParseResponse(res, 'Không tìm thấy sản phẩm');
   },
 
   async getCategories(bypassCache = false) {
@@ -142,8 +140,7 @@ export const api = {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' }
     });
-    if (!res.ok) throw new Error('Không thể tải danh mục');
-    const data = await res.json();
+    const data = await safeParseResponse(res, 'Không thể tải danh mục');
     setCached(cacheKey, data);
     return data;
   },
@@ -157,8 +154,7 @@ export const api = {
     }
 
     const res = await fetch(`${BASE_URL}/customizer/options`);
-    if (!res.ok) throw new Error('Không thể tải linh kiện phối vòng');
-    const data = await res.json();
+    const data = await safeParseResponse(res, 'Không thể tải linh kiện phối vòng');
     setCached(cacheKey, data);
     return data;
   },
@@ -169,22 +165,19 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Lỗi tính giá vòng tự thiết kế');
-    return res.json();
+    return safeParseResponse(res, 'Lỗi tính giá vòng tự thiết kế');
   },
 
   // Charms Management (Kho Charm Thủ Công)
   async getCharms(params = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${BASE_URL}/charms${query ? `?${query}` : ''}`);
-    if (!res.ok) throw new Error('Không thể tải danh sách charm');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải danh sách charm');
   },
 
   async getCharmById(id) {
     const res = await fetch(`${BASE_URL}/charms/${id}`);
-    if (!res.ok) throw new Error('Không tìm thấy charm');
-    return res.json();
+    return safeParseResponse(res, 'Không tìm thấy charm');
   },
 
   async createCharm(charmData) {
@@ -193,13 +186,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(charmData)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi thêm charm mới');
-    }
+    const data = await safeParseResponse(res, 'Lỗi thêm charm mới');
     clearClientCache('customizer:options');
     clearClientCache('/charms');
-    return res.json();
+    return data;
   },
 
   async updateCharm(id, charmData) {
@@ -208,47 +198,42 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(charmData)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi cập nhật charm');
-    }
+    const data = await safeParseResponse(res, 'Lỗi cập nhật charm');
     clearClientCache('customizer:options');
     clearClientCache('/charms');
-    return res.json();
+    return data;
   },
 
   async deleteCharm(id) {
     const res = await fetch(`${BASE_URL}/charms/${id}`, {
       method: 'DELETE'
     });
-    if (!res.ok) throw new Error('Lỗi xóa charm');
+    const data = await safeParseResponse(res, 'Lỗi xóa charm');
     clearClientCache('customizer:options');
     clearClientCache('/charms');
-    return res.json();
+    return data;
   },
 
   async toggleCharmStock(id) {
     const res = await fetch(`${BASE_URL}/charms/${id}/toggle-stock`, {
       method: 'PATCH'
     });
-    if (!res.ok) throw new Error('Lỗi đổi trạng thái kho charm');
+    const data = await safeParseResponse(res, 'Lỗi đổi trạng thái kho charm');
     clearClientCache('customizer:options');
     clearClientCache('/charms');
-    return res.json();
+    return data;
   },
 
   // Beads Management (Kho Hạt Đá Phong Thủy)
   async getBeads(params = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${BASE_URL}/beads${query ? `?${query}` : ''}`);
-    if (!res.ok) throw new Error('Không thể tải danh sách hạt đá');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải danh sách hạt đá');
   },
 
   async getBeadById(id) {
     const res = await fetch(`${BASE_URL}/beads/${id}`);
-    if (!res.ok) throw new Error('Không tìm thấy hạt đá phong thủy');
-    return res.json();
+    return safeParseResponse(res, 'Không tìm thấy hạt đá phong thủy');
   },
 
   async createBead(beadData) {
@@ -257,13 +242,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(beadData)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi thêm hạt đá mới');
-    }
+    const data = await safeParseResponse(res, 'Lỗi thêm hạt đá mới');
     clearClientCache('customizer:options');
     clearClientCache('/beads');
-    return res.json();
+    return data;
   },
 
   async updateBead(id, beadData) {
@@ -272,47 +254,42 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(beadData)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi cập nhật hạt đá');
-    }
+    const data = await safeParseResponse(res, 'Lỗi cập nhật hạt đá');
     clearClientCache('customizer:options');
     clearClientCache('/beads');
-    return res.json();
+    return data;
   },
 
   async deleteBead(id) {
     const res = await fetch(`${BASE_URL}/beads/${id}`, {
       method: 'DELETE'
     });
-    if (!res.ok) throw new Error('Lỗi xóa hạt đá');
+    const data = await safeParseResponse(res, 'Lỗi xóa hạt đá');
     clearClientCache('customizer:options');
     clearClientCache('/beads');
-    return res.json();
+    return data;
   },
 
   async toggleBeadStock(id) {
     const res = await fetch(`${BASE_URL}/beads/${id}/toggle-stock`, {
       method: 'PATCH'
     });
-    if (!res.ok) throw new Error('Lỗi đổi trạng thái kho hạt đá');
+    const data = await safeParseResponse(res, 'Lỗi đổi trạng thái kho hạt đá');
     clearClientCache('customizer:options');
     clearClientCache('/beads');
-    return res.json();
+    return data;
   },
 
   // Orders
   async getOrders(params = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${BASE_URL}/orders${query ? `?${query}` : ''}`);
-    if (!res.ok) throw new Error('Không thể tải danh sách đơn hàng');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải danh sách đơn hàng');
   },
 
   async getOrderById(id) {
     const res = await fetch(`${BASE_URL}/orders/${id}`);
-    if (!res.ok) throw new Error('Không tìm thấy đơn hàng');
-    return res.json();
+    return safeParseResponse(res, 'Không tìm thấy đơn hàng');
   },
 
   async createOrder(orderData) {
@@ -321,12 +298,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.message || 'Lỗi đặt hàng');
-    }
+    const data = await safeParseResponse(res, 'Lỗi đặt hàng');
     clearClientCache();
-    return res.json();
+    return data;
   },
 
   async updateOrderStatus(id, statusData) {
@@ -335,8 +309,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(statusData)
     });
-    if (!res.ok) throw new Error('Không thể cập nhật đơn hàng');
-    return res.json();
+    return safeParseResponse(res, 'Không thể cập nhật trạng thái đơn hàng');
   },
 
   async updateOrder(id, orderData) {
@@ -345,29 +318,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData)
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi cập nhật thông tin đơn hàng');
-    }
-    return res.json();
+    return safeParseResponse(res, 'Lỗi cập nhật thông tin đơn hàng');
   },
 
   async deleteOrder(id) {
     const res = await fetch(`${BASE_URL}/orders/${id}`, {
       method: 'DELETE'
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || 'Lỗi xóa đơn hàng');
-    }
-    return res.json();
+    return safeParseResponse(res, 'Lỗi xóa đơn hàng');
   },
 
   // Admin Stats
   async getAdminStats() {
     const res = await fetch(`${BASE_URL}/admin/stats`);
-    if (!res.ok) throw new Error('Không thể tải thống kê xưởng');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải thống kê xưởng');
   },
 
   // Auth & User
@@ -378,8 +342,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, deviceInfo })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi đăng nhập');
+    const data = await safeParseResponse(res, 'Lỗi đăng nhập');
     if (data?.data?.token) {
       setSessionToken(data.data.token);
     }
@@ -393,8 +356,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...userData, deviceInfo })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi đăng ký');
+    const data = await safeParseResponse(res, 'Lỗi đăng ký');
     if (data?.data?.token) {
       setSessionToken(data.data.token);
     }
@@ -415,7 +377,7 @@ export const api = {
         },
         body: JSON.stringify({ userId, token: activeToken })
       });
-      const data = await res.json();
+      const data = await safeParseResponse(res, 'Phiên đăng nhập không hợp lệ');
       if (res.status === 401 && (data.code === 'CONCURRENT_DEVICE_LOGIN' || data.sessionExpired)) {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('viban_session_expired', { detail: data }));
@@ -456,20 +418,19 @@ export const api = {
       },
       body: JSON.stringify(profileData)
     });
-    const data = await res.json();
+    const data = await safeParseResponse(res, 'Lỗi cập nhật thông tin tài khoản');
     if (res.status === 401 && data.sessionExpired) {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('viban_session_expired', { detail: data }));
       }
       throw new Error(data.message || 'Phiên làm việc đã bị gián đoạn do đăng nhập từ thiết bị khác');
     }
-    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật thông tin tài khoản');
     return data;
   },
 
   async getMe() {
     const res = await fetch(`${BASE_URL}/auth/me`);
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải thông tin cá nhân');
   },
 
   async configureDb(connectionString) {
@@ -478,9 +439,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ connectionString })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi cấu hình database');
-    return data;
+    return safeParseResponse(res, 'Lỗi cấu hình database');
   },
 
   async createProduct(productData) {
@@ -550,8 +509,7 @@ export const api = {
   // Admin User Management
   async getUsers() {
     const res = await fetch(`${BASE_URL}/admin/users`);
-    if (!res.ok) throw new Error('Không thể tải danh sách tài khoản');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải danh sách tài khoản');
   },
 
   async createUser(userData) {
@@ -591,8 +549,7 @@ export const api = {
 
   async getDatabaseTelemetry() {
     const res = await fetch(`${BASE_URL}/admin/telemetry`);
-    if (!res.ok) throw new Error('Không thể tải thông tin telemetry database');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải thông tin telemetry database');
   },
 
   // AI Gemini Vision Analysis
@@ -627,8 +584,7 @@ export const api = {
   async getVouchers(includeAll = false) {
     const url = includeAll ? `${BASE_URL}/vouchers?all=true` : `${BASE_URL}/vouchers`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Không thể tải danh sách mã giảm giá');
-    return res.json();
+    return safeParseResponse(res, 'Không thể tải danh sách mã giảm giá');
   },
 
   async createVoucher(voucherData) {
@@ -669,15 +625,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, orderTotal })
     });
-    return res.json();
+    return safeParseResponse(res, 'Lỗi áp dụng mã giảm giá');
   },
 
   // Reviews
   async getReviews(productId = null) {
     const url = productId ? `${BASE_URL}/reviews/${productId}` : `${BASE_URL}/reviews`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Không thể nạp đánh giá');
-    return res.json();
+    return safeParseResponse(res, 'Không thể nạp đánh giá');
   },
 
   async createReview(reviewData) {
@@ -686,14 +641,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reviewData)
     });
-    return res.json();
+    return safeParseResponse(res, 'Lỗi gửi đánh giá');
   },
 
   // Database-Synced Wishlist
   async getUserWishlist(userId) {
     const res = await fetch(`${BASE_URL}/wishlist/${userId}`);
-    if (!res.ok) return { success: false, data: [] };
-    return res.json();
+    return safeParseResponse(res, 'Lỗi tải danh sách yêu thích');
   },
 
   async toggleWishlistDb(userId, productId) {
@@ -702,7 +656,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, productId })
     });
-    return res.json();
+    return safeParseResponse(res, 'Lỗi lưu danh sách yêu thích');
   },
 
   async syncWishlistDb(userId, productIds) {
@@ -711,7 +665,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, productIds })
     });
-    return res.json();
+    return safeParseResponse(res, 'Lỗi đồng bộ danh sách yêu thích');
   },
 
   // Consultations
@@ -721,7 +675,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(consultationData)
     });
-    return res.json();
+    return safeParseResponse(res, 'Lỗi gửi yêu cầu tư vấn');
   }
 };
 

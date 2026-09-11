@@ -57,6 +57,7 @@ export default function ProductEditorView({
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
 
   const categories = [
+    { id: 'day-deo-dien-thoai', label: '📱 Dây Đeo Điện Thoại Handmade (Hot Trend)' },
     { id: 'macrame-pastel', label: '🌸 Vòng Dây Macrame Pastel & Hoa Gốm' },
     { id: 'guong-dinh', label: '🪞 Gương Đính Gập & Đơn (Bestseller)' },
     { id: 'vong-doi', label: '💞 Vòng Đôi Dây Sáp Nam Châm' },
