@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { isBraceletProduct } from '../../utils/productUtils';
 import { 
   X, 
   CheckCircle2, 
@@ -188,7 +189,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
           wholesalePrice: item.wholesalePrice,
           isWholesale: Boolean(item.isWholesale),
           quantity: item.quantity,
-          wristSize: item.wristSize || 'Dây rút 14-18cm',
+          wristSize: item.wristSize || (isBraceletProduct(item) ? '15 - 16 cm' : null),
           isCustom: item.isCustom || false,
           customDetails: item.customDetails || null,
           note: item.note || ''

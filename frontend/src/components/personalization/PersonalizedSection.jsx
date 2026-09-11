@@ -14,6 +14,7 @@ import {
   Tag
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { isBraceletProduct } from '../../utils/productUtils';
 
 export default function PersonalizedSection({ products, onQuickView, currentUser }) {
   const { addToCart, isWishlisted, toggleWishlist } = useCart();
@@ -255,7 +256,7 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
                 </span>
                 {prod.isBestSeller && (
                   <span className="bg-gradient-to-r from-amber-600 to-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                    🔥 BEST SELLER ({prod.salesCount}+)
+                    🔥 BEST SELLER {prod.salesCount > 0 ? `(${prod.salesCount})` : ''}
                   </span>
                 )}
               </div>
@@ -323,7 +324,7 @@ export default function PersonalizedSection({ products, onQuickView, currentUser
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        addToCart(prod, 1, { wristSize: preferences.wristSize });
+                        addToCart(prod, 1, { wristSize: isBraceletProduct(prod) ? preferences.wristSize : null });
                       }}
                       className="px-3 py-2 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-xs transition-all flex items-center gap-1"
                     >

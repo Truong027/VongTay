@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Heart, ShoppingBag, Eye, Sparkles } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { isBraceletProduct } from '../../utils/productUtils';
 
 export default function ProductCard({ product, onQuickView }) {
   const { addToCart, isWishlisted, toggleWishlist } = useCart();
@@ -8,7 +9,7 @@ export default function ProductCard({ product, onQuickView }) {
 
   const handleAddToCart = (e) => {
     e.stopPropagation();
-    addToCart(product, 1, { wristSize: '15 - 16 cm' });
+    addToCart(product, 1, { wristSize: isBraceletProduct(product) ? '15 - 16 cm' : null });
   };
 
   const handleToggleWishlist = (e) => {
@@ -55,8 +56,8 @@ export default function ProductCard({ product, onQuickView }) {
             <span className="bg-gradient-to-r from-amber-600 via-[#C59B6D] to-rose-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md flex items-center gap-1 animate-pulse">
               <Sparkles className="w-3 h-3 text-yellow-100" />
               <span>BEST SELLER</span>
-              {product.salesCount && (
-                <span className="font-normal opacity-90">({product.salesCount}+)</span>
+              {product.salesCount > 0 && (
+                <span className="font-normal opacity-90">({product.salesCount})</span>
               )}
             </span>
           )}
@@ -121,9 +122,15 @@ export default function ProductCard({ product, onQuickView }) {
               bởi {product.artisanName || 'KhánhVyMade'}
             </span>
             <div className="flex items-center gap-1 text-[#6B6258]">
-              <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-              <span className="font-bold text-[#231F1C]">{product.rating || 5.0}</span>
-              <span className="text-[10px] text-[#948A7E]">({product.reviewsCount || 1})</span>
+              <Star className={`w-3.5 h-3.5 ${product.reviewsCount > 0 ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+              {product.reviewsCount > 0 ? (
+                <>
+                  <span className="font-bold text-[#231F1C]">{Number(product.rating || 5.0).toFixed(1)}</span>
+                  <span className="text-[10px] text-[#948A7E]">({product.reviewsCount})</span>
+                </>
+              ) : (
+                <span className="text-[10px] text-[#948A7E]">Mới ra mắt</span>
+              )}
             </div>
           </div>
         </div>

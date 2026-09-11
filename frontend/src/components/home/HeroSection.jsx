@@ -240,11 +240,17 @@ export default function HeroSection({
                       {activeProduct?.name || 'Vòng Tay Thủ Công KhánhVyMade'}
                     </h4>
                     <p className="text-xs text-[#6B6258] flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                      <span className="font-bold text-[#231F1C]">{activeProduct?.rating ? Number(activeProduct.rating).toFixed(1) : '5.0'}</span> 
-                      <span className="text-[11px] text-[#948A7E]">
-                        ({activeProduct?.reviewsCount || activeProduct?.reviews_count || 128} đánh giá)
-                      </span>
+                      <Star className={`w-3.5 h-3.5 ${((activeProduct?.reviewsCount || activeProduct?.reviews_count) > 0) ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+                      {(activeProduct?.reviewsCount || activeProduct?.reviews_count) > 0 ? (
+                        <>
+                          <span className="font-bold text-[#26211C]">{Number(activeProduct.rating || 5.0).toFixed(1)}</span> 
+                          <span className="text-[11px] text-[#948A7E]">
+                            ({activeProduct.reviewsCount || activeProduct.reviews_count} đánh giá)
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[11px] text-[#948A7E]">Mới ra mắt</span>
+                      )}
                     </p>
                   </div>
                   <div className="text-right shrink-0">

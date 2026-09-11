@@ -23,10 +23,12 @@ import {
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
 import ProductImageZoomModal from './ProductImageZoomModal';
+import { isBraceletProduct } from '../../utils/productUtils';
 
 export default function ProductModal({ product, onClose, onOpenSizeGuide, onProceedToCheckout }) {
   if (!product) return null;
 
+  const isBracelet = isBraceletProduct(product);
   const { addToCart, isWishlisted, toggleWishlist } = useCart();
   const [selectedSize, setSelectedSize] = useState('15 - 16 cm (Chuẩn Nữ)');
   const [quantity, setQuantity] = useState(1);
@@ -115,13 +117,19 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   const isWholesale = quantity >= (product.wholesaleMinQty || 5);
   const effectivePrice = isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price;
 
+  const actualReviewsCount = reviewsList.length;
+  const actualAvgRating = actualReviewsCount > 0
+    ? (reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / actualReviewsCount).toFixed(1)
+    : (product.reviewsCount && Number(product.reviewsCount) > 0 ? Number(product.rating || 5).toFixed(1) : null);
+  const actualSales = Number(product.salesCount || product.sales_count || 0);
+
   const handleQuickBuy = () => {
     const item = {
       ...product,
       quantity,
-      wristSize: selectedSize,
+      wristSize: isBracelet ? selectedSize : null,
       note: giftNote,
-      cartKey: `${product.id}-${selectedSize}-${Date.now()}`,
+      cartKey: `${product.id}-${isBracelet ? selectedSize : 'standard'}-${Date.now()}`,
       effectivePrice,
       itemTotal: effectivePrice * quantity,
       isWholesale
@@ -146,7 +154,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
 
   const handleAddToCart = () => {
     addToCart(product, quantity, {
-      wristSize: selectedSize,
+      wristSize: isBracelet ? selectedSize : null,
       note: giftNote
     });
     setIsAdded(true);
@@ -310,23 +318,25 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                 </h1>
               </div>
 
-              {/* Shopee Social Proof Ribbon: Rating | Reviews | Sold */}
-              <div className="flex items-center gap-3 text-xs text-[#6B6258] pb-1 border-b border-[#F0EAE1]">
+              {/* Shopee Social Proof Ribbon: Rating | Reviews | Sold (Dữ liệu thật) */}
+              <div className="flex items-center gap-3 text-xs text-[#6B6258] pb-1 border-b border-[#F0EAE1] flex-wrap">
                 <div className="flex items-center gap-1">
                   <div className="flex text-amber-500">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-amber-500" />
+                      <Star key={i} className={`w-3.5 h-3.5 ${actualAvgRating ? 'fill-amber-500' : 'text-[#D5CCC0]'}`} />
                     ))}
                   </div>
-                  <span className="font-bold text-[#26211C] ml-1">{product.rating || '5.0'}</span>
+                  <span className="font-bold text-[#26211C] ml-1">
+                    {actualAvgRating || 'Chưa có đánh giá'}
+                  </span>
                 </div>
                 <span className="text-[#E8DFD3]">|</span>
                 <span className="underline cursor-pointer hover:text-[#B86244]" onClick={() => setActiveTab('reviews')}>
-                  {reviewsList.length > 0 ? reviewsList.length : (product.reviewsCount || 48)} Đánh Giá
+                  {actualReviewsCount} Đánh Giá
                 </span>
                 <span className="text-[#E8DFD3]">|</span>
                 <span className="font-medium text-[#26211C]">
-                  Đã bán {(product.salesCount || 1200).toLocaleString('vi-VN')}
+                  {actualSales > 0 ? `Đã bán ${actualSales.toLocaleString('vi-VN')}` : 'Mới ra mắt'}
                 </span>
               </div>
 
@@ -391,40 +401,42 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                 </div>
               </div>
 
-              {/* Variation 1: Wrist Size Selection (Pill style) */}
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-[#26211C]">
-                    Kích Thước Cổ Tay (Size):
-                  </span>
-                  <button
-                    type="button"
-                    onClick={onOpenSizeGuide}
-                    className="text-[#B86244] hover:underline flex items-center gap-1 font-semibold text-[11px]"
-                  >
-                    <Ruler className="w-3.5 h-3.5" />
-                    Chưa biết size tay?
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {sizeOptions.map(opt => (
+              {/* Variation 1: Wrist Size Selection (Pill style) - Only for Bracelets */}
+              {isBracelet && (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#26211C]">
+                      Kích Thước Cổ Tay (Size):
+                    </span>
                     <button
-                      key={opt.value}
                       type="button"
-                      onClick={() => setSelectedSize(opt.value)}
-                      className={`p-2 rounded-xl text-xs font-semibold border text-center transition-all flex items-center justify-center gap-1 ${
-                        selectedSize === opt.value
-                          ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244] ring-1 ring-[#B86244]'
-                          : 'border-[#E8DFD3] bg-white text-[#5A5147] hover:border-[#B86244]/50'
-                      }`}
+                      onClick={onOpenSizeGuide}
+                      className="text-[#B86244] hover:underline flex items-center gap-1 font-semibold text-[11px]"
                     >
-                      {selectedSize === opt.value && <Check className="w-3 h-3 text-[#B86244] shrink-0" />}
-                      <span className="truncate">{opt.label}</span>
+                      <Ruler className="w-3.5 h-3.5" />
+                      Chưa biết size tay?
                     </button>
-                  ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {sizeOptions.map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSelectedSize(opt.value)}
+                        className={`p-2 rounded-xl text-xs font-semibold border text-center transition-all flex items-center justify-center gap-1 ${
+                          selectedSize === opt.value
+                            ? 'border-[#B86244] bg-[#FBEFEA] text-[#B86244] ring-1 ring-[#B86244]'
+                            : 'border-[#E8DFD3] bg-white text-[#5A5147] hover:border-[#B86244]/50'
+                        }`}
+                      >
+                        {selectedSize === opt.value && <Check className="w-3 h-3 text-[#B86244] shrink-0" />}
+                        <span className="truncate">{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Variation 2: Gift Note / Custom Name Request */}
               <div className="space-y-1">
@@ -481,6 +493,26 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                 </div>
               )}
 
+              {/* Shopee Guarantee Badge */}
+              <div className="flex items-center gap-2 p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] text-xs text-[#6B6258]">
+                <ShieldCheck className="w-4 h-4 text-[#3A754B] shrink-0" />
+                <span><strong>Bảo hành đan lại trọn đời</strong> · Đổi trả 7 ngày nếu không ưng ý</span>
+              </div>
+
+              {/* Stock info */}
+              {product.stock !== undefined && (
+                <div className="text-xs text-[#8C8276] flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5" />
+                  <span>
+                    {product.stock > 0 ? (
+                      `Còn ${product.stock} sản phẩm sẵn có trong kho`
+                    ) : (
+                      <span className="text-rose-500 font-semibold">Tạm hết hàng sẵn (đặt hàng hoàn thiện trong 24h)</span>
+                    )}
+                  </span>
+                </div>
+              )}
+
               {/* Shopee-style Tabs for Clean Neat Organization */}
               <div className="pt-2 border-t border-[#E8DFD3]">
                 <div className="flex items-center gap-1 border-b border-[#E8DFD3] text-xs">
@@ -504,7 +536,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                         : 'text-[#6B6258] hover:text-[#26211C]'
                     }`}
                   >
-                    Cấu Tạo Sợi Dây
+                    {isBracelet ? 'Cấu Tạo Sợi Dây' : 'Thông Số Sản Phẩm'}
                   </button>
                   <button
                     type="button"
@@ -515,7 +547,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                         : 'text-[#6B6258] hover:text-[#26211C]'
                     }`}
                   >
-                    Đánh Giá ({reviewsList.length > 0 ? reviewsList.length : 2})
+                    Đánh Giá ({actualReviewsCount})
                   </button>
                 </div>
 
@@ -528,7 +560,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                     {product.meaning && (
                       <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-[#845339]">
                         <strong className="flex items-center gap-1 mb-1 text-[#B86244] font-bold">
-                          <Sparkles className="w-3.5 h-3.5" /> Năng lượng & Ý nghĩa phong thủy:
+                          <Sparkles className="w-3.5 h-3.5" /> Năng lượng & Ý nghĩa:
                         </strong>
                         {product.meaning}
                       </div>
@@ -540,12 +572,23 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                 {activeTab === 'specs' && (
                   <div className="py-3 space-y-2.5 text-xs animate-fadeIn">
                     <div className="bg-[#FAF7F2] p-3 rounded-xl border border-[#E8DFD3] grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-[#6B6258]">
-                      <p>🧵 <strong>Sợi chỉ sáp:</strong> {product.cordComposition?.coreMaterial || product.cordType}</p>
-                      <p>🪢 <strong>Kiểu đan:</strong> {product.cordComposition?.braidingTechnique || 'Đan thoi Square Knot thủ công'}</p>
-                      <p>💎 <strong>Charm & Đá:</strong> {product.cordComposition?.mainCharm || product.stoneType}</p>
-                      <p>📏 <strong>Kích thước hạt:</strong> {product.beadSize || '8mm'}</p>
-                      <p className="col-span-full">🔒 <strong>Khóa hoàn thiện:</strong> {product.cordComposition?.wristSizeRange || 'Khóa rút điều chỉnh ôm sát cổ tay'}</p>
-                      <p className="col-span-full text-[#3A754B] font-semibold">🛡️ <strong>Chống nước:</strong> Đeo tắm giặt thoải mái, không xơ, không kích ứng da.</p>
+                      {isBracelet ? (
+                        <>
+                          <p>🧵 <strong>Sợi chỉ sáp:</strong> {product.cordComposition?.coreMaterial || product.cordType || 'Chỉ sáp Brazil chống thấm nước'}</p>
+                          <p>🪢 <strong>Kiểu đan:</strong> {product.cordComposition?.braidingTechnique || 'Đan thủ công tỉ mỉ'}</p>
+                          <p>💎 <strong>Charm & Đá:</strong> {product.cordComposition?.mainCharm || product.stoneType || 'Đá tự nhiên / Charm mạ bạc'}</p>
+                          <p>📏 <strong>Kích thước hạt:</strong> {product.beadSize || '8mm'}</p>
+                          <p className="col-span-full">🔒 <strong>Khóa hoàn thiện:</strong> {product.cordComposition?.wristSizeRange || 'Khóa rút điều chỉnh ôm sát cổ tay'}</p>
+                          <p className="col-span-full text-[#3A754B] font-semibold">🛡️ <strong>Chống nước:</strong> Đeo tắm giặt thoải mái, không xơ, không kích ứng da.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p>🏷️ <strong>Loại sản phẩm:</strong> {product.category || 'Phụ kiện thủ công'}</p>
+                          <p>💎 <strong>Chất liệu chính:</strong> {product.cordComposition?.mainCharm || product.stoneType || 'Chất liệu cao cấp đính thủ công'}</p>
+                          <p className="col-span-full">🔒 <strong>Quy cách thiết kế:</strong> {product.cordComposition?.wristSizeRange || 'Thiết kế thủ công tinh xảo, bền bỉ'}</p>
+                          <p className="col-span-full text-[#3A754B] font-semibold">🛡️ <strong>Độ bền:</strong> Gia công chắc chắn, giữ màu sáng đẹp theo thời gian.</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -557,11 +600,11 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                       <div className="flex items-center gap-1.5">
                         <div className="flex text-amber-500">
                           {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="w-3.5 h-3.5 fill-amber-500" />
+                            <Star key={i} className={`w-3.5 h-3.5 ${i < Math.round(Number(actualAvgRating) || 0) ? 'fill-amber-500 text-amber-500' : 'text-gray-300'}`} />
                           ))}
                         </div>
-                        <span className="font-bold text-[#26211C]">5.0 / 5</span>
-                        <span className="text-[11px] text-[#8C8276]">({reviewsList.length > 0 ? reviewsList.length : 2} lượt phản hồi)</span>
+                        <span className="font-bold text-[#26211C]">{actualAvgRating ? `${actualAvgRating} / 5` : 'Chưa có'}</span>
+                        <span className="text-[11px] text-[#8C8276]">({actualReviewsCount} lượt phản hồi)</span>
                       </div>
                       <button
                         type="button"
@@ -585,7 +628,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                         />
                         <textarea
                           rows={2}
-                          placeholder="Cảm nhận về vòng tay, chỉ đan, charm..."
+                          placeholder="Cảm nhận về sản phẩm..."
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           required
@@ -611,41 +654,36 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                     )}
 
                     {/* Review List */}
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                      {(reviewsList.length > 0 ? reviewsList : [
-                        {
-                          id: 'default-1',
-                          customerName: 'Trần Mai Linh · Hà Nội',
-                          wristFit: 'Vừa vặn (15cm)',
-                          comment: 'Vòng đan tay cực kỳ tỉ mỉ và chắc chắn, chỉ sáp Macrame mịn đeo tắm rửa thoải mái không sợ ướt hay xơ sợi.'
-                        },
-                        {
-                          id: 'default-2',
-                          customerName: 'Lê Hoàng Nam · Đà Nẵng',
-                          wristFit: 'Dễ đeo một mình',
-                          comment: 'Mình mua tặng bạn gái, mặt charm nung bóng đẹp hơn trong ảnh nhiều. Khóa rút trượt hai bên rất dễ đeo.'
-                        }
-                      ]).map(rev => (
-                        <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3]">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-[#26211C] text-xs">
-                              {rev.customerName}
-                              <span className="text-[9px] text-[#3A754B] bg-[#EDF5F0] px-1.5 py-0.2 rounded ml-1 font-normal">
-                                ✓ Đã mua hàng
+                    {reviewsList.length === 0 ? (
+                      <div className="text-center py-6 px-4 bg-[#FAF7F2] rounded-xl border border-dashed border-[#E8DFD3]">
+                        <MessageSquarePlus className="w-8 h-8 text-[#8C8276]/50 mx-auto mb-2" />
+                        <p className="text-xs font-semibold text-[#5A5147]">Chưa có đánh giá nào cho sản phẩm này</p>
+                        <p className="text-[11px] text-[#8C8276] mt-1">Hãy là người đầu tiên chia sẻ cảm nhận của bạn sau khi trải nghiệm sản phẩm!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                        {reviewsList.map(rev => (
+                          <div key={rev.id} className="p-2.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3]">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-bold text-[#26211C] text-xs">
+                                {rev.customerName || rev.customer_name || 'Khách hàng'}
+                                <span className="text-[9px] text-[#3A754B] bg-[#EDF5F0] px-1.5 py-0.2 rounded ml-1 font-normal">
+                                  ✓ Đã mua hàng
+                                </span>
                               </span>
-                            </span>
-                            {rev.wristFit && (
-                              <span className="text-[10px] text-[#8C8276] bg-white px-2 py-0.5 rounded border border-[#E8DFD3]">
-                                {rev.wristFit}
-                              </span>
-                            )}
+                              {rev.wristFit && (
+                                <span className="text-[10px] text-[#8C8276] bg-white px-2 py-0.5 rounded border border-[#E8DFD3]">
+                                  {rev.wristFit}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[#6B6258] text-[11px] leading-relaxed">
+                              "{rev.comment}"
+                            </p>
                           </div>
-                          <p className="text-[#6B6258] text-[11px] leading-relaxed">
-                            "{rev.comment}"
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

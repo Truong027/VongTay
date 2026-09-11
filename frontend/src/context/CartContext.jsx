@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { isBraceletProduct } from '../utils/productUtils';
 
 const CartContext = createContext();
 
@@ -124,6 +125,11 @@ export const CartProvider = ({ children, currentUser }) => {
   }, [wishlist, currentUser?.id, currentUser?.email]);
 
   const addToCart = (product, quantity = 1, options = {}) => {
+    const isBracelet = options.isCustom ? true : isBraceletProduct(product);
+    const finalWristSize = options.wristSize !== undefined 
+      ? options.wristSize 
+      : (isBracelet ? '15 - 16 cm' : null);
+
     setCartItems(prev => {
       // If it's a custom bracelet, treat each uniquely
       if (options.isCustom) {
@@ -132,7 +138,7 @@ export const CartProvider = ({ children, currentUser }) => {
           quantity,
           isCustom: true,
           customDetails: options.customDetails,
-          wristSize: options.wristSize || '15 - 16 cm',
+          wristSize: finalWristSize || '15 - 16 cm',
           note: options.note || '',
           cartKey: `custom-${Date.now()}`
         }];
@@ -142,7 +148,7 @@ export const CartProvider = ({ children, currentUser }) => {
       const existingIndex = prev.findIndex(item => 
         !item.isCustom && 
         item.id === product.id && 
-        item.wristSize === (options.wristSize || '15 - 16 cm')
+        item.wristSize === finalWristSize
       );
 
       if (existingIndex > -1) {
@@ -155,9 +161,9 @@ export const CartProvider = ({ children, currentUser }) => {
         ...product,
         quantity,
         isCustom: false,
-        wristSize: options.wristSize || '15 - 16 cm',
+        wristSize: finalWristSize,
         note: options.note || '',
-        cartKey: `${product.id}-${options.wristSize || 'default'}-${Date.now()}`
+        cartKey: `${product.id}-${finalWristSize || 'std'}-${Date.now()}`
       }];
     });
 

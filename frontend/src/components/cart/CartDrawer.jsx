@@ -170,9 +170,11 @@ export default function CartDrawer({ onProceedToCheckout }) {
                           <p><strong>Charm:</strong> {item.customDetails.charm} {item.customDetails.letter ? `[${item.customDetails.letter}]` : ''}</p>
                         </div>
                       ) : (
-                        <p className="text-[11px] text-[#8C8276] mt-0.5">
-                          Size cổ tay: <span className="font-semibold text-[#26211C]">{item.wristSize || 'Dây rút 14-18cm'}</span>
-                        </p>
+                        item.wristSize ? (
+                          <p className="text-[11px] text-[#8C8276] mt-0.5">
+                            Size cổ tay: <span className="font-semibold text-[#26211C]">{item.wristSize}</span>
+                          </p>
+                        ) : null
                       )}
 
                       {item.note && (
