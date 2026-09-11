@@ -126,9 +126,9 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
   // Form Data for Charm
   const [charmFormData, setCharmFormData] = useState({
     name: '',
-    material: 'Bạc Ý 925 Cao Cấp',
+    material: 'Gốm Men Sứ Nung',
     category: 'Sinh vật biển',
-    price: '55000',
+    price: '4000',
     image: '',
     icon: 'Sparkles',
     desc: '',
@@ -142,7 +142,7 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
   // Form Data for Bead (Hạt Đá Phong Thủy)
   const [beadFormData, setBeadFormData] = useState({
     name: '',
-    pricePerBead: '8000',
+    pricePerBead: '800',
     color: '#EAA9A9',
     previewClass: 'bg-rose-300',
     menh: ['Hỏa'],
@@ -159,9 +159,9 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
     setErrorMessage('');
     setCharmFormData({
       name: '',
-      material: 'Bạc Ý 925 Cao Cấp',
+      material: 'Gốm Men Sứ Nung',
       category: 'Sinh vật biển',
-      price: '55000',
+      price: '4000',
       image: '',
       icon: 'Sparkles',
       desc: '',
@@ -178,19 +178,22 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
   const handleOpenEditCharmWorkspace = (charm) => {
     setEditingItem(charm);
     setErrorMessage('');
+    const mArray = Array.isArray(charm.menh) 
+      ? charm.menh 
+      : (typeof charm.menh === 'string' ? charm.menh.split(', ') : ['Tất cả']);
     setCharmFormData({
       name: charm.name || '',
-      material: charm.material || 'Bạc Ý 925 Cao Cấp',
+      material: charm.material || 'Bạc Ý 925',
       category: charm.category || 'Khác',
-      price: String(charm.price || '0'),
+      price: String(charm.price || '4000'),
       image: charm.image || '',
       icon: charm.icon || 'Sparkles',
       desc: charm.desc || charm.description || '',
       meaning: charm.meaning || '',
-      stock: String(charm.stock || '0'),
+      stock: String(charm.stock || '30'),
       inStock: charm.inStock !== false,
-      menh: Array.isArray(charm.menh) && charm.menh.length > 0 ? charm.menh : ['Tất cả'],
-      sizeMm: charm.sizeMm || '12mm'
+      menh: mArray.length > 0 ? mArray : ['Tất cả'],
+      sizeMm: charm.sizeMm || charm.size_mm || '12mm'
     });
     setWorkspaceView('charm-editor');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -202,7 +205,7 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
     setErrorMessage('');
     setBeadFormData({
       name: '',
-      pricePerBead: '10000',
+      pricePerBead: '800',
       color: '#EAA9A9',
       previewClass: 'bg-rose-300',
       menh: ['Tất cả'],
@@ -224,7 +227,7 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
       : (typeof bead.menh === 'string' ? bead.menh.split(', ') : ['Tất cả']);
     setBeadFormData({
       name: bead.name || '',
-      pricePerBead: String(bead.pricePerBead || '8000'),
+      pricePerBead: String(bead.pricePerBead || '800'),
       color: bead.color || '#EAA9A9',
       previewClass: bead.previewClass || 'bg-rose-300',
       menh: mArray.length > 0 ? mArray : ['Tất cả'],
@@ -576,8 +579,8 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
                       type="number"
                       required
                       min="0"
-                      step="500"
-                      placeholder="8000"
+                      step="100"
+                      placeholder="800"
                       value={beadFormData.pricePerBead}
                       onChange={(e) => setBeadFormData({ ...beadFormData, pricePerBead: e.target.value })}
                       className="w-full glass-input p-3 pr-12 rounded-2xl font-bold text-sm text-[#C59B6D] border border-[#E8DFD3]"
@@ -585,7 +588,7 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[#C59B6D]">₫</span>
                   </div>
                   <div className="text-[10px] text-[#8C8276] bg-[#FAF4E8] px-2.5 py-1 rounded-xl border border-[#EADBCC]">
-                    Vòng chuẩn 21 hạt = <strong>{estimatedFullBraceletPrice.toLocaleString('vi-VN')}₫</strong>
+                    Vòng 21 hạt = <strong>{estimatedFullBraceletPrice.toLocaleString('vi-VN')}₫</strong> (Cùng Dây & Charm hoàn thiện ~25k/vòng)
                   </div>
                 </div>
               </div>

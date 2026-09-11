@@ -378,7 +378,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
   }, [isOpen, onClose]);
 
   const priceData = useMemo(() => {
-    if (!selectedCord || !selectedMainBead || !selectedSize) return { total: 0, cordCost: 0, beadCost: 0, charmCost: 0, craftFee: 30000, beadCount: 21 };
+    if (!selectedCord || !selectedMainBead || !selectedSize) return { total: 0, cordCost: 0, beadCost: 0, charmCost: 0, craftFee: 0, beadCount: 21 };
     const count = selectedSize.beadCount || 21;
     let beadCost = 0;
     if (selectedSecondaryBead) {
@@ -390,7 +390,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
     }
     const cordCost = selectedCord.price || 0;
     const charmCost = selectedCharm ? selectedCharm.price : 0;
-    const craftFee = 30000;
+    const craftFee = 0; // Tặng miễn phí công xâu thủ công
     return { total: cordCost + beadCost + charmCost + craftFee, cordCost, beadCost, charmCost, craftFee, beadCount: count };
   }, [selectedCord, selectedMainBead, selectedSecondaryBead, selectedCharm, selectedSize]);
 
@@ -938,14 +938,41 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Tùy chọn không dùng charm */}
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedCharm(null); }}
+                    className={`odoo-card p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+                      !selectedCharm
+                        ? 'border-[#B86244] bg-[#FBEFEA] shadow-sm ring-1 ring-[#B86244]/30'
+                        : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
+                    }`}
+                  >
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-[#FAF7F2] border border-[#E8DFD3] text-[#8C8276]">
+                      <X className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h5 className="font-bold text-xs text-[#26211C] leading-tight">Không gắn charm</h5>
+                        <span className="text-xs font-bold text-[#4E6857] shrink-0">+0₫</span>
+                      </div>
+                      <p className="text-[11px] text-[#6B6258] mt-0.5 leading-relaxed">Chỉ chuỗi hạt đá trơn thanh lịch</p>
+                    </div>
+                    {!selectedCharm && (
+                      <div className="w-5 h-5 rounded-full bg-[#B86244] flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                    )}
+                  </button>
+
                   {options.charms.map(charm => {
                     const isSelected = selectedCharm?.id === charm.id;
                     return (
                       <button
                         key={charm.id}
                         type="button"
-                        onClick={() => { setSelectedCharm(charm); triggerCharmWiggle(); }}
-                        className={`odoo-card p-3 rounded-xl border text-left flex items-center gap-3 ${
+                        onClick={() => { setSelectedCharm(isSelected ? null : charm); triggerCharmWiggle(); }}
+                        className={`odoo-card p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
                           isSelected
                             ? 'border-[#B86244] bg-[#FBEFEA] shadow-sm ring-1 ring-[#B86244]/30'
                             : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
@@ -1073,14 +1100,14 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
             {/* ── BOTTOM: Price Breakdown & Add to Cart ── */}
             <div className="mt-auto pt-4 border-t border-[#E8DFD3]">
               {/* Price breakdown line */}
-              <div className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#6B6258]">
+              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6B6258]">
                 <span>Dây: <strong className="text-[#26211C]">{priceData.cordCost.toLocaleString('vi-VN')}₫</strong></span>
                 <span>+</span>
                 <span>Hạt ({priceData.beadCount}): <strong className="text-[#26211C]">{priceData.beadCost.toLocaleString('vi-VN')}₫</strong></span>
                 <span>+</span>
                 <span>Charm: <strong className="text-[#26211C]">{priceData.charmCost.toLocaleString('vi-VN')}₫</strong></span>
                 <span>+</span>
-                <span>Công xâu: <strong className="text-[#26211C]">30.000₫</strong></span>
+                <span>Công xâu: <strong className="text-[#4E6857] bg-[#EDF3EF] px-1.5 py-0.5 rounded font-bold">Miễn phí (0₫)</strong></span>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3">

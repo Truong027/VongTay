@@ -295,7 +295,7 @@ const createTables = async () => {
     CREATE TABLE IF NOT EXISTS beads (
       id VARCHAR(50) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      price_per_bead NUMERIC NOT NULL DEFAULT 8000,
+      price_per_bead NUMERIC NOT NULL DEFAULT 800,
       color VARCHAR(50) DEFAULT '#EAA9A9',
       preview_class VARCHAR(50) DEFAULT 'bg-rose-300',
       menh JSONB DEFAULT '["Tất cả"]',

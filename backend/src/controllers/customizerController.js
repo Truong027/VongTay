@@ -46,7 +46,7 @@ export const calculateCustomPrice = async (req, res) => {
 
     const cordPrice = cord.price || 0;
     const charmPrice = charm ? charm.price : 0;
-    const craftingFee = 30000; // Phí công đan xâu thủ công và thanh tẩy năng lượng
+    const craftingFee = 0; // Tặng miễn phí 100% công xâu đan thủ công cho khách tự phối
 
     const totalPrice = cordPrice + beadTotal + charmPrice + craftingFee;
 

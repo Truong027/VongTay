@@ -2288,7 +2288,7 @@ export const dbGetBeads = async (filters = {}) => {
         list = res.rows.map(r => ({
           id: r.id,
           name: r.name,
-          pricePerBead: Number(r.price_per_bead) || 8000,
+          pricePerBead: Number(r.price_per_bead) || 800,
           color: r.color || '#EAA9A9',
           previewClass: r.preview_class || 'bg-rose-300',
           menh: Array.isArray(r.menh) ? r.menh : (typeof r.menh === 'string' ? r.menh.split(', ') : ['Tất cả']),
@@ -2349,7 +2349,7 @@ export const dbCreateBead = async (beadData) => {
   const newBead = {
     id,
     name: beadData.name?.trim() || 'Hạt Đá Phong Thủy Mới',
-    pricePerBead: Number(beadData.pricePerBead) || 8000,
+    pricePerBead: Number(beadData.pricePerBead) || 800,
     color: beadData.color || '#EAA9A9',
     previewClass: beadData.previewClass || 'bg-rose-300',
     menh: Array.isArray(beadData.menh) && beadData.menh.length > 0 ? beadData.menh : ['Tất cả'],
