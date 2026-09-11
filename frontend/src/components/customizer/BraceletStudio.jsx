@@ -326,6 +326,28 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
   const [activeStep, setActiveStep] = useState('cord');
   const [isAdded, setIsAdded] = useState(false);
   const [charmWiggling, setCharmWiggling] = useState(false);
+  const [beadMenhFilter, setBeadMenhFilter] = useState('all');
+
+  const getPrimaryMenh = (menh) => {
+    if (!menh) return 'Tất cả';
+    if (Array.isArray(menh)) return menh[0] || 'Tất cả';
+    return String(menh).split(',')[0].trim();
+  };
+
+  const getMenhList = (menh) => {
+    if (!menh) return [];
+    if (Array.isArray(menh)) return menh.map(m => String(m).trim());
+    return String(menh).split(',').map(m => m.trim());
+  };
+
+  const filteredBeads = useMemo(() => {
+    if (!options?.beads) return [];
+    if (beadMenhFilter === 'all') return options.beads;
+    return options.beads.filter(b => {
+      const list = getMenhList(b.menh);
+      return list.some(m => m.toLowerCase().includes(beadMenhFilter.toLowerCase()));
+    });
+  }, [options?.beads, beadMenhFilter]);
 
   useEffect(() => {
     api.getCustomizerOptions().then(res => {
@@ -791,38 +813,73 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                   <p className="text-xs text-[#6B6258] mt-1">Đá thiên nhiên chính và tùy chọn đá phụ xen kẽ tạo hiệu ứng màu sắc độc đáo</p>
                 </div>
 
+                {/* Bộ lọc mệnh phong thủy */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  <span className="text-[11px] font-bold text-[#6B6258] shrink-0 mr-1">Lọc Mệnh:</span>
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'Kim', label: 'Kim' },
+                    { id: 'Mộc', label: 'Mộc' },
+                    { id: 'Thủy', label: 'Thủy' },
+                    { id: 'Hỏa', label: 'Hỏa' },
+                    { id: 'Thổ', label: 'Thổ' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setBeadMenhFilter(m.id)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-all shrink-0 ${
+                        beadMenhFilter === m.id
+                          ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm'
+                          : 'bg-white text-[#6B6258] border-[#E8DFD3] hover:border-[#B86244] hover:text-[#B86244]'
+                      }`}
+                    >
+                      {m.id === 'all' ? 'Tất cả' : `Mệnh ${m.label}`}
+                    </button>
+                  ))}
+                </div>
+
                 <div>
                   <label className="text-xs font-bold text-[#26211C] block mb-2 flex items-center gap-1.5">
                     <span className="w-5 h-5 rounded-full bg-[#B86244] text-white text-[9px] font-bold flex items-center justify-center">1</span>
                     Đá Chủ Đạo (Chiếm đa số vòng):
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {options.beads.map(bead => (
-                      <button
-                        key={bead.id}
-                        type="button"
-                        onClick={() => setSelectedMainBead(bead)}
-                        className={`odoo-card p-2.5 rounded-xl border text-left transition-all ${
-                          selectedMainBead?.id === bead.id
-                            ? 'border-[#B86244] bg-[#FBEFEA] ring-1 ring-[#B86244]/30 shadow-sm'
-                            : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span
-                            className="w-5 h-5 rounded-full border border-black/10 shadow-sm shrink-0"
-                            style={{ backgroundColor: bead.color }}
-                          />
-                          <span className="text-[9px] text-[#4E6857] font-bold bg-[#EDF3EF] px-1.5 py-0.5 rounded-full">
-                            Mệnh {bead.menh?.split(',')[0]}
-                          </span>
-                        </div>
-                        <p className="font-bold text-xs text-[#26211C] leading-tight truncate">{bead.name}</p>
-                        <p className="text-[11px] text-[#B86244] font-semibold mt-0.5">{bead.pricePerBead.toLocaleString('vi-VN')}₫/hạt</p>
-                        <p className="text-[10px] text-[#8C8276] truncate">{bead.desc}</p>
+                  {filteredBeads.length === 0 ? (
+                    <div className="p-4 text-center bg-white rounded-xl border border-[#E8DFD3] text-xs text-[#8C8276]">
+                      Không có loại hạt đá nào phù hợp mệnh đã chọn.{' '}
+                      <button onClick={() => setBeadMenhFilter('all')} className="text-[#B86244] font-bold underline ml-1">
+                        Xem tất cả hạt đá
                       </button>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {filteredBeads.map(bead => (
+                        <button
+                          key={bead.id}
+                          type="button"
+                          onClick={() => setSelectedMainBead(bead)}
+                          className={`odoo-card p-2.5 rounded-xl border text-left transition-all ${
+                            selectedMainBead?.id === bead.id
+                              ? 'border-[#B86244] bg-[#FBEFEA] ring-1 ring-[#B86244]/30 shadow-sm'
+                              : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <span
+                              className="w-5 h-5 rounded-full border border-black/10 shadow-sm shrink-0"
+                              style={{ backgroundColor: bead.color }}
+                            />
+                            <span className="text-[9px] text-[#4E6857] font-bold bg-[#EDF3EF] px-1.5 py-0.5 rounded-full">
+                              Mệnh {getPrimaryMenh(bead.menh)}
+                            </span>
+                          </div>
+                          <p className="font-bold text-xs text-[#26211C] leading-tight truncate">{bead.name}</p>
+                          <p className="text-[11px] text-[#B86244] font-semibold mt-0.5">{bead.pricePerBead.toLocaleString('vi-VN')}₫/hạt</p>
+                          <p className="text-[10px] text-[#8C8276] truncate">{bead.desc}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-[#F0E8DE]">

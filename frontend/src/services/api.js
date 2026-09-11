@@ -198,6 +198,70 @@ export const api = {
     return res.json();
   },
 
+  // Beads Management (Kho Hạt Đá Phong Thủy)
+  async getBeads(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${BASE_URL}/beads${query ? `?${query}` : ''}`);
+    if (!res.ok) throw new Error('Không thể tải danh sách hạt đá');
+    return res.json();
+  },
+
+  async getBeadById(id) {
+    const res = await fetch(`${BASE_URL}/beads/${id}`);
+    if (!res.ok) throw new Error('Không tìm thấy hạt đá phong thủy');
+    return res.json();
+  },
+
+  async createBead(beadData) {
+    const res = await fetch(`${BASE_URL}/beads`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(beadData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi thêm hạt đá mới');
+    }
+    clearClientCache('customizer:options');
+    clearClientCache('/beads');
+    return res.json();
+  },
+
+  async updateBead(id, beadData) {
+    const res = await fetch(`${BASE_URL}/beads/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(beadData)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Lỗi cập nhật hạt đá');
+    }
+    clearClientCache('customizer:options');
+    clearClientCache('/beads');
+    return res.json();
+  },
+
+  async deleteBead(id) {
+    const res = await fetch(`${BASE_URL}/beads/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Lỗi xóa hạt đá');
+    clearClientCache('customizer:options');
+    clearClientCache('/beads');
+    return res.json();
+  },
+
+  async toggleBeadStock(id) {
+    const res = await fetch(`${BASE_URL}/beads/${id}/toggle-stock`, {
+      method: 'PATCH'
+    });
+    if (!res.ok) throw new Error('Lỗi đổi trạng thái kho hạt đá');
+    clearClientCache('customizer:options');
+    clearClientCache('/beads');
+    return res.json();
+  },
+
   // Orders
   async getOrders(params = {}) {
     const query = new URLSearchParams(params).toString();

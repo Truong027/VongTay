@@ -1,12 +1,14 @@
 import { customizerOptions } from '../data/seedData.js';
-import { dbGetCharms } from '../data/dbStore.js';
+import { dbGetCharms, dbGetBeads } from '../data/dbStore.js';
 
 export const getCustomizerOptions = async (req, res) => {
   try {
     const liveCharms = await dbGetCharms();
+    const liveBeads = await dbGetBeads();
     const options = {
       ...customizerOptions,
-      charms: liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms
+      charms: liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms,
+      beads: liveBeads && liveBeads.length > 0 ? liveBeads : customizerOptions.beads
     };
     res.json({
       success: true,
@@ -21,10 +23,12 @@ export const calculateCustomPrice = async (req, res) => {
   try {
     const { cordId, mainBeadId, secondaryBeadId, charmId, sizeId } = req.body;
     const liveCharms = await dbGetCharms();
+    const liveBeads = await dbGetBeads();
     const availableCharms = liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms;
+    const availableBeads = liveBeads && liveBeads.length > 0 ? liveBeads : customizerOptions.beads;
 
     const cord = customizerOptions.cords.find(c => c.id === cordId) || customizerOptions.cords[0];
-    const mainBead = customizerOptions.beads.find(b => b.id === mainBeadId) || customizerOptions.beads[0];
+    const mainBead = availableBeads.find(b => b.id === mainBeadId) || availableBeads[0];
     const charm = availableCharms.find(c => c.id === charmId);
     const size = customizerOptions.sizes.find(s => s.id === sizeId) || customizerOptions.sizes[1];
 
@@ -32,7 +36,7 @@ export const calculateCustomPrice = async (req, res) => {
     const totalBeads = size.beadCount || 21;
 
     if (secondaryBeadId) {
-      const secondaryBead = customizerOptions.beads.find(b => b.id === secondaryBeadId) || mainBead;
+      const secondaryBead = availableBeads.find(b => b.id === secondaryBeadId) || mainBead;
       const mainCount = Math.ceil(totalBeads * 0.7);
       const secondaryCount = totalBeads - mainCount;
       beadTotal = (mainCount * mainBead.pricePerBead) + (secondaryCount * secondaryBead.pricePerBead);

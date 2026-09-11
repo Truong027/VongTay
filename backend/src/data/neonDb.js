@@ -291,6 +291,22 @@ const createTables = async () => {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 12. BEADS (Kho Hạt Đá Phong Thủy cho Customizer Studio)
+    CREATE TABLE IF NOT EXISTS beads (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      price_per_bead NUMERIC NOT NULL DEFAULT 8000,
+      color VARCHAR(50) DEFAULT '#EAA9A9',
+      preview_class VARCHAR(50) DEFAULT 'bg-rose-300',
+      menh JSONB DEFAULT '["Tất cả"]',
+      description TEXT,
+      meaning TEXT,
+      stock INTEGER DEFAULT 100,
+      in_stock BOOLEAN DEFAULT true,
+      image TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- SAFE FOREIGN KEY REINFORCEMENTS ACROSS TABLES
     DO $$
     BEGIN

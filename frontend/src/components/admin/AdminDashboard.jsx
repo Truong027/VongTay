@@ -284,6 +284,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [charms, setCharms] = useState([]);
+  const [beads, setBeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -382,7 +383,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const loadAllAdminData = async () => {
     setLoading(true);
     try {
-      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes, telemRes, charmsRes] = await Promise.all([
+      const [statsRes, ordersRes, productsRes, usersRes, meRes, vouchersRes, reviewsRes, telemRes, charmsRes, beadsRes] = await Promise.all([
         api.getAdminStats().catch(() => ({ success: false })),
         api.getOrders().catch(() => ({ success: false })),
         api.getProducts({ includeHidden: true }).catch(() => ({ success: false })),
@@ -391,7 +392,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         api.getVouchers(true).catch(() => ({ success: false })),
         api.getReviews().catch(() => ({ success: false })),
         api.getDatabaseTelemetry().catch(() => ({ success: false })),
-        api.getCharms().catch(() => ({ success: false }))
+        api.getCharms().catch(() => ({ success: false })),
+        api.getBeads().catch(() => ({ success: false }))
       ]);
 
       if (statsRes.success) setStats(statsRes.data);
@@ -399,6 +401,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       if (productsRes.success) setProducts(productsRes.data);
       if (usersRes.success) setUsers(usersRes.data);
       if (charmsRes.success && Array.isArray(charmsRes.data)) setCharms(charmsRes.data);
+      if (beadsRes.success && Array.isArray(beadsRes.data)) setBeads(beadsRes.data);
       if (telemRes.success && telemRes.data) {
         setDbStatus({
           isConnected: telemRes.data.isNeonConnected,
@@ -1150,7 +1153,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
             }`}
           >
             <Gem className="w-4 h-4 text-amber-500" />
-            <span>Kho Charm ({charms.length})</span>
+            <span>Kho Hạt & Charm ({charms.length + beads.length})</span>
           </button>
 
           <button
@@ -1667,10 +1670,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           </div>
         )}
 
-        {/* ================= TAB: QUẢN LÝ CHARM & PHỤ KIỆN ================= */}
+        {/* ================= TAB: QUẢN LÝ CHARM & HẠT ĐÁ PHỐI VÒNG ================= */}
         {adminTab === 'charms' && (
           <CharmManagerView 
             charms={charms} 
+            beads={beads}
             onRefresh={loadAllAdminData} 
             triggerToast={triggerToast} 
           />

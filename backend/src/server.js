@@ -15,6 +15,7 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import wishlistRoutes from './routes/wishlistRoutes.js';
 import consultationRoutes from './routes/consultationRoutes.js';
 import charmRoutes from './routes/charmRoutes.js';
+import beadRoutes from './routes/beadRoutes.js';
 import { ensureNeonConnected } from './data/neonDb.js';
 
 // Kích hoạt kết nối Neon PostgreSQL nền
@@ -62,6 +63,7 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/consultations', consultationRoutes);
 app.use('/api/customizer', customizerRoutes);
 app.use('/api/charms', charmRoutes);
+app.use('/api/beads', beadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/ai', aiRoutes);

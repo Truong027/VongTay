@@ -304,11 +304,27 @@ export const ensureNeonTables = async () => {
       size_mm VARCHAR(50) DEFAULT '10mm',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- 12. BEADS (Kho Hạt Đá Phong Thủy cho Customizer Studio)
+    CREATE TABLE IF NOT EXISTS beads (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      price_per_bead NUMERIC NOT NULL DEFAULT 8000,
+      color VARCHAR(50) DEFAULT '#EAA9A9',
+      preview_class VARCHAR(50) DEFAULT 'bg-rose-300',
+      menh JSONB DEFAULT '["Tất cả"]',
+      description TEXT,
+      meaning TEXT,
+      stock INTEGER DEFAULT 100,
+      in_stock BOOLEAN DEFAULT true,
+      image TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
     await query(createTablesSql);
-    console.log('✅ Đã xác thực cấu trúc 11 bảng trên Neon PostgreSQL.');
+    console.log('✅ Đã xác thực cấu trúc 12 bảng trên Neon PostgreSQL.');
     return true;
   } catch (err) {
     console.error('Lỗi tạo bảng Neon:', err.message);
@@ -2255,5 +2271,185 @@ export const dbToggleCharmStock = async (id) => {
   if (!charm) return null;
   const newStockStatus = !charm.inStock;
   return await dbUpdateCharm(id, { inStock: newStockStatus });
+};
+
+// =========================================================================
+// Dedicated Bead Operations (Neon PostgreSQL + In-Memory + Disk Fallback)
+// =========================================================================
+export const dbGetBeads = async (filters = {}) => {
+  let list = Array.isArray(memoryData.customizerOptions?.beads) 
+    ? [...memoryData.customizerOptions.beads] 
+    : [];
+
+  if (isNeonConnected()) {
+    try {
+      const res = await query('SELECT * FROM beads ORDER BY created_at ASC');
+      if (res.rows && res.rows.length > 0) {
+        list = res.rows.map(r => ({
+          id: r.id,
+          name: r.name,
+          pricePerBead: Number(r.price_per_bead) || 8000,
+          color: r.color || '#EAA9A9',
+          previewClass: r.preview_class || 'bg-rose-300',
+          menh: Array.isArray(r.menh) ? r.menh : (typeof r.menh === 'string' ? r.menh.split(', ') : ['Tất cả']),
+          description: r.description || '',
+          desc: r.description || '',
+          meaning: r.meaning || '',
+          stock: Number(r.stock) || 100,
+          inStock: r.in_stock !== false,
+          image: r.image || '',
+          createdAt: r.created_at
+        }));
+        if (memoryData.customizerOptions) {
+          memoryData.customizerOptions.beads = list;
+        }
+      }
+    } catch (e) {
+      console.warn('Neon dbGetBeads fallback to memory:', e.message);
+    }
+  }
+
+  // Filter in memory
+  if (filters.q) {
+    const qLower = filters.q.toLowerCase().trim();
+    list = list.filter(b => 
+      b.name?.toLowerCase().includes(qLower) || 
+      b.desc?.toLowerCase().includes(qLower) ||
+      b.meaning?.toLowerCase().includes(qLower)
+    );
+  }
+
+  if (filters.menh && filters.menh !== 'all') {
+    list = list.filter(b => {
+      if (Array.isArray(b.menh)) {
+        return b.menh.includes('Tất cả') || b.menh.includes(filters.menh);
+      }
+      if (typeof b.menh === 'string') {
+        return b.menh.includes('Tất cả') || b.menh.includes(filters.menh);
+      }
+      return true;
+    });
+  }
+
+  if (filters.inStock !== undefined && filters.inStock !== 'all') {
+    const shouldBeInStock = filters.inStock === 'true' || filters.inStock === true;
+    list = list.filter(b => b.inStock === shouldBeInStock);
+  }
+
+  return list;
+};
+
+export const dbGetBeadById = async (id) => {
+  const beads = await dbGetBeads();
+  return beads.find(b => b.id === id) || null;
+};
+
+export const dbCreateBead = async (beadData) => {
+  const id = beadData.id || `bead-${Date.now()}`;
+  const newBead = {
+    id,
+    name: beadData.name?.trim() || 'Hạt Đá Phong Thủy Mới',
+    pricePerBead: Number(beadData.pricePerBead) || 8000,
+    color: beadData.color || '#EAA9A9',
+    previewClass: beadData.previewClass || 'bg-rose-300',
+    menh: Array.isArray(beadData.menh) && beadData.menh.length > 0 ? beadData.menh : ['Tất cả'],
+    description: beadData.desc || beadData.description || '',
+    desc: beadData.desc || beadData.description || '',
+    meaning: beadData.meaning || '',
+    stock: Number(beadData.stock) || 100,
+    inStock: beadData.inStock !== false,
+    image: beadData.image || '',
+    createdAt: new Date().toISOString()
+  };
+
+  // 1. Neon DB
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `INSERT INTO beads (id, name, price_per_bead, color, preview_class, menh, description, meaning, stock, in_stock, image, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, price_per_bead = EXCLUDED.price_per_bead, color = EXCLUDED.color,
+           preview_class = EXCLUDED.preview_class, menh = EXCLUDED.menh, description = EXCLUDED.description,
+           meaning = EXCLUDED.meaning, stock = EXCLUDED.stock, in_stock = EXCLUDED.in_stock, image = EXCLUDED.image`,
+        [
+          newBead.id, newBead.name, newBead.pricePerBead, newBead.color, newBead.previewClass,
+          JSON.stringify(newBead.menh), newBead.description, newBead.meaning,
+          newBead.stock, newBead.inStock, newBead.image, newBead.createdAt
+        ]
+      );
+    } catch (e) {
+      console.warn('Neon dbCreateBead fallback to disk:', e.message);
+    }
+  }
+
+  // 2. Memory & Disk
+  if (!memoryData.customizerOptions.beads) memoryData.customizerOptions.beads = [];
+  memoryData.customizerOptions.beads.push(newBead);
+  saveToDisk();
+  return newBead;
+};
+
+export const dbUpdateBead = async (id, updates) => {
+  let existing = memoryData.customizerOptions.beads?.find(b => b.id === id);
+  if (!existing) return null;
+
+  const updatedBead = {
+    ...existing,
+    ...updates,
+    pricePerBead: updates.pricePerBead !== undefined ? Number(updates.pricePerBead) : existing.pricePerBead,
+    stock: updates.stock !== undefined ? Number(updates.stock) : existing.stock,
+    inStock: updates.inStock !== undefined ? Boolean(updates.inStock) : existing.inStock
+  };
+
+  if (isNeonConnected()) {
+    try {
+      await query(
+        `UPDATE beads SET
+           name = COALESCE($2, name), price_per_bead = COALESCE($3, price_per_bead), color = COALESCE($4, color),
+           preview_class = COALESCE($5, preview_class), menh = COALESCE($6, menh),
+           description = COALESCE($7, description), meaning = COALESCE($8, meaning), stock = COALESCE($9, stock),
+           in_stock = COALESCE($10, in_stock), image = COALESCE($11, image)
+         WHERE id = $1`,
+        [
+          id, updatedBead.name, updatedBead.pricePerBead, updatedBead.color, updatedBead.previewClass,
+          JSON.stringify(updatedBead.menh), updatedBead.description || updatedBead.desc,
+          updatedBead.meaning, updatedBead.stock, updatedBead.inStock, updatedBead.image
+        ]
+      );
+    } catch (e) {
+      console.warn('Neon dbUpdateBead fallback:', e.message);
+    }
+  }
+
+  const idx = memoryData.customizerOptions.beads.findIndex(b => b.id === id);
+  if (idx !== -1) {
+    memoryData.customizerOptions.beads[idx] = updatedBead;
+  }
+  saveToDisk();
+  return updatedBead;
+};
+
+export const dbDeleteBead = async (id) => {
+  if (isNeonConnected()) {
+    try {
+      await query('DELETE FROM beads WHERE id = $1', [id]);
+    } catch (e) {
+      console.warn('Neon dbDeleteBead fallback:', e.message);
+    }
+  }
+
+  const before = memoryData.customizerOptions.beads?.length || 0;
+  memoryData.customizerOptions.beads = (memoryData.customizerOptions.beads || []).filter(b => b.id !== id);
+  const deleted = memoryData.customizerOptions.beads.length < before;
+  if (deleted) saveToDisk();
+  return deleted;
+};
+
+export const dbToggleBeadStock = async (id) => {
+  const bead = memoryData.customizerOptions.beads?.find(b => b.id === id);
+  if (!bead) return null;
+  const newStockStatus = !bead.inStock;
+  return await dbUpdateBead(id, { inStock: newStockStatus });
 };
 
