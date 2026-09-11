@@ -18,7 +18,8 @@ import {
   Layers, 
   Award,
   ChevronLeft,
-  Maximize2
+  Maximize2,
+  Package
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
@@ -53,9 +54,9 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
-    if (product?.id) {
+    if (product?.id && typeof api?.getReviews === 'function') {
       api.getReviews(product.id).then(res => {
-        if (res.success && Array.isArray(res.data)) {
+        if (res?.success && Array.isArray(res.data)) {
           setReviewsList(res.data);
         }
       }).catch(console.warn);
@@ -111,17 +112,18 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
     { value: '18 - 19 cm (Tay đậm)', label: '18 - 19 cm (Tay đậm)' },
   ];
 
-  const originalPrice = product.originalPrice && Number(product.originalPrice) > Number(product.price)
+  const productPrice = Number(product.price) || 0;
+  const originalPrice = product.originalPrice && Number(product.originalPrice) > productPrice
     ? Number(product.originalPrice)
-    : Math.round(product.price * 1.25 / 1000) * 1000;
+    : Math.round(productPrice * 1.25 / 1000) * 1000;
   const isWholesale = quantity >= (product.wholesaleMinQty || 5);
-  const effectivePrice = isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price;
+  const effectivePrice = isWholesale && product.wholesalePrice ? Number(product.wholesalePrice) : productPrice;
 
-  const actualReviewsCount = reviewsList.length;
+  const actualReviewsCount = Array.isArray(reviewsList) ? reviewsList.length : 0;
   const actualAvgRating = actualReviewsCount > 0
-    ? (reviewsList.reduce((acc, r) => acc + (Number(r.rating) || 5), 0) / actualReviewsCount).toFixed(1)
+    ? (reviewsList.reduce((acc, r) => acc + (Number(r?.rating) || 5), 0) / actualReviewsCount).toFixed(1)
     : (product.reviewsCount && Number(product.reviewsCount) > 0 ? Number(product.rating || 5).toFixed(1) : null);
-  const actualSales = Number(product.salesCount || product.sales_count || 0);
+  const actualSales = Number(product.salesCount ?? product.sales_count ?? 0);
 
   const handleQuickBuy = () => {
     const item = {
@@ -344,16 +346,16 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
               <div className="p-3.5 bg-[#FAF4ED] rounded-2xl border border-[#EADBCC] space-y-2 shadow-xs">
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <span className="text-2xl sm:text-3xl font-extrabold text-[#B86244]">
-                    {product.price.toLocaleString('vi-VN')}₫
+                    {productPrice.toLocaleString('vi-VN')}₫
                   </span>
-                  {originalPrice && originalPrice > product.price && (
+                  {originalPrice && originalPrice > productPrice && (
                     <span className="text-xs sm:text-sm text-[#8C8276] line-through">
                       {originalPrice.toLocaleString('vi-VN')}₫
                     </span>
                   )}
-                  {originalPrice && originalPrice > product.price && (
+                  {originalPrice && originalPrice > productPrice && (
                     <span className="text-[10px] font-bold bg-[#B86244] text-white px-2 py-0.5 rounded uppercase">
-                      -{Math.round(((originalPrice - product.price) / originalPrice) * 100)}% GIẢM
+                      -{Math.round(((originalPrice - productPrice) / originalPrice) * 100)}% GIẢM
                     </span>
                   )}
                 </div>
@@ -475,9 +477,11 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                     +
                   </button>
                 </div>
-                <span className="text-[#8C8276] text-[11px]">
-                  Còn 48 sản phẩm có sẵn
-                </span>
+                {product.stock !== undefined && (
+                  <span className="text-[#8C8276] text-[11px]">
+                    {product.stock > 0 ? `Kho: ${product.stock}` : 'Đặt làm theo yêu cầu'}
+                  </span>
+                )}
               </div>
 
               {/* Wholesale Active Banner */}
@@ -761,7 +765,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                   <span>Mua Ngay</span>
                 </span>
                 <span className="text-[10px] sm:text-xs font-semibold text-amber-100 mt-0.5 whitespace-nowrap tracking-tight">
-                  {((isWholesale && product.wholesalePrice ? product.wholesalePrice : product.price) * quantity).toLocaleString('vi-VN')}₫
+                  {(effectivePrice * quantity).toLocaleString('vi-VN')}₫
                 </span>
               </div>
             </button>
