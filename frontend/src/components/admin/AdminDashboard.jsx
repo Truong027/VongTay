@@ -49,6 +49,7 @@ import {
   Gem
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { compressImage, compressMultipleImages } from '../../utils/imageUtils';
 import ProductEditorView from './ProductEditorView';
 import CharmManagerView from './CharmManagerView';
 import OrderManagerView from './OrderManagerView';
@@ -466,18 +467,13 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     try {
       let payload = {};
       if (isFile) {
-        // Đọc file ảnh dưới dạng Data URL (base64)
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(fileOrUrl);
-        });
-        payload = { imageBase64: base64Data };
+        // Nén ảnh bằng Canvas tối ưu hóa trước khi gửi AI và lưu form
+        const compressedBase64 = await compressImage(fileOrUrl, 1200, 0.82);
+        payload = { imageBase64: compressedBase64 };
         // Đặt preview ngay vào form ảnh
         setProductFormData(prev => ({
           ...prev,
-          images: [base64Data, ...(Array.isArray(prev.images) ? prev.images.slice(1) : [])]
+          images: [compressedBase64, ...(Array.isArray(prev.images) ? prev.images.slice(1) : [])]
         }));
       } else {
         if (!fileOrUrl) {
@@ -486,7 +482,8 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           return;
         }
         if (typeof fileOrUrl === 'string' && fileOrUrl.startsWith('data:image/')) {
-          payload = { imageBase64: fileOrUrl };
+          const compressedBase64 = await compressImage(fileOrUrl, 1200, 0.82);
+          payload = { imageBase64: compressedBase64 };
         } else {
           payload = { imageUrl: fileOrUrl };
         }
@@ -642,8 +639,18 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
 
     setIsSavingProduct(true);
     try {
+      // Tự động nén toàn bộ hình ảnh (kể cả base64 dung lượng lớn) để tránh lỗi HTTP 413 và pattern mismatch
+      let finalImages = Array.isArray(productFormData.images) ? [...productFormData.images] : [];
+      if (finalImages.length > 0) {
+        finalImages = await compressMultipleImages(finalImages, 1200, 0.82);
+      }
+      if (finalImages.length === 0) {
+        finalImages = ['/images/products/bracelet-pastel-macrame-trio.jpg'];
+      }
+
       const payload = {
         ...productFormData,
+        images: finalImages,
         name: productFormData.name.trim(),
         price: parsedPrice,
         wholesalePrice: productFormData.wholesalePrice !== '' && productFormData.wholesalePrice !== undefined

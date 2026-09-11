@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { compressImage } from '../../utils/imageUtils';
 import { 
   ArrowLeft, 
   Save, 
@@ -89,21 +90,15 @@ export default function ProductEditorView({
     setProductFormData({ ...productFormData, menh: updated });
   };
 
-  // Tải nhiều ảnh cùng lúc ở các góc độ khác nhau
+  // Tải nhiều ảnh cùng lúc ở các góc độ khác nhau (tự động nén tối ưu)
   const handleMultipleFilesUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const readPromises = files.map(file => {
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (event) => resolve(event.target?.result);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-      });
-    });
+    // Tự động nén và tối ưu hóa từng ảnh để lưu mượt mà, không bị tràn bộ nhớ máy chủ
+    const compressPromises = files.map(file => compressImage(file, 1200, 0.82));
+    const newBase64List = (await Promise.all(compressPromises)).filter(Boolean);
 
-    const newBase64List = (await Promise.all(readPromises)).filter(Boolean);
     if (newBase64List.length > 0) {
       setProductFormData(prev => {
         const existing = Array.isArray(prev.images) ? prev.images : [];
@@ -116,10 +111,13 @@ export default function ProductEditorView({
     e.target.value = '';
   };
 
-  // Thêm ảnh từ liên kết URL
-  const handleAddImageUrl = () => {
-    const trimmed = newImageUrl.trim();
+  // Thêm ảnh từ liên kết URL hoặc chuỗi ảnh base64
+  const handleAddImageUrl = async () => {
+    let trimmed = newImageUrl.trim();
     if (!trimmed) return;
+    if (trimmed.startsWith('data:image/')) {
+      trimmed = await compressImage(trimmed, 1200, 0.82);
+    }
     setProductFormData(prev => {
       const existing = Array.isArray(prev.images) ? prev.images : [];
       if (existing.includes(trimmed)) return prev;

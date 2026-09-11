@@ -55,6 +55,45 @@ export const setSessionToken = (token) => {
   }
 };
 
+/**
+ * Trích xuất và giải mã dữ liệu an toàn từ phản hồi máy chủ
+ * Ngăn chặn tuyệt đối lỗi WebKit / Safari 'The string did not match the expected pattern'
+ * khi máy chủ hoặc Vercel trả về HTML/Plaintext (413 Payload Too Large, 500, 502, 504 Timeout)
+ */
+async function safeParseResponse(res, defaultErrorMsg = 'Thao tác không thành công') {
+  let text = '';
+  try {
+    text = await res.text();
+  } catch {
+    throw new Error(`${defaultErrorMsg}: Không thể đọc dữ liệu phản hồi từ máy chủ`);
+  }
+
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (res.status === 413) {
+        throw new Error('Dung lượng hình ảnh quá lớn vượt giới hạn máy chủ Vercel (4.5MB). Ảnh đã được tự động nén, vui lòng thử lưu lại.');
+      }
+      if (res.status === 504 || res.status === 502) {
+        throw new Error('Máy chủ phản hồi quá lâu (Timeout). Vui lòng thử lại sau giây lát.');
+      }
+      if (!res.ok) {
+        const cleanMsg = text.replace(/<[^>]*>?/gm, ' ').replace(/\s+/g, ' ').trim();
+        throw new Error(`${defaultErrorMsg} (Mã lỗi ${res.status}): ${cleanMsg.slice(0, 150) || 'Lỗi hệ thống'}`);
+      }
+    }
+  }
+
+  if (!res.ok) {
+    const msg = data?.message || data?.error || `${defaultErrorMsg} (Mã lỗi ${res.status})`;
+    throw new Error(msg);
+  }
+
+  return data || {};
+}
+
 export const api = {
   // Products & Categories
   async getProducts(params = {}, bypassCache = false) {
@@ -450,8 +489,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi thêm sản phẩm');
+    const data = await safeParseResponse(res, 'Lỗi thêm sản phẩm');
     clearClientCache();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
@@ -465,8 +503,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật sản phẩm');
+    const data = await safeParseResponse(res, 'Lỗi cập nhật sản phẩm');
     clearClientCache();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
@@ -478,8 +515,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/products/${id}`, {
       method: 'DELETE'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi xóa sản phẩm');
+    const data = await safeParseResponse(res, 'Lỗi xóa sản phẩm');
     clearClientCache();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: { id } }));
@@ -491,8 +527,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/products/${id}/toggle-visibility`, {
       method: 'PATCH'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi ẩn/hiện sản phẩm');
+    const data = await safeParseResponse(res, 'Lỗi ẩn/hiện sản phẩm');
     clearClientCache();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
@@ -504,8 +539,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/products/${id}/set-hero-trending`, {
       method: 'PATCH'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi đặt sản phẩm xu hướng');
+    const data = await safeParseResponse(res, 'Lỗi đặt sản phẩm xu hướng');
     clearClientCache();
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('viban_products_updated', { detail: data.data }));
@@ -526,9 +560,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi tạo tài khoản');
-    return data;
+    return await safeParseResponse(res, 'Lỗi tạo tài khoản');
   },
 
   async updateUserRole(id, role) {
@@ -537,18 +569,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật vai trò');
-    return data;
+    return await safeParseResponse(res, 'Lỗi cập nhật vai trò');
   },
 
   async deleteUser(id) {
     const res = await fetch(`${BASE_URL}/admin/users/${id}`, {
       method: 'DELETE'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi xóa tài khoản');
-    return data;
+    return await safeParseResponse(res, 'Lỗi xóa tài khoản');
   },
 
   // Database Sync & Telemetry
@@ -556,8 +584,7 @@ export const api = {
     const res = await fetch(`${BASE_URL}/admin/sync-neon`, {
       method: 'POST'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi đồng bộ Neon PostgreSQL');
+    const data = await safeParseResponse(res, 'Lỗi đồng bộ Neon PostgreSQL');
     clearClientCache();
     return data;
   },
@@ -575,9 +602,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi phân tích AI');
-    return data;
+    return await safeParseResponse(res, 'Lỗi phân tích AI');
   },
 
   async analyzeBraceletCord(payload) {
@@ -586,9 +611,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi bóc tách thành phần dây');
-    return data;
+    return await safeParseResponse(res, 'Lỗi bóc tách thành phần dây');
   },
 
   async matchBeadsAndCharms(payload) {
@@ -597,9 +620,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi gợi ý bản phối hạt & charm');
-    return data;
+    return await safeParseResponse(res, 'Lỗi gợi ý bản phối hạt & charm');
   },
 
   // Vouchers & Promotions
@@ -616,9 +637,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(voucherData)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi thêm mã giảm giá');
-    return data;
+    return await safeParseResponse(res, 'Lỗi thêm mã giảm giá');
   },
 
   async updateVoucher(id, voucherData) {
@@ -627,27 +646,21 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(voucherData)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi cập nhật mã giảm giá');
-    return data;
+    return await safeParseResponse(res, 'Lỗi cập nhật mã giảm giá');
   },
 
   async deleteVoucher(id) {
     const res = await fetch(`${BASE_URL}/vouchers/${id}`, {
       method: 'DELETE'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi xóa mã giảm giá');
-    return data;
+    return await safeParseResponse(res, 'Lỗi xóa mã giảm giá');
   },
 
   async toggleVoucher(id) {
     const res = await fetch(`${BASE_URL}/vouchers/${id}/toggle`, {
       method: 'PATCH'
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Lỗi chuyển trạng thái voucher');
-    return data;
+    return await safeParseResponse(res, 'Lỗi chuyển trạng thái voucher');
   },
 
   async applyVoucher(code, orderTotal) {

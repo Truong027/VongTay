@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { compressImage } from '../../utils/imageUtils';
 import { 
   Sparkles, 
   Plus, 
@@ -241,26 +242,20 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Handle file uploads
-  const handleCharmFileUpload = (e) => {
+  // Handle file uploads with auto-compression
+  const handleCharmFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) setCharmFormData(prev => ({ ...prev, image: event.target.result }));
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImage(file, 800, 0.82);
+    if (compressed) setCharmFormData(prev => ({ ...prev, image: compressed }));
     e.target.value = '';
   };
 
-  const handleBeadFileUpload = (e) => {
+  const handleBeadFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) setBeadFormData(prev => ({ ...prev, image: event.target.result }));
-    };
-    reader.readAsDataURL(file);
+    const compressed = await compressImage(file, 800, 0.82);
+    if (compressed) setBeadFormData(prev => ({ ...prev, image: compressed }));
     e.target.value = '';
   };
 
