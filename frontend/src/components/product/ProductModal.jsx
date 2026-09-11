@@ -17,10 +17,12 @@ import {
   MessageCircle, 
   Layers, 
   Award,
-  ChevronLeft
+  ChevronLeft,
+  Maximize2
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
+import ProductImageZoomModal from './ProductImageZoomModal';
 
 export default function ProductModal({ product, onClose, onOpenSizeGuide, onProceedToCheckout }) {
   if (!product) return null;
@@ -31,6 +33,7 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
   const [giftNote, setGiftNote] = useState('');
   const [isAdded, setIsAdded] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // 'details' | 'specs' | 'reviews'
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
 
   // Image Gallery selection
   const galleryImages = (product.images && product.images.length > 0) 
@@ -59,11 +62,17 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (isZoomOpen) {
+          setIsZoomOpen(false);
+        } else {
+          onClose();
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, isZoomOpen]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
@@ -172,16 +181,20 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
             {/* 1. LEFT COLUMN: Shopee-Style Image Gallery (5 cols) */}
             <div className="md:col-span-5 bg-[#FAF7F2] p-4 sm:p-6 flex flex-col justify-start border-b md:border-b-0 md:border-r border-[#E8DFD3]">
               
-              {/* Main Photo Card */}
-              <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-artisan border border-[#E8DFD3] bg-white group">
+              {/* Main Photo Card - Click to Enlarge Shopee Style */}
+              <div 
+                onClick={() => setIsZoomOpen(true)}
+                className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-artisan border border-[#E8DFD3] bg-white group cursor-zoom-in"
+                title="Nhấn vào ảnh để xem to chi tiết cận cảnh"
+              >
                 <img
                   src={galleryImages[activeImageIndex] || galleryImages[0]}
                   alt={product.name}
-                  className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                  className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                 />
 
                 {/* Badges Overlay */}
-                <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
                   <span className="bg-[#B86244] text-white text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-amber-200" />
                     Chính Hãng Vòng Tay Nhà Zy
@@ -193,16 +206,36 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
                   )}
                 </div>
 
+                {/* Shopee Zoom Badge Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsZoomOpen(true);
+                  }}
+                  className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-xl bg-black/60 hover:bg-black/85 text-white backdrop-blur-md transition-all shadow-md flex items-center gap-1 text-[10px] font-bold opacity-90 group-hover:opacity-100 group-hover:scale-105 border border-white/20 cursor-pointer"
+                  title="Nhấn để phóng to ảnh xem chi tiết như Shopee"
+                >
+                  <Maximize2 className="w-3 h-3 text-amber-300" />
+                  <span>Phóng to</span>
+                </button>
+
                 {/* Shopee FreeShip Xtra Ribbon */}
-                <div className="absolute bottom-3 left-3 bg-gradient-to-r from-emerald-700 to-[#3A754B] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1">
+                <div className="absolute bottom-3 left-3 bg-gradient-to-r from-emerald-700 to-[#3A754B] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1 pointer-events-none">
                   <Truck className="w-3 h-3" />
                   <span>Freeship Đơn Từ 400k</span>
                 </div>
 
                 {/* Photo indicator */}
-                <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                <span className="absolute bottom-3 right-3 bg-black/60 text-white text-[10px] font-medium px-2 py-0.5 rounded-full pointer-events-none">
                   {activeImageIndex + 1}/{galleryImages.length}
                 </span>
+
+                {/* Click-to-zoom Hover Hint Banner */}
+                <div className="absolute inset-x-0 bottom-0 py-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-[10.5px] font-semibold pointer-events-none z-10">
+                  <Maximize2 className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Nhấn vào ảnh để xem to chi tiết (Shopee Zoom)</span>
+                </div>
               </div>
 
               {/* Shopee Thumbnails Row */}
@@ -699,6 +732,16 @@ export default function ProductModal({ product, onClose, onOpenSizeGuide, onProc
         </div>
 
       </div>
+
+      {/* Shopee-style Fullscreen Image Zoom Lightbox Modal */}
+      <ProductImageZoomModal
+        isOpen={isZoomOpen}
+        onClose={() => setIsZoomOpen(false)}
+        images={galleryImages}
+        currentIndex={activeImageIndex}
+        onSelectIndex={(idx) => setActiveImageIndex(idx)}
+        productName={product.name}
+      />
     </div>
   );
 }
