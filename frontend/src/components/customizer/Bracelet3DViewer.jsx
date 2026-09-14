@@ -533,32 +533,7 @@ export default function Bracelet3DViewer({
       const strandMat = new THREE.MeshStandardMaterial({ color: 0xF5F0EB, roughness: 0.9 });
       braceletGroup.add(new THREE.Mesh(strandGeo, strandMat));
 
-      // White Braided Lanyard Loop at the top (Vòng dây dù trắng phía trên như ảnh)
-      const topLoopCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-uWidth * 0.35, uTopY, 0),
-        new THREE.Vector3(-0.25, uTopY + 0.55, 0.05),
-        new THREE.Vector3(0, uTopY + 1.25, 0.02),
-        new THREE.Vector3(0.25, uTopY + 0.55, -0.05),
-        new THREE.Vector3(uWidth * 0.35, uTopY, 0)
-      ]);
-      const topLoopGeo = new THREE.TubeGeometry(topLoopCurve, 36, 0.04, 8, false);
-      const topLoopMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.7 });
-      braceletGroup.add(new THREE.Mesh(topLoopGeo, topLoopMat));
 
-      // Silver Crimp Clamp Collar (Cổ kim loại siết dây)
-      const clampGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.20, 16);
-      const clampMat = new THREE.MeshStandardMaterial({ color: 0xE2E8F0, metalness: 0.95, roughness: 0.12 });
-      const clampMesh = new THREE.Mesh(clampGeo, clampMat);
-      clampMesh.position.set(0, uTopY + 0.08, 0);
-      braceletGroup.add(clampMesh);
-
-      // Stamped Silver Logo Coin Tag ("Dooro" / "Zy" tag in photo)
-      const tagGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.03, 24);
-      tagGeo.rotateX(Math.PI / 2);
-      const tagMesh = new THREE.Mesh(tagGeo, clampMat);
-      tagMesh.position.set(-0.22, uTopY + 0.02, 0.08);
-      tagMesh.rotation.z = -0.35;
-      braceletGroup.add(tagMesh);
 
     } else {
       // ── DÁNG VÒNG TRÒN ĐEO CỔ TAY (CLASSIC BRACELET LOOP) ──
@@ -919,13 +894,6 @@ export default function Bracelet3DViewer({
         </button>
       </div>
 
-      {/* Top Right Sparkle Badge */}
-      <div className="absolute top-2.5 right-3 flex items-center gap-2 pointer-events-none">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-[#B86244] bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-full border border-[#E8DFD3] shadow-xs flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-          <span>Pha Lê & Men Sứ 3D</span>
-        </span>
-      </div>
 
       {/* Floating control buttons */}
       <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white/95 backdrop-blur-xs p-1 rounded-xl border border-[#E8DFD3] shadow-md">
