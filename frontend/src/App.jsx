@@ -115,6 +115,13 @@ function MainShop({ currentUser, setCurrentUser }) {
     setIsAICameraOpen(true);
   };
 
+  const [arCustomBracelet, setArCustomBracelet] = useState(null);
+  const handleOpenArTryOn = (customData = null) => {
+    setArCustomBracelet(customData);
+    setAiModalMode('ar_tryon');
+    setIsAICameraOpen(true);
+  };
+
   // Data
   const [products, setProducts] = useState([]);
   const [allProductsMaster, setAllProductsMaster] = useState([]);
@@ -560,6 +567,7 @@ function MainShop({ currentUser, setCurrentUser }) {
         }}
         onOpenSizeGuide={() => setIsSizeGuideOpen(true)}
         onOpenAiVision={handleOpenAiMatch}
+        onOpenArTryOn={handleOpenArTryOn}
         initialPreset={aiCustomPreset}
       />
 
@@ -601,9 +609,13 @@ function MainShop({ currentUser, setCurrentUser }) {
       {/* NEW: AI Camera Stylist Modal */}
       <AICameraModal
         isOpen={isAICameraOpen}
-        onClose={() => setIsAICameraOpen(false)}
+        onClose={() => {
+          setIsAICameraOpen(false);
+          setArCustomBracelet(null);
+        }}
         onApplyCustomPreset={handleApplyCustomPreset}
         initialMode={aiModalMode}
+        customBracelet={arCustomBracelet}
       />
 
       {/* NEW: Auth Modal (Login / Register) */}

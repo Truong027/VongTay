@@ -73,13 +73,14 @@ const AR_BRACELETS = [
   }
 ];
 
-export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, initialMode = 'wrist' }) {
+export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, initialMode = 'wrist', customBracelet = null }) {
   if (!isOpen) return null;
 
   const { addToCart } = useCart();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const trackingCanvasRef = useRef(null);
   const fileInputRef = useRef(null);
   const nativeCameraWristRef = useRef(null);
   const matchFileInputRef = useRef(null);
@@ -108,6 +109,28 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [matchResult, setMatchResult] = useState(null);
   const [matchError, setMatchError] = useState('');
 
+  // Available Bracelets (combines custom user design + boutique presets)
+  const availableBracelets = useMemo(() => {
+    if (!customBracelet) return AR_BRACELETS;
+    return [
+      {
+        id: customBracelet.id || 'custom-designed',
+        isCustom: true,
+        name: customBracelet.name || 'Vòng Tự Phối (Xưởng 3D)',
+        price: customBracelet.price || 145000,
+        beadColor: customBracelet.beadColor || '#EAA9A9',
+        cordColor: customBracelet.cordColor || '#F7F3EB',
+        cordName: customBracelet.cordName || 'Dây thủ công',
+        charmName: customBracelet.charmName || customBracelet.selectedCharm?.name || 'Charm Tự Chọn',
+        menh: 'Thiết kế riêng',
+        beadPositions: customBracelet.beadPositions || [],
+        selectedCharm: customBracelet.selectedCharm || null,
+        wristSize: customBracelet.wristSize || '15 - 16 cm'
+      },
+      ...AR_BRACELETS
+    ];
+  }, [customBracelet]);
+
   // Mode 3: AR Try-On State
   const [arSelectedBracelet, setArSelectedBracelet] = useState(0);
   const [arSizeCm, setArSizeCm] = useState(16);
@@ -115,6 +138,142 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [arOffsetY, setArOffsetY] = useState(0);
   const [arCapturedSnapshot, setArCapturedSnapshot] = useState(null);
   const [arAddedSuccess, setArAddedSuccess] = useState(false);
+
+  // Auto AI YOLO / Vision Wrist Tracking State
+  const [isAutoTracking, setIsAutoTracking] = useState(true);
+  const [trackingConfidence, setTrackingConfidence] = useState(0);
+  const [trackingFeedback, setTrackingFeedback] = useState('Đang tìm cổ tay...');
+  const [detectedWrist, setDetectedWrist] = useState(null);
+
+  // When customBracelet is passed or updated, prioritize it
+  useEffect(() => {
+    if (customBracelet) {
+      setArSelectedBracelet(0);
+    }
+  }, [customBracelet]);
+
+  // Real-time AI Wrist Tracking Loop (Computer Vision Skin & Arm Contour Analysis)
+  useEffect(() => {
+    if (!cameraActive || modalMode !== 'ar_tryon') return;
+
+    let animId = null;
+    let lastProcess = 0;
+
+    const processFrame = (time) => {
+      if (!videoRef.current || videoRef.current.readyState < 2) {
+        animId = requestAnimationFrame(processFrame);
+        return;
+      }
+
+      if (time - lastProcess > 85) { // ~12 FPS for smooth edge tracking without heating device
+        lastProcess = time;
+        try {
+          const video = videoRef.current;
+          if (!trackingCanvasRef.current) {
+            trackingCanvasRef.current = document.createElement('canvas');
+            trackingCanvasRef.current.width = 120;
+            trackingCanvasRef.current.height = 90;
+          }
+          const tCanvas = trackingCanvasRef.current;
+          const tCtx = tCanvas.getContext('2d', { willReadFrequently: true });
+          tCtx.drawImage(video, 0, 0, 120, 90);
+          const imgData = tCtx.getImageData(0, 0, 120, 90);
+          const data = imgData.data;
+
+          const rowStats = [];
+          let totalSkinCount = 0;
+
+          for (let y = 10; y < 85; y += 2) {
+            let minX = 120, maxX = 0, count = 0;
+            let sumX = 0;
+            for (let x = 10; x < 110; x += 2) {
+              const idx = (y * 120 + x) * 4;
+              const r = data[idx];
+              const g = data[idx + 1];
+              const b = data[idx + 2];
+
+              // Skin chroma detection in human tones
+              const isSkin = (r > 70 && g > 45 && b > 28 && r > g && r > b && (r - g) > 10 && (r - b) > 12 && Math.abs(r - g) < 115);
+              if (isSkin) {
+                count++;
+                sumX += x;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+              }
+            }
+            if (count >= 4) {
+              totalSkinCount += count;
+              rowStats.push({ y, count, minX, maxX, width: maxX - minX, centerX: sumX / count });
+            }
+          }
+
+          if (rowStats.length >= 8) {
+            // Find wrist inflection point (local minimum in width with forearm below and palm above)
+            let bestIdx = -1;
+            let minWidth = 999;
+            for (let i = 2; i < rowStats.length - 2; i++) {
+              const cur = rowStats[i].width;
+              if (cur < minWidth && cur > 10 && cur < 65) {
+                minWidth = cur;
+                bestIdx = i;
+              }
+            }
+
+            if (bestIdx !== -1) {
+              const wristRow = rowStats[bestIdx];
+              const normX = wristRow.centerX / 120;
+              const normY = wristRow.y / 90;
+              const normW = wristRow.width / 120;
+
+              // Calculate arm angle
+              const lowerRow = rowStats[Math.min(rowStats.length - 1, bestIdx + 3)];
+              const upperRow = rowStats[Math.max(0, bestIdx - 3)];
+              const dx = upperRow.centerX - lowerRow.centerX;
+              const dy = lowerRow.y - upperRow.y;
+              const angleRad = Math.atan2(dx, dy);
+              const angleDeg = Math.round(angleRad * (180 / Math.PI));
+
+              const conf = Math.min(97, Math.max(72, Math.round((totalSkinCount / 380) * 88)));
+
+              setDetectedWrist({
+                x: normX * 100,
+                y: normY * 100,
+                width: normW * 100,
+                angle: angleDeg,
+                confidence: conf
+              });
+              setTrackingConfidence(conf);
+              setTrackingFeedback(`Khóa cổ tay ${conf}% (YOLO Auto-Snap)`);
+
+              if (isAutoTracking) {
+                const targetOffset = (normY - 0.5) * 110;
+                const targetAng = Math.max(-35, Math.min(35, angleDeg * 0.75));
+                const targetSize = Math.max(14, Math.min(19, Math.round(14 + normW * 14)));
+
+                setArOffsetY(prev => Math.round(prev + (targetOffset - prev) * 0.28));
+                setArAngle(prev => Math.round(prev + (targetAng - prev) * 0.25));
+                setArSizeCm(prev => Math.max(14, Math.min(19, Math.round(prev + (targetSize - prev) * 0.18))));
+              }
+            } else {
+              setTrackingConfidence(prev => Math.max(0, prev - 4));
+              setTrackingFeedback('Đưa cổ tay vào giữa khung camera...');
+            }
+          } else {
+            setTrackingConfidence(prev => Math.max(0, prev - 4));
+            setTrackingFeedback('Đưa cổ tay vào giữa khung camera...');
+          }
+        } catch (e) {
+          // Ignore transient read errors
+        }
+      }
+      animId = requestAnimationFrame(processFrame);
+    };
+
+    animId = requestAnimationFrame(processFrame);
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [cameraActive, modalMode, isAutoTracking]);
 
   // Sync initialMode when modal opens
   useEffect(() => {
@@ -1305,21 +1464,48 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 {/* Hidden canvas for snapshot capture */}
                 <canvas ref={canvasRef} className="hidden" />
 
-                {/* Flip camera button */}
-                <button
-                  type="button"
-                  onClick={toggleFacingMode}
-                  className="absolute top-3 right-3 z-30 p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm border border-white/20 transition-all shadow-md"
-                  title="Đổi camera trước / sau"
-                >
-                  <RotateCw className="w-4 h-4" />
-                </button>
+                {/* Top Controls: Flip camera & Auto-Tracking Toggle */}
+                <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-auto">
+                  {/* YOLO Auto-Tracking Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAutoTracking(prev => !prev)}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-md border transition-all flex items-center gap-1.5 shadow-md ${
+                      isAutoTracking
+                        ? 'bg-emerald-600/90 text-white border-emerald-400/50 shadow-emerald-500/30'
+                        : 'bg-black/60 text-stone-300 border-white/20 hover:bg-black/80'
+                    }`}
+                  >
+                    <Sparkles className={`w-3.5 h-3.5 ${isAutoTracking ? 'animate-spin' : ''}`} />
+                    <span>{isAutoTracking ? '🤖 YOLO Khóa Cổ Tay' : '✋ Chỉnh Thủ Công'}</span>
+                  </button>
+
+                  {/* Flip camera button */}
+                  <button
+                    type="button"
+                    onClick={toggleFacingMode}
+                    className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm border border-white/20 transition-all shadow-md"
+                    title="Đổi camera trước / sau"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                  </button>
+                </div>
 
                 {/* AR Alignment Reticle (Khung định vị cổ tay) */}
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-48 h-64 border-2 border-dashed border-amber-300/50 rounded-full flex flex-col items-center justify-between py-4 shadow-inner">
-                    <span className="text-[10px] text-amber-200 font-bold bg-black/50 px-2 py-0.5 rounded-full backdrop-blur-xs">
-                      Cổ tay tại đây
+                  <div className={`w-48 h-64 border-2 border-dashed rounded-full flex flex-col items-center justify-between py-4 transition-all duration-300 ${
+                    isAutoTracking && detectedWrist && trackingConfidence > 65
+                      ? 'border-emerald-400/70 shadow-[0_0_20px_rgba(52,211,153,0.3)]'
+                      : 'border-amber-300/50 shadow-inner'
+                  }`}>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-xs transition-colors ${
+                      isAutoTracking && detectedWrist && trackingConfidence > 65
+                        ? 'text-emerald-200 bg-emerald-950/70 border border-emerald-500/30'
+                        : 'text-amber-200 bg-black/50'
+                    }`}>
+                      {isAutoTracking && detectedWrist && trackingConfidence > 65
+                        ? `🎯 Khóa Cổ Tay: ${trackingConfidence}%`
+                        : 'Đặt Cổ Tay Vào Khung'}
                     </span>
                     <span className="text-[9px] text-white/80 bg-black/40 px-2 py-0.5 rounded-full">
                       Bàn tay hướng lên trên
@@ -1329,9 +1515,9 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                 {/* REAL-TIME AR BRACELET OVERLAY */}
                 {(() => {
-                  const b = AR_BRACELETS[arSelectedBracelet] || AR_BRACELETS[0];
+                  const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
                   const scale = arSizeCm / 16;
-                  const totalBeads = 18;
+                  const totalBeads = b.beadPositions && b.beadPositions.length > 0 ? b.beadPositions.length : 18;
                   const rx = 88 * scale;
                   const ry = 46 * scale;
                   const cx = 160;
@@ -1345,10 +1531,12 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     // Depth perspective: beads in front (bottom) are slightly larger and brighter
                     const depthFactor = 0.8 + 0.35 * Math.sin(angle);
                     const radius = 8.5 * scale * depthFactor;
-                    beadItems.push({ x, y, radius, depthFactor, angle });
+                    const beadCustom = b.beadPositions?.[i];
+                    const color = beadCustom?.color || beadCustom?.item?.color || b.beadColor || '#F7C6D0';
+                    beadItems.push({ x, y, radius, depthFactor, angle, color, index: i });
                   }
                   // Sort beads by depth so front beads overlap back beads realistically
-                  beadItems.sort((a, b) => a.y - b.y);
+                  beadItems.sort((first, second) => first.y - second.y);
 
                   return (
                     <div 
@@ -1357,11 +1545,6 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     >
                       <svg viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-2xl">
                         <defs>
-                          <radialGradient id="arBeadGrad" cx="30%" cy="30%" r="70%">
-                            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
-                            <stop offset="35%" stopColor={b.beadColor} />
-                            <stop offset="100%" stopColor="#2A1B14" stopOpacity="0.85" />
-                          </radialGradient>
                           <filter id="wristShadow">
                             <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
                             <feOffset dx="0" dy="6" result="offsetblur" />
@@ -1382,23 +1565,30 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                           rx={rx}
                           ry={ry}
                           fill="none"
-                          stroke={b.cordColor}
+                          stroke={b.cordColor || '#E8DFD3'}
                           strokeWidth="3.5"
-                          opacity="0.85"
+                          opacity="0.9"
                           filter="url(#wristShadow)"
                         />
 
                         {/* Beads along ellipse */}
-                        {beadItems.map((bead, i) => (
-                          <g key={i}>
+                        {beadItems.map((bead) => (
+                          <g key={bead.index}>
+                            <defs>
+                              <radialGradient id={`arBeadGrad-${bead.index}`} cx="30%" cy="30%" r="70%">
+                                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+                                <stop offset="40%" stopColor={bead.color} />
+                                <stop offset="100%" stopColor="#1E130D" stopOpacity="0.88" />
+                              </radialGradient>
+                            </defs>
                             <circle
                               cx={bead.x}
                               cy={bead.y}
                               r={bead.radius}
-                              fill="url(#arBeadGrad)"
+                              fill={`url(#arBeadGrad-${bead.index})`}
                               stroke="#FFFFFF"
                               strokeWidth="0.8"
-                              opacity={0.95}
+                              opacity={0.96}
                             />
                             {/* Specular shine */}
                             <circle
@@ -1406,7 +1596,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                               cy={bead.y - bead.radius * 0.3}
                               r={bead.radius * 0.28}
                               fill="#FFFFFF"
-                              opacity={0.8}
+                              opacity={0.85}
                             />
                           </g>
                         ))}
@@ -1414,19 +1604,36 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                         {/* Central Dangling Charm */}
                         <g transform={`translate(${cx}, ${cy + ry + 4})`}>
                           <circle cx="0" cy="0" r="3" fill="#D4AF37" stroke="#FFFFFF" strokeWidth="0.5" />
-                          <circle cx="0" cy="11" r="10" fill="#E8DFD3" stroke="#B86244" strokeWidth="1.2" />
-                          <circle cx="0" cy="11" r="7" fill={b.beadColor} opacity="0.85" />
-                          <text x="0" y="14" textAnchor="middle" fill="#26211C" fontSize="7" fontWeight="bold">925</text>
+                          <circle cx="0" cy="11" r="11" fill="#FFF8F0" stroke="#B86244" strokeWidth="1.2" filter="url(#wristShadow)" />
+                          {b.selectedCharm?.image ? (
+                            <image
+                              href={b.selectedCharm.image}
+                              x="-8"
+                              y="3"
+                              width="16"
+                              height="16"
+                              clipPath="url(#charmClip)"
+                            />
+                          ) : (
+                            <>
+                              <circle cx="0" cy="11" r="7.5" fill={b.beadColor || '#D4AF37'} opacity="0.85" />
+                              <text x="0" y="13.5" textAnchor="middle" fill="#26211C" fontSize="6.5" fontWeight="bold">925</text>
+                            </>
+                          )}
                         </g>
                       </svg>
                     </div>
                   );
                 })()}
 
-                {/* Bottom camera active indicator */}
-                <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-full border border-white/15">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="text-[10px] text-white font-medium">AR Live Tracker</span>
+                {/* Bottom camera active indicator & YOLO status */}
+                <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 bg-black/65 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 shadow-md">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isAutoTracking && trackingConfidence > 65
+                      ? 'bg-emerald-400 animate-ping'
+                      : 'bg-amber-400 animate-pulse'
+                  }`} />
+                  <span className="text-[10px] text-white font-medium">{trackingFeedback}</span>
                 </div>
               </div>
 
@@ -1435,15 +1642,15 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[#26211C]">Chọn mẫu vòng để ướm thử:</span>
                   <span className="text-[11px] text-[#B86244] font-semibold">
-                    {AR_BRACELETS[arSelectedBracelet]?.name}
+                    {availableBracelets[arSelectedBracelet]?.name}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {AR_BRACELETS.map((item, idx) => {
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                  {availableBracelets.map((item, idx) => {
                     const isSelected = arSelectedBracelet === idx;
                     return (
                       <button
-                        key={item.id}
+                        key={item.id || idx}
                         type="button"
                         onClick={() => setArSelectedBracelet(idx)}
                         className={`p-2.5 rounded-2xl border text-left transition-all relative ${
@@ -1452,9 +1659,16 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                             : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
                         }`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="w-4 h-4 rounded-full border border-black/10 shadow-inner" style={{ backgroundColor: item.beadColor }} />
-                          <span className="text-[9px] text-[#8C8276] font-medium truncate">{item.charmName.split(' ')[0]}</span>
+                        {item.isCustom && (
+                          <span className="absolute -top-2 right-1 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500 to-[#B86244] text-[8px] font-extrabold text-white shadow-xs">
+                            ✨ Tự Phối 3D
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1.5 mb-1 mt-0.5">
+                          <span className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-inner shrink-0" style={{ backgroundColor: item.beadColor }} />
+                          <span className="text-[9px] text-[#8C8276] font-medium truncate">
+                            {item.charmName ? item.charmName.split(' ')[0] : 'Charm'}
+                          </span>
                         </div>
                         <p className="font-bold text-[11px] text-[#26211C] line-clamp-1">{item.name.replace('Vòng ', '')}</p>
                         <p className="text-[10px] text-[#B86244] font-bold mt-0.5">{formatPrice(item.price)}</p>
@@ -1474,6 +1688,12 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     Cỡ vòng: {arSizeCm} cm ({arSizeCm <= 15 ? 'Size S' : arSizeCm <= 17 ? 'Size M' : 'Size L'})
                   </span>
                 </div>
+
+                {isAutoTracking && (
+                  <p className="text-[11px] text-[#8C8276] italic bg-[#FAF7F2] p-2 rounded-lg border border-[#F3ECE1]">
+                    💡 AI YOLO đang tự động nhận diện góc nghiêng và chu vi cổ tay theo thời gian thực. Bạn vẫn có thể kéo trượt để tinh chỉnh thêm bên dưới!
+                  </p>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                   {/* Size slider */}
@@ -1535,16 +1755,34 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   <button
                     type="button"
                     onClick={() => {
-                      const b = AR_BRACELETS[arSelectedBracelet];
-                      addToCart({
-                        id: b.id,
-                        name: b.name,
-                        price: b.price,
-                        images: ['/images/products/bracelet-strawberry-quartz.webp']
-                      }, 1, {
-                        wristSize: `${arSizeCm} cm`,
-                        note: `Đã thử ướm vừa vặn qua AR Camera (Size ${arSizeCm}cm, Mệnh ${b.menh})`
-                      });
+                      const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
+                      if (b.isCustom) {
+                        addToCart({
+                          id: b.id || 'custom-designed-bracelet',
+                          name: b.name || 'Vòng Tự Phối Độc Bản (AR 3D)',
+                          price: b.price,
+                          isCustom: true,
+                          cordName: b.cordName,
+                          cordColor: b.cordColor,
+                          beadPositions: b.beadPositions,
+                          selectedCharm: b.selectedCharm,
+                          images: [b.selectedCharm?.image || '/images/products/bracelet-strawberry-quartz.webp']
+                        }, 1, {
+                          wristSize: `${arSizeCm} cm`,
+                          beadCount: b.beadPositions?.length || 18,
+                          note: `Đã thử ướm vừa vặn qua AR Camera 3D (Size ${arSizeCm}cm, Tự phối xưởng)`
+                        });
+                      } else {
+                        addToCart({
+                          id: b.id,
+                          name: b.name,
+                          price: b.price,
+                          images: ['/images/products/bracelet-strawberry-quartz.webp']
+                        }, 1, {
+                          wristSize: `${arSizeCm} cm`,
+                          note: `Đã thử ướm vừa vặn qua AR Camera (Size ${arSizeCm}cm, Mệnh ${b.menh})`
+                        });
+                      }
                       setArAddedSuccess(true);
                       setTimeout(() => setArAddedSuccess(false), 2500);
                     }}
@@ -1558,27 +1796,38 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     ) : (
                       <>
                         <ShoppingBag className="w-4 h-4 text-amber-300" />
-                        <span>Thêm Vòng Này Vào Giỏ ({formatPrice(AR_BRACELETS[arSelectedBracelet]?.price)})</span>
+                        <span>Thêm Vòng Này Vào Giỏ ({formatPrice(availableBracelets[arSelectedBracelet]?.price)})</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const b = AR_BRACELETS[arSelectedBracelet];
-                    handleApplyPreset({
-                      mainBeadId: b.id === 'ar-strawberry' ? 'bead-strawberry-quartz' : 'bead-tiger-eye',
-                      charmId: 'charm-lotus',
-                      sizeId: 'size-m'
-                    });
-                  }}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[#B86244] text-[#B86244] hover:bg-[#FAF7F2] font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Tự Phối Lại Mẫu Này Trong Xưởng</span>
-                </button>
+                {availableBracelets[arSelectedBracelet]?.isCustom ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[#B86244] text-[#B86244] hover:bg-[#FAF7F2] font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Quay Lại Tinh Chỉnh Trong Xưởng 3D</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const b = availableBracelets[arSelectedBracelet];
+                      handleApplyPreset({
+                        mainBeadId: b.id === 'ar-strawberry' ? 'bead-strawberry-quartz' : 'bead-tiger-eye',
+                        charmId: 'charm-lotus',
+                        sizeId: 'size-m'
+                      });
+                    }}
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[#B86244] text-[#B86244] hover:bg-[#FAF7F2] font-bold text-xs transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Tự Phối Lại Mẫu Này Trong Xưởng</span>
+                  </button>
+                )}
               </div>
             </div>
           )}

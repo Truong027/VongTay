@@ -22,7 +22,8 @@ import {
   RotateCcw,
   Palette,
   Wand2,
-  Plus
+  Plus,
+  Camera
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
@@ -315,7 +316,7 @@ const STEPS = [
   { id: 'size', label: 'Hoàn Tất' }
 ];
 
-export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpenAiVision, initialPreset }) {
+export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpenAiVision, initialPreset, onOpenArTryOn }) {
   if (!isOpen) return null;
 
   const { addToCart } = useCart();
@@ -486,16 +487,16 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
       if (!beadMap[bId]) {
         beadMap[bId] = {
           id: bId,
-          name: slot?.name || 'Hạt đá',
+          name: slot?.name || 'Hạt đá phong thủy',
           color: slot?.color || '#C59B6D',
-          pricePerBead: slot?.pricePerBead || 800,
+          pricePerBead: slot?.pricePerBead || 5000,
           count: 0,
           total: 0
         };
       }
       beadMap[bId].count += 1;
-      beadMap[bId].total += (slot?.pricePerBead || 800);
-      beadCost += (slot?.pricePerBead || 800);
+      beadMap[bId].total += (slot?.pricePerBead || 5000);
+      beadCost += (slot?.pricePerBead || 5000);
     });
 
     const beadSummaryList = Object.values(beadMap);
@@ -511,6 +512,31 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
       beadSummaryList
     };
   }, [selectedCord, selectedSize, beadSlots, selectedCharm]);
+
+  const handleTriggerArTryOn = () => {
+    if (!onOpenArTryOn) return;
+    const isMultiStone = priceData.beadSummaryList.length > 1;
+    const customName = isMultiStone
+      ? `Vòng Tay Tự Phối (${priceData.beadSummaryList.length} Loại Đá) & ${selectedCharm?.name || 'Charm Thủ Công'}`
+      : `Vòng Tay Tự Phối ${priceData.beadSummaryList[0]?.name || 'Đá Tự Nhiên'}`;
+
+    const customPayload = {
+      id: `custom-ar-${Date.now()}`,
+      name: customName,
+      price: priceData.total,
+      cordColor: selectedCord?.color || '#F7F3EB',
+      cordName: selectedCord?.name || 'Dây thủ công',
+      selectedCharm: selectedCharm,
+      charmName: selectedCharm?.name || 'Không gắn charm',
+      beadPositions: beadPositions,
+      wristSize: selectedSize?.label || '15 - 16 cm',
+      beadSummaryList: priceData.beadSummaryList,
+      beadCount: priceData.beadCount,
+      beadColor: beadPositions[0]?.color || '#EAA9A9'
+    };
+
+    onOpenArTryOn(customPayload);
+  };
 
   const beadPositions = useMemo(() => {
     const count = beadSlots.length || selectedSize?.beadCount || 21;
@@ -647,36 +673,50 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
           {/* LEFT: Live Bracelet Preview Canvas */}
           <div className="lg:col-span-5 bg-gradient-to-br from-[#F3ECE1] via-[#EDE4D6] to-[#F3ECE1] p-4 sm:p-6 flex flex-col items-center justify-start border-b lg:border-b-0 lg:border-r border-[#E8DFD3] relative">
 
-            {/* Mode toggle bar (3D vs 2D) */}
-            <div className="flex items-center justify-between w-full mb-3 px-1">
+            {/* Mode toggle bar (3D vs 2D & AR Try-On) */}
+            <div className="flex items-center justify-between w-full mb-3 px-1 flex-wrap gap-2">
               <span className="text-[10px] uppercase tracking-widest text-[#B86244] font-bold bg-white/80 px-2.5 py-1 rounded-full border border-[#E8DFD3] shadow-xs">
                 ✦ {canvasMode === '3d' ? '3D WebGL 360°' : '2D Bản Vẽ Thủ Công'}
               </span>
 
-              <div className="flex items-center bg-white/90 p-0.5 rounded-xl border border-[#E8DFD3] shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setCanvasMode('3d')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
-                    canvasMode === '3d'
-                      ? 'bg-[#B86244] text-white shadow-xs'
-                      : 'text-[#6B6258] hover:text-[#26211C]'
-                  }`}
-                >
-                  <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
-                  <span>3D 360°</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCanvasMode('2d')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    canvasMode === '2d'
-                      ? 'bg-[#26211C] text-white shadow-xs'
-                      : 'text-[#6B6258] hover:text-[#26211C]'
-                  }`}
-                >
-                  <span>2D</span>
-                </button>
+              <div className="flex items-center gap-2">
+                {onOpenArTryOn && (
+                  <button
+                    type="button"
+                    onClick={handleTriggerArTryOn}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-[#B86244] to-[#C09A58] text-white shadow-xs hover:opacity-95 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95"
+                    title="Ướm chiếc vòng vừa phối này lên cổ tay thật qua camera AR"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+                    <span>Ướm Cổ Tay Thật (AR)</span>
+                  </button>
+                )}
+
+                <div className="flex items-center bg-white/90 p-0.5 rounded-xl border border-[#E8DFD3] shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setCanvasMode('3d')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                      canvasMode === '3d'
+                        ? 'bg-[#B86244] text-white shadow-xs'
+                        : 'text-[#6B6258] hover:text-[#26211C]'
+                    }`}
+                  >
+                    <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                    <span>3D 360°</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCanvasMode('2d')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      canvasMode === '2d'
+                        ? 'bg-[#26211C] text-white shadow-xs'
+                        : 'text-[#6B6258] hover:text-[#26211C]'
+                    }`}
+                  >
+                    <span>2D</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1468,21 +1508,33 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                     {priceData.total.toLocaleString('vi-VN')}₫
                   </p>
                 </div>
-                <button
-                  onClick={handleAddCustomToCart}
-                  disabled={isAdded}
-                  className={`w-full sm:w-auto flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-[0.97] ${
-                    isAdded
-                      ? 'bg-[#4E6857] text-white'
-                      : 'bg-[#B86244] hover:bg-[#A05237] text-white hover:shadow-lg'
-                  }`}
-                >
-                  {isAdded ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Đã Thêm Vào Giỏ!</span>
-                    </>
-                  ) : (
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {onOpenArTryOn && (
+                    <button
+                      type="button"
+                      onClick={handleTriggerArTryOn}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-xl font-bold text-xs border border-[#C09A58] bg-[#FAF4ED] text-[#B86244] hover:bg-[#F3ECE1] transition-all shadow-xs cursor-pointer active:scale-95"
+                      title="Ướm chiếc vòng vừa phối này lên cổ tay thật qua camera AR"
+                    >
+                      <Camera className="w-4 h-4 text-[#B86244]" />
+                      <span>Ướm Lên Cổ Tay (AR)</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleAddCustomToCart}
+                    disabled={isAdded}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl font-bold text-sm transition-all shadow-md active:scale-[0.97] ${
+                      isAdded
+                        ? 'bg-[#4E6857] text-white'
+                        : 'bg-[#B86244] hover:bg-[#A05237] text-white hover:shadow-lg'
+                    }`}
+                  >
+                    {isAdded ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Đã Thêm Vào Giỏ!</span>
+                      </>
+                    ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />
                       <span>Đặt Làm Chiếc Vòng Này</span>
@@ -1491,10 +1543,11 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                 </button>
               </div>
             </div>
-
           </div>
+
         </div>
       </div>
     </div>
+  </div>
   );
 }
