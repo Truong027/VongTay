@@ -9,6 +9,8 @@ let pool = null;
 let isConnected = false;
 let connectingPromise = null;
 let tablesInitialized = false;
+let quotaExceeded = false;
+let lastQuotaCheckTime = 0;
 let currentConnectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL || 'postgresql://neondb_owner:npg_dxON2tr3BCTK@ep-blue-moon-b3pc0ls7-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=verify-full';
 
 export const initNeonDb = async (connStr = null) => {
@@ -17,6 +19,11 @@ export const initNeonDb = async (connStr = null) => {
   if (!connectionString) {
     console.log('ℹ️ Chưa có chuỗi kết nối Neon PostgreSQL (DATABASE_URL). Hệ thống đang chạy ở chế độ Local In-Memory & JSON.');
     return { success: false, message: 'Chưa cung cấp DATABASE_URL' };
+  }
+
+  // Quota guard: if quota was exceeded recently, don't spam Neon
+  if (quotaExceeded && !connStr && Date.now() - lastQuotaCheckTime < 300000) {
+    return { success: false, message: 'Neon DB đang tạm khóa do vượt hạn ngạch truyền dữ liệu (Data Transfer Quota). Hệ thống đang dùng Local Storage an toàn.' };
   }
 
   if (isConnected && pool && (!connStr || connStr === currentConnectionString)) {
@@ -53,6 +60,7 @@ export const initNeonDb = async (connStr = null) => {
       client.release();
 
       isConnected = true;
+      quotaExceeded = false;
       currentConnectionString = connectionString;
 
       console.log('🐘 Đã kết nối thành công tới Neon PostgreSQL Database!');
@@ -70,7 +78,14 @@ export const initNeonDb = async (connStr = null) => {
       };
     } catch (error) {
       isConnected = false;
-      console.error('❌ Lỗi kết nối Neon Database:', error.message);
+      const isQuota = error.message && error.message.includes('quota');
+      if (isQuota) {
+        quotaExceeded = true;
+        lastQuotaCheckTime = Date.now();
+        console.warn('⚠️ Neon PostgreSQL: Dự án đã vượt hạn ngạch truyền tải dữ liệu (Data Transfer Quota). Hệ thống tự động chuyển sang lưu trữ Local Storage / In-Memory mượt mà và an toàn.');
+      } else {
+        console.error('❌ Lỗi kết nối Neon Database:', error.message);
+      }
       return { 
         success: false, 
         message: `Lỗi kết nối Neon: ${error.message}` 
@@ -85,6 +100,7 @@ export const initNeonDb = async (connStr = null) => {
 
 export const ensureNeonConnected = async () => {
   if (isConnected && pool) return true;
+  if (quotaExceeded && Date.now() - lastQuotaCheckTime < 300000) return false;
   if (currentConnectionString) {
     const res = await initNeonDb();
     return res.success;

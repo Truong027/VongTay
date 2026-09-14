@@ -869,6 +869,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         const res = await api.updateVoucher(editingVoucher.id, payload);
         if (res && res.success) {
           triggerToast(`Đã cập nhật mã giảm giá "${res.data.code}" thành công`);
+          setVouchers(prev => prev.map(v => (v.id === res.data.id || v.code.toUpperCase() === res.data.code.toUpperCase()) ? res.data : v));
           setAdminTab('vouchers');
         } else {
           setVoucherFormError(res?.message || 'Lỗi cập nhật mã giảm giá');
@@ -877,13 +878,21 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         const res = await api.createVoucher(payload);
         if (res && res.success) {
           triggerToast(`Đã tạo mới mã giảm giá "${res.data.code}" thành công`);
+          setVouchers(prev => {
+            const filtered = prev.filter(v => v.id !== res.data.id && v.code.toUpperCase() !== res.data.code.toUpperCase());
+            return [res.data, ...filtered];
+          });
           setAdminTab('vouchers');
         } else {
           setVoucherFormError(res?.message || 'Lỗi tạo mã giảm giá');
         }
       }
-      const vRes = await api.getVouchers(true);
-      if (vRes && vRes.success) setVouchers(vRes.data);
+      try {
+        const vRes = await api.getVouchers(true);
+        if (vRes && vRes.success && Array.isArray(vRes.data)) {
+          setVouchers(vRes.data);
+        }
+      } catch (e) {}
     } catch (err) {
       setVoucherFormError(err.message || 'Lỗi lưu mã giảm giá');
     } finally {

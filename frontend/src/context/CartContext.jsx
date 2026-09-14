@@ -269,29 +269,42 @@ export const CartProvider = ({ children, currentUser }) => {
   const wholesaleSavings = retailSubtotal - subtotal;
   const hasWholesaleDiscount = wholesaleSavings > 0;
 
-  // Quản lý trạng thái mã giảm giá (Voucher) toàn cục
+  // Quản lý trạng thái mã giảm giá (Voucher) toàn cục (Đồng bộ cả sessionStorage và localStorage)
   const [appliedVoucher, setAppliedVoucher] = useState(() => {
     try {
-      const saved = sessionStorage.getItem('viban_applied_voucher');
+      const saved = sessionStorage.getItem('viban_applied_voucher') || localStorage.getItem('viban_applied_voucher');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
     }
   });
 
-  const applyVoucher = async (code) => {
+  const applyVoucher = async (code, customTotal = null) => {
     const cleanCode = String(code || '').trim().toUpperCase();
     if (!cleanCode) {
       return { success: false, message: 'Vui lòng nhập mã giảm giá' };
     }
+    const targetSubtotal = (customTotal !== null && customTotal !== undefined) ? Number(customTotal) : subtotal;
     try {
-      const res = await api.applyVoucher(cleanCode, subtotal);
+      const res = await api.applyVoucher(cleanCode, targetSubtotal);
       if (res && res.success) {
-        setAppliedVoucher(res);
+        const raw = res.data || res;
+        const normalized = {
+          code: cleanCode,
+          discountType: String(raw.discountType || raw.discount_type || 'percentage').toLowerCase(),
+          discountValue: Number(raw.discountValue !== undefined ? raw.discountValue : (raw.discount_value !== undefined ? raw.discount_value : (raw.discountAmount || 0))),
+          discountAmount: Number(raw.discountAmount || raw.discount_amount || 0),
+          minOrderValue: Number(raw.minOrderValue !== undefined ? raw.minOrderValue : (raw.min_order_value || 0)),
+          maxDiscount: raw.maxDiscount ? Number(raw.maxDiscount) : (raw.max_discount ? Number(raw.max_discount) : null),
+          description: raw.description || '',
+          message: raw.message || ''
+        };
+        setAppliedVoucher(normalized);
         try {
-          sessionStorage.setItem('viban_applied_voucher', JSON.stringify(res));
+          sessionStorage.setItem('viban_applied_voucher', JSON.stringify(normalized));
+          localStorage.setItem('viban_applied_voucher', JSON.stringify(normalized));
         } catch (e) {}
-        return { success: true, data: res, message: res.message };
+        return { success: true, data: normalized, message: res.message };
       } else {
         return { success: false, message: res?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn' };
       }
@@ -304,20 +317,37 @@ export const CartProvider = ({ children, currentUser }) => {
     setAppliedVoucher(null);
     try {
       sessionStorage.removeItem('viban_applied_voucher');
+      localStorage.removeItem('viban_applied_voucher');
     } catch (e) {}
   };
 
   // Tính số tiền giảm giá động dựa trên subtotal hiện tại
   let voucherDiscount = 0;
+  let isVoucherMinOrderMet = true;
+
   if (appliedVoucher) {
-    if (subtotal >= (appliedVoucher.minOrderValue || 0)) {
-      if (appliedVoucher.discountType === 'percentage') {
-        voucherDiscount = Math.round((subtotal * appliedVoucher.discountValue) / 100);
-        if (appliedVoucher.maxDiscount && voucherDiscount > appliedVoucher.maxDiscount) {
-          voucherDiscount = appliedVoucher.maxDiscount;
+    const raw = appliedVoucher.data || appliedVoucher;
+    const dType = String(raw.discountType || raw.discount_type || 'percentage').toLowerCase();
+    const dVal = Number(raw.discountValue !== undefined ? raw.discountValue : (raw.discount_value !== undefined ? raw.discount_value : (raw.discountAmount || 0)));
+    const minVal = Number(raw.minOrderValue !== undefined ? raw.minOrderValue : (raw.min_order_value || 0));
+    const maxD = (raw.maxDiscount !== undefined && raw.maxDiscount !== null) 
+      ? Number(raw.maxDiscount) 
+      : (raw.max_discount ? Number(raw.max_discount) : null);
+
+    if (minVal > 0 && subtotal < minVal) {
+      isVoucherMinOrderMet = false;
+      voucherDiscount = 0;
+    } else if (subtotal > 0) {
+      isVoucherMinOrderMet = true;
+      if (dType === 'percentage' || dType === 'percent') {
+        voucherDiscount = Math.round((subtotal * dVal) / 100);
+        if (maxD && voucherDiscount > maxD) {
+          voucherDiscount = maxD;
         }
       } else {
-        voucherDiscount = Math.min(appliedVoucher.discountAmount || appliedVoucher.discountValue || 0, subtotal);
+        // Fixed amount discount
+        const nominal = dVal > 0 ? dVal : Number(raw.discountAmount || 0);
+        voucherDiscount = Math.min(nominal, subtotal);
       }
     }
   }
@@ -344,6 +374,7 @@ export const CartProvider = ({ children, currentUser }) => {
       hasWholesaleDiscount,
       appliedVoucher,
       voucherDiscount,
+      isVoucherMinOrderMet,
       applyVoucher,
       removeVoucher,
       wishlist,

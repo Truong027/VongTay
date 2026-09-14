@@ -16,6 +16,7 @@ export default function CartDrawer({ onProceedToCheckout }) {
     totalCount,
     appliedVoucher,
     voucherDiscount,
+    isVoucherMinOrderMet,
     applyVoucher,
     removeVoucher
   } = useCart();
@@ -38,7 +39,7 @@ export default function CartDrawer({ onProceedToCheckout }) {
       return;
     }
     setIsApplying(true);
-    const res = await applyVoucher(code);
+    const res = await applyVoucher(code, subtotal);
     setIsApplying(false);
     if (!res.success) {
       setPromoError(res.message || 'Mã giảm giá không hợp lệ');
@@ -238,15 +239,23 @@ export default function CartDrawer({ onProceedToCheckout }) {
               
               {/* Promo code box */}
               {appliedVoucher ? (
-                <div className="p-3 bg-[#EDF5F0] border border-[#C2DEC8] rounded-xl flex items-center justify-between text-xs text-[#2E583A]">
+                <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                  isVoucherMinOrderMet && discount > 0 
+                    ? 'bg-[#EDF5F0] border-[#C2DEC8] text-[#2E583A]' 
+                    : 'bg-amber-50 border-amber-200 text-amber-900'
+                }`}>
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-[#3A754B] shrink-0" />
+                    <Sparkles className={`w-4 h-4 shrink-0 ${isVoucherMinOrderMet && discount > 0 ? 'text-[#3A754B]' : 'text-amber-600'}`} />
                     <div>
                       <span className="font-bold block">
-                        Đã áp dụng mã: {appliedVoucher.code} (-{discount.toLocaleString('vi-VN')}₫)
+                        {isVoucherMinOrderMet && discount > 0 ? (
+                          <>Đã áp dụng mã: {appliedVoucher.code} (-{discount.toLocaleString('vi-VN')}₫)</>
+                        ) : (
+                          <>Mã {appliedVoucher.code}: Cần mua thêm {Math.max(0, (appliedVoucher.minOrderValue || 0) - subtotal).toLocaleString('vi-VN')}₫ để kích hoạt giảm giá</>
+                        )}
                       </span>
                       {appliedVoucher.description && (
-                        <span className="text-[10px] text-[#4E6857] block">
+                        <span className="text-[10px] opacity-80 block">
                           {appliedVoucher.description}
                         </span>
                       )}

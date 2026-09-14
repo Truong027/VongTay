@@ -587,8 +587,14 @@ export const api = {
 
   // Vouchers & Promotions
   async getVouchers(includeAll = false) {
-    const url = includeAll ? `${BASE_URL}/vouchers?all=true` : `${BASE_URL}/vouchers`;
-    const res = await fetch(url);
+    const ts = Date.now();
+    const url = includeAll 
+      ? `${BASE_URL}/vouchers?all=true&includeInactive=true&_t=${ts}` 
+      : `${BASE_URL}/vouchers?_t=${ts}`;
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+    });
     return safeParseResponse(res, 'Không thể tải danh sách mã giảm giá');
   },
 

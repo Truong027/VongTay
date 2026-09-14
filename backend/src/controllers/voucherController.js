@@ -10,7 +10,7 @@ import { cacheService } from '../utils/cacheService.js';
 
 export const getVouchers = async (req, res) => {
   try {
-    const includeInactive = req.query.all === 'true';
+    const includeInactive = req.query.all === 'true' || req.query.includeInactive === 'true';
     const cacheKey = `db:vouchers:${includeInactive ? 'all' : 'active'}`;
     const vouchers = await cacheService.wrap(cacheKey, 60, async () => {
       return await dbGetVouchers(includeInactive);

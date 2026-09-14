@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { 
   products as seedProducts, 
@@ -15,6 +16,7 @@ import { query, isNeonConnected, initNeonDb, ensureNeonConnected } from './neonD
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DB_FILE = path.join(__dirname, 'db.json');
+const TMP_DB_FILE = path.join(os.tmpdir(), 'viban_db.json');
 
 const defaultUsers = [
   {
@@ -57,17 +59,27 @@ let memoryData = {
   orders: [...seedOrders],
   orderItems: [],
   reviews: [...seedReviews],
-  vouchers: [...seedVouchers],
+  vouchers: [],
   wishlists: [],
   customDesigns: [],
   consultations: [...seedConsultations],
   customizerOptions: JSON.parse(JSON.stringify(seedCustomizerOptions))
 };
 
-// Load existing db.json if present
+// Load existing db.json or tmp db if present (prioritize tmp on serverless warm starts)
 try {
-  if (fs.existsSync(DB_FILE)) {
-    const raw = fs.readFileSync(DB_FILE, 'utf8');
+  let raw = null;
+  if (fs.existsSync(TMP_DB_FILE)) {
+    try {
+      const tmpText = fs.readFileSync(TMP_DB_FILE, 'utf8');
+      if (tmpText && tmpText.length > 50) raw = tmpText;
+    } catch {}
+  }
+  if (!raw && fs.existsSync(DB_FILE)) {
+    raw = fs.readFileSync(DB_FILE, 'utf8');
+  }
+
+  if (raw) {
     const parsed = JSON.parse(raw);
     if (parsed.products && Array.isArray(parsed.products) && parsed.products.length > 0) {
       memoryData.products = parsed.products;
@@ -77,7 +89,7 @@ try {
     if (parsed.orders) memoryData.orders = parsed.orders;
     if (parsed.users) memoryData.users = parsed.users;
     if (parsed.categories) memoryData.categories = parsed.categories;
-    if (parsed.vouchers) {
+    if (parsed.vouchers && Array.isArray(parsed.vouchers)) {
       const SAMPLE_CODES = new Set(['KHANHVY10', 'FREESHIP', 'BANMOI20K', 'TRIANXUONG50K', 'MAYMAN', 'ANYEN']);
       memoryData.vouchers = parsed.vouchers.filter(v => 
         !SAMPLE_CODES.has(String(v.code || '').trim().toUpperCase()) &&
@@ -100,7 +112,12 @@ try {
     if (memoryData.products && memoryData.products.length > 0) {
       memoryData.products[0].isTrending = true;
     }
-    fs.writeFileSync(DB_FILE, JSON.stringify(memoryData, null, 2), 'utf8');
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(memoryData, null, 2), 'utf8');
+    } catch {}
+    try {
+      fs.writeFileSync(TMP_DB_FILE, JSON.stringify(memoryData, null, 2), 'utf8');
+    } catch {}
     console.log('📁 Đã khởi tạo tệp cơ sở dữ liệu vật lý db.json (11 bảng).');
   }
 } catch (e) {
@@ -108,10 +125,16 @@ try {
 }
 
 const saveToDisk = () => {
+  const jsonStr = JSON.stringify(memoryData, null, 2);
   try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(memoryData, null, 2), 'utf8');
+    fs.writeFileSync(DB_FILE, jsonStr, 'utf8');
   } catch (e) {
-    console.error('Lỗi ghi db.json:', e.message);
+    // Expected on read-only serverless filesystems (e.g. AWS Lambda / Vercel)
+  }
+  try {
+    fs.writeFileSync(TMP_DB_FILE, jsonStr, 'utf8');
+  } catch (e) {
+    console.warn('Lỗi ghi tmp db:', e.message);
   }
 };
 
@@ -1578,15 +1601,21 @@ export const dbGetVouchers = async (includeInactive = false) => {
           usageLimit: r.usage_limit,
           usedCount: Number(r.used_count || 0),
           description: r.description,
-          isActive: r.is_active,
+          isActive: r.is_active !== false,
           expiresAt: r.expires_at,
           createdAt: r.created_at
         }));
-        if (includeInactive) {
-          memoryData.vouchers = mapped;
-          saveToDisk();
-        }
-        return mapped;
+
+        // Merge mapped with memoryData so locally created vouchers are never wiped out
+        const merged = [...mapped];
+        (memoryData.vouchers || []).forEach(localV => {
+          if (!merged.some(m => m.id === localV.id || String(m.code || '').trim().toUpperCase() === String(localV.code || '').trim().toUpperCase())) {
+            merged.push(localV);
+          }
+        });
+        memoryData.vouchers = merged;
+        saveToDisk();
+        return includeInactive ? merged : merged.filter(v => v.isActive !== false);
       }
     } catch (e) {
       console.warn('Lỗi đọc vouchers Neon DB:', e.message);
@@ -1603,17 +1632,22 @@ export const dbCreateVoucher = async (voucherData) => {
   }
 
   const existing = await dbGetVouchers(true);
-  if (existing.some(v => v.code === code)) {
+  if (existing.some(v => String(v.code || '').trim().toUpperCase() === code)) {
     throw new Error(`Mã voucher "${code}" đã tồn tại trên hệ thống`);
   }
+
+  const dType = voucherData.discountType === 'fixed' ? 'fixed' : 'percentage';
+  const dVal = Number(voucherData.discountValue) || 0;
+  const minVal = Number(voucherData.minOrderValue) || 0;
+  const maxD = (voucherData.maxDiscount && dType === 'percentage') ? Number(voucherData.maxDiscount) : null;
 
   const newVoucher = {
     id: voucherData.id || `voucher-${Date.now()}`,
     code,
-    discountType: voucherData.discountType === 'fixed' ? 'fixed' : 'percentage',
-    discountValue: Number(voucherData.discountValue) || 0,
-    minOrderValue: Number(voucherData.minOrderValue) || 0,
-    maxDiscount: voucherData.maxDiscount ? Number(voucherData.maxDiscount) : null,
+    discountType: dType,
+    discountValue: dVal,
+    minOrderValue: minVal,
+    maxDiscount: maxD,
     usageLimit: Number(voucherData.usageLimit) || 500,
     usedCount: 0,
     description: voucherData.description || `Ưu đãi ${code}`,
@@ -1621,6 +1655,10 @@ export const dbCreateVoucher = async (voucherData) => {
     expiresAt: voucherData.expiresAt ? new Date(voucherData.expiresAt).toISOString() : null,
     createdAt: new Date().toISOString()
   };
+
+  if (!memoryData.vouchers) memoryData.vouchers = [];
+  memoryData.vouchers.unshift(newVoucher);
+  saveToDisk();
 
   if (isNeonConnected()) {
     try {
@@ -1655,32 +1693,43 @@ export const dbCreateVoucher = async (voucherData) => {
     }
   }
 
-  if (!memoryData.vouchers) memoryData.vouchers = [];
-  memoryData.vouchers.unshift(newVoucher);
-  saveToDisk();
-
   return newVoucher;
 };
 
 export const dbUpdateVoucher = async (id, updateData) => {
   const vouchers = await dbGetVouchers(true);
-  const target = vouchers.find(v => v.id === id || v.code === id);
+  const target = vouchers.find(v => v.id === id || String(v.code || '').trim().toUpperCase() === String(id).trim().toUpperCase());
   if (!target) {
     throw new Error(`Không tìm thấy mã giảm giá có mã ID "${id}"`);
   }
 
+  const dType = updateData.discountType ? updateData.discountType : target.discountType;
+  const dVal = updateData.discountValue !== undefined ? Number(updateData.discountValue) : target.discountValue;
+  const minVal = updateData.minOrderValue !== undefined ? Number(updateData.minOrderValue) : target.minOrderValue;
+  const maxD = updateData.maxDiscount !== undefined 
+    ? (updateData.maxDiscount && dType === 'percentage' ? Number(updateData.maxDiscount) : null) 
+    : target.maxDiscount;
+
   const updatedVoucher = {
     ...target,
     code: updateData.code ? String(updateData.code).trim().toUpperCase() : target.code,
-    discountType: updateData.discountType ? updateData.discountType : target.discountType,
-    discountValue: updateData.discountValue !== undefined ? Number(updateData.discountValue) : target.discountValue,
-    minOrderValue: updateData.minOrderValue !== undefined ? Number(updateData.minOrderValue) : target.minOrderValue,
-    maxDiscount: updateData.maxDiscount !== undefined ? (updateData.maxDiscount ? Number(updateData.maxDiscount) : null) : target.maxDiscount,
+    discountType: dType,
+    discountValue: dVal,
+    minOrderValue: minVal,
+    maxDiscount: maxD,
     usageLimit: updateData.usageLimit !== undefined ? Number(updateData.usageLimit) : target.usageLimit,
     description: updateData.description !== undefined ? updateData.description : target.description,
     isActive: updateData.isActive !== undefined ? Boolean(updateData.isActive) : target.isActive,
     expiresAt: updateData.expiresAt !== undefined ? (updateData.expiresAt ? new Date(updateData.expiresAt).toISOString() : null) : target.expiresAt
   };
+
+  const memIdx = (memoryData.vouchers || []).findIndex(v => v.id === target.id || v.code === target.code);
+  if (memIdx !== -1) {
+    memoryData.vouchers[memIdx] = updatedVoucher;
+  } else {
+    memoryData.vouchers.push(updatedVoucher);
+  }
+  saveToDisk();
 
   if (isNeonConnected()) {
     try {
@@ -1707,14 +1756,6 @@ export const dbUpdateVoucher = async (id, updateData) => {
     }
   }
 
-  const memIdx = (memoryData.vouchers || []).findIndex(v => v.id === target.id || v.code === target.code);
-  if (memIdx !== -1) {
-    memoryData.vouchers[memIdx] = updatedVoucher;
-  } else {
-    memoryData.vouchers.push(updatedVoucher);
-  }
-  saveToDisk();
-
   return updatedVoucher;
 };
 
@@ -1722,6 +1763,11 @@ export const dbDeleteVoucher = async (id) => {
   const clean = String(id).trim();
   const cleanUpper = clean.toUpperCase();
   await ensureNeonConnected();
+
+  if (memoryData.vouchers) {
+    memoryData.vouchers = memoryData.vouchers.filter(v => v.id !== clean && v.code !== clean && v.code !== cleanUpper);
+    saveToDisk();
+  }
 
   if (isNeonConnected()) {
     try {
@@ -1732,22 +1778,24 @@ export const dbDeleteVoucher = async (id) => {
     }
   }
 
-  if (memoryData.vouchers) {
-    memoryData.vouchers = memoryData.vouchers.filter(v => v.id !== clean && v.code !== clean && v.code !== cleanUpper);
-    saveToDisk();
-  }
-
   return { success: true, message: `Đã xóa mã voucher ${clean} thành công` };
 };
 
 export const dbToggleVoucherActive = async (id) => {
   const vouchers = await dbGetVouchers(true);
-  const target = vouchers.find(v => v.id === id || v.code === id);
+  const target = vouchers.find(v => v.id === id || String(v.code || '').trim().toUpperCase() === String(id).trim().toUpperCase());
   if (!target) {
     throw new Error(`Không tìm thấy mã giảm giá ID "${id}"`);
   }
 
   const newStatus = !target.isActive;
+  target.isActive = newStatus;
+
+  const memIdx = (memoryData.vouchers || []).findIndex(v => v.id === target.id || v.code === target.code);
+  if (memIdx !== -1) {
+    memoryData.vouchers[memIdx].isActive = newStatus;
+  }
+  saveToDisk();
 
   if (isNeonConnected()) {
     try {
@@ -1757,23 +1805,21 @@ export const dbToggleVoucherActive = async (id) => {
     }
   }
 
-  const memIdx = (memoryData.vouchers || []).findIndex(v => v.id === target.id || v.code === target.code);
-  if (memIdx !== -1) {
-    memoryData.vouchers[memIdx].isActive = newStatus;
-  }
-  saveToDisk();
-
   return { success: true, id: target.id, code: target.code, isActive: newStatus };
 };
 
 export const dbValidateAndApplyVoucher = async (code, orderTotal) => {
   if (!code) return { success: false, message: 'Vui lòng cung cấp mã voucher' };
   const cleanCode = String(code).trim().toUpperCase();
-  const vouchers = await dbGetVouchers(false);
-  const voucher = vouchers.find(v => v.code === cleanCode);
+  const vouchers = await dbGetVouchers(true);
+  const voucher = vouchers.find(v => String(v.code || '').trim().toUpperCase() === cleanCode);
 
   if (!voucher) {
-    return { success: false, message: `Mã giảm giá "${cleanCode}" không hợp lệ hoặc đã bị tạm ngưng` };
+    return { success: false, message: `Mã giảm giá "${cleanCode}" không tồn tại hoặc đã bị xóa` };
+  }
+
+  if (voucher.isActive === false) {
+    return { success: false, message: `Mã giảm giá "${cleanCode}" hiện đang tạm ngưng sử dụng` };
   }
 
   if (voucher.expiresAt && new Date(voucher.expiresAt) < new Date()) {
@@ -1785,33 +1831,47 @@ export const dbValidateAndApplyVoucher = async (code, orderTotal) => {
   }
 
   const numOrderTotal = Number(orderTotal) || 0;
-  if (numOrderTotal < (voucher.minOrderValue || 0)) {
+  const minOrderVal = Number(voucher.minOrderValue || voucher.min_order_value || 0);
+
+  if (numOrderTotal > 0 && numOrderTotal < minOrderVal) {
     return {
       success: false,
-      message: `Mã ${cleanCode} chỉ áp dụng cho đơn hàng từ ${(voucher.minOrderValue).toLocaleString('vi-VN')}₫`
+      message: `Mã ${cleanCode} chỉ áp dụng cho đơn hàng từ ${minOrderVal.toLocaleString('vi-VN')}₫ (giỏ hiện tại: ${numOrderTotal.toLocaleString('vi-VN')}₫)`
     };
   }
 
+  const dType = String(voucher.discountType || voucher.discount_type || 'percentage').toLowerCase();
+  const dVal = Number(voucher.discountValue !== undefined ? voucher.discountValue : (voucher.discount_value !== undefined ? voucher.discount_value : 0));
+  const maxD = (voucher.maxDiscount !== undefined && voucher.maxDiscount !== null)
+    ? Number(voucher.maxDiscount)
+    : (voucher.max_discount !== undefined && voucher.max_discount !== null ? Number(voucher.max_discount) : null);
+
   let discountAmount = 0;
-  if (voucher.discountType === 'percentage') {
-    discountAmount = Math.round((numOrderTotal * voucher.discountValue) / 100);
-    if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
-      discountAmount = voucher.maxDiscount;
+  if (dType === 'percentage' || dType === 'percent') {
+    if (numOrderTotal > 0) {
+      discountAmount = Math.round((numOrderTotal * dVal) / 100);
+      if (maxD && discountAmount > maxD) {
+        discountAmount = maxD;
+      }
+    } else {
+      discountAmount = dVal;
     }
   } else {
-    discountAmount = Math.min(voucher.discountValue, numOrderTotal);
+    discountAmount = numOrderTotal > 0 ? Math.min(dVal, numOrderTotal) : dVal;
   }
+
+  const displayDiscount = (dType === 'percentage' || dType === 'percent') ? `${dVal}%` : `${dVal.toLocaleString('vi-VN')}₫`;
 
   return {
     success: true,
     code: voucher.code,
     discountAmount,
-    discountType: voucher.discountType,
-    discountValue: voucher.discountValue,
-    minOrderValue: voucher.minOrderValue || 0,
-    maxDiscount: voucher.maxDiscount || null,
-    description: voucher.description,
-    message: `Áp dụng mã ${voucher.code} thành công! Giảm ${discountAmount.toLocaleString('vi-VN')}₫`
+    discountType: (dType === 'percentage' || dType === 'percent') ? 'percentage' : 'fixed',
+    discountValue: dVal,
+    minOrderValue: minOrderVal,
+    maxDiscount: maxD,
+    description: voucher.description || '',
+    message: `Áp dụng mã ${voucher.code} thành công! Giảm ${displayDiscount}`
   };
 };
 

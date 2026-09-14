@@ -91,7 +91,35 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
     ? Number(checkoutData.subtotal) 
     : cartItems.reduce((s, i) => s + (i.effectivePrice || i.price) * (i.quantity || 1), 0);
   
-  const discount = voucherDiscount;
+  const discount = (() => {
+    if (!appliedVoucher) {
+      return (checkoutData?.voucherDiscount !== undefined ? Number(checkoutData.voucherDiscount) : 0);
+    }
+    const raw = appliedVoucher.data || appliedVoucher;
+    const dType = String(raw.discountType || raw.discount_type || 'percentage').toLowerCase();
+    const dVal = Number(raw.discountValue !== undefined ? raw.discountValue : (raw.discount_value !== undefined ? raw.discount_value : (raw.discountAmount || 0)));
+    const minVal = Number(raw.minOrderValue !== undefined ? raw.minOrderValue : (raw.min_order_value || 0));
+    const maxD = (raw.maxDiscount !== undefined && raw.maxDiscount !== null) 
+      ? Number(raw.maxDiscount) 
+      : (raw.max_discount ? Number(raw.max_discount) : null);
+
+    if (minVal > 0 && itemsSubtotal < minVal) {
+      return 0;
+    }
+    if (itemsSubtotal <= 0) return 0;
+
+    let calc = 0;
+    if (dType === 'percentage' || dType === 'percent') {
+      calc = Math.round((itemsSubtotal * dVal) / 100);
+      if (maxD && calc > maxD) calc = maxD;
+    } else {
+      const nominal = dVal > 0 ? dVal : Number(raw.discountAmount || 0);
+      calc = Math.min(nominal, itemsSubtotal);
+    }
+    return calc > 0 ? calc : (voucherDiscount > 0 ? voucherDiscount : (Number(checkoutData?.voucherDiscount) || 0));
+  })();
+
+  const isVoucherMet = !appliedVoucher || !appliedVoucher.minOrderValue || itemsSubtotal >= Number(appliedVoucher.minOrderValue);
   const shippingFee = (checkoutData?.shippingFee !== undefined)
     ? Number(checkoutData.shippingFee)
     : (itemsSubtotal >= 400000 || itemsSubtotal === 0 ? 0 : 25000);
@@ -106,7 +134,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
     }
     setVoucherError('');
     setIsCheckingVoucher(true);
-    const res = await applyVoucher(code);
+    const res = await applyVoucher(code, itemsSubtotal);
     setIsCheckingVoucher(false);
     if (res.success) {
       setVoucherCodeInput('');
@@ -674,14 +702,22 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                   </div>
 
                   {appliedVoucher ? (
-                    <div className="p-2.5 bg-[#EDF5F0] border border-[#C2DEC8] rounded-xl flex items-center justify-between text-xs text-[#2E583A]">
+                    <div className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                      isVoucherMet && discount > 0 
+                        ? 'bg-[#EDF5F0] border-[#C2DEC8] text-[#2E583A]' 
+                        : 'bg-amber-50 border-amber-200 text-amber-900'
+                    }`}>
                       <div>
                         <span className="font-bold flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-[#3A754B]" />
-                          Đã áp dụng: {appliedVoucher.code} (-{discount.toLocaleString('vi-VN')}₫)
+                          <Sparkles className={`w-3.5 h-3.5 ${isVoucherMet && discount > 0 ? 'text-[#3A754B]' : 'text-amber-600'}`} />
+                          {isVoucherMet && discount > 0 ? (
+                            <>Đã áp dụng: {appliedVoucher.code} (-{discount.toLocaleString('vi-VN')}₫)</>
+                          ) : (
+                            <>Mã {appliedVoucher.code}: Cần mua thêm {Math.max(0, (appliedVoucher.minOrderValue || 0) - itemsSubtotal).toLocaleString('vi-VN')}₫ để kích hoạt giảm giá</>
+                          )}
                         </span>
                         {appliedVoucher.description && (
-                          <span className="text-[10px] font-medium text-[#4E6857] block mt-0.5">
+                          <span className="text-[10px] font-medium opacity-80 block mt-0.5">
                             {appliedVoucher.description}
                           </span>
                         )}
