@@ -48,8 +48,8 @@ function CharmPreviewSVG({ charm, size = 40 }) {
 
   if (!charm) return null;
 
-  // Render real charm photo if available
-  if (charm.image) {
+  // Render real charm photo if available and not generic placeholder
+  if (charm.image && !charm.image.includes('bracelet-strawberry-quartz')) {
     return (
       <div className="w-full h-full flex items-center justify-center p-0.5 overflow-hidden rounded-xl">
         <img 
@@ -58,6 +58,120 @@ function CharmPreviewSVG({ charm, size = 40 }) {
           className="w-full h-full object-contain filter drop-shadow-sm transition-transform duration-300 group-hover:scale-110" 
         />
       </div>
+    );
+  }
+
+  // 1. Cây Thông Noel Pha Lê 3D
+  if (charm.id === 'charm-tree-crystal') {
+    return (
+      <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
+        <g transform={`translate(${cx}, ${cy})`}>
+          <rect x="-3" y="9" width="6" height="5" fill="#A06828" rx="1" />
+          <polygon points="0,-2 -15,9 15,9" fill="#18924B" stroke="#106B35" strokeWidth="0.8" />
+          <polygon points="0,-8 -12,1 12,1" fill="#23A457" stroke="#16793D" strokeWidth="0.8" />
+          <polygon points="0,-14 -9,-5 9,-5" fill="#2FC169" stroke="#1B8E4B" strokeWidth="0.8" />
+          <polygon points="0,-18 1.5,-15 4.5,-15 2,-13 3,-10 0,-12 -3,-10 -2,-13 -4.5,-15 -1.5,-15" fill="#FFD700" />
+          <circle cx="-6" cy="6" r="1.5" fill="#FF2A2A" />
+          <circle cx="6" cy="6.5" r="1.5" fill="#FFD700" />
+          <circle cx="-3" cy="-1.5" r="1.5" fill="#00E5FF" />
+          <circle cx="4" cy="-1" r="1.5" fill="#FF69B4" />
+        </g>
+      </svg>
+    );
+  }
+
+  // 2. Người Tuyết Men Sứ Giáng Sinh
+  if (charm.id === 'charm-snowman') {
+    return (
+      <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
+        <g transform={`translate(${cx}, ${cy})`}>
+          <circle cx="0" cy="7" r="9" fill="#FFFDF9" stroke="#D4D0C8" strokeWidth="0.8" />
+          <circle cx="0" cy="-4" r="6.5" fill="#FFFDF9" stroke="#D4D0C8" strokeWidth="0.8" />
+          <path d="M -6 -1 Q 0 2 6 -1" stroke="#E62626" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <rect x="2" y="1" width="3" height="6" fill="#E62626" rx="1" />
+          <rect x="-8" y="-12" width="16" height="2" rx="1" fill="#1A1A1A" />
+          <rect x="-4.5" y="-18" width="9" height="7" rx="1" fill="#1A1A1A" />
+          <rect x="-4.5" y="-13" width="9" height="1.5" fill="#E62626" />
+          <circle cx="-2.5" cy="-5" r="0.8" fill="#1A1A1A" />
+          <circle cx="2.5" cy="-5" r="0.8" fill="#1A1A1A" />
+          <polygon points="0,-4 5,-3 0,-2" fill="#FF6B1A" />
+          <circle cx="0" cy="5" r="0.9" fill="#1A1A1A" />
+          <circle cx="0" cy="9" r="0.9" fill="#1A1A1A" />
+        </g>
+      </svg>
+    );
+  }
+
+  // 3. Nấm Men Đỏ Chân Trắng
+  if (charm.id === 'charm-mushroom-red') {
+    return (
+      <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
+        <g transform={`translate(${cx}, ${cy})`}>
+          <path d="M -4 2 L -5 12 L 5 12 L 4 2 Z" fill="#FFFDF7" stroke="#D8D2C4" strokeWidth="0.8" />
+          <path d="M -12 2 C -12 -12 12 -12 12 2 Z" fill="#E62626" stroke="#B81414" strokeWidth="0.8" />
+          <circle cx="0" cy="-6" r="2" fill="#FFFFFF" />
+          <circle cx="-6" cy="-2" r="1.6" fill="#FFFFFF" />
+          <circle cx="6" cy="-2" r="1.6" fill="#FFFFFF" />
+          <circle cx="-3" cy="0" r="1.2" fill="#FFFFFF" />
+          <circle cx="3" cy="0" r="1.2" fill="#FFFFFF" />
+        </g>
+      </svg>
+    );
+  }
+
+  // 4. Trái Tim Men Gốm Xanh Bơ Puffy
+  if (charm.id === 'charm-heart-green') {
+    return (
+      <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
+        <defs>
+          <radialGradient id={`heart-${s}`} cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#C8E876" />
+            <stop offset="50%" stopColor="#93BF40" />
+            <stop offset="100%" stopColor="#5E841D" />
+          </radialGradient>
+        </defs>
+        <g transform={`translate(${cx}, ${cy})`}>
+          <path d="M 0 3 C -8 -7 -14 0 -11 6 C -8 12 0 16 0 16 C 0 16 8 12 11 6 C 14 0 8 -7 0 3 Z" fill={`url(#heart-${s})`} stroke="#FFFFFF" strokeWidth="0.8" />
+          <circle cx="-4" cy="2" r="1.5" fill="#FFFFFF" opacity="0.6" />
+        </g>
+      </svg>
+    );
+  }
+
+  // 5. Quả Táo Đỏ Thủy Tinh Ruby
+  if (charm.id === 'charm-apple-red') {
+    return (
+      <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
+        <defs>
+          <radialGradient id={`apple-${s}`} cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#FF6B6B" />
+            <stop offset="55%" stopColor="#D91424" />
+            <stop offset="100%" stopColor="#7A000A" />
+          </radialGradient>
+        </defs>
+        <g transform={`translate(${cx}, ${cy})`}>
+          <ellipse cx="0" cy="3" rx="10" ry="9" fill={`url(#apple-${s})`} stroke="#FFFFFF" strokeWidth="0.8" />
+          <circle cx="-4" cy="0" r="1.8" fill="#FFFFFF" opacity="0.6" />
+          <path d="M 0 -6 Q -1 -11 -3 -12" stroke="#5C3818" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+          <ellipse cx="4" cy="-8" rx="4" ry="2" fill="#2E8B57" transform="rotate(-25 4 -8)" />
+        </g>
+      </svg>
+    );
+  }
+
+  // 6. Vòng Nguyệt Quế Noel
+  if (charm.id === 'charm-wreath') {
+    return (
+      <svg width={s} height={h} viewBox={`0 0 ${s} ${h}`}>
+        <g transform={`translate(${cx}, ${cy})`}>
+          <circle cx="0" cy="2" r="10" fill="none" stroke="#1E7B3A" strokeWidth="5" />
+          <circle cx="0" cy="2" r="10" fill="none" stroke="#2FC169" strokeWidth="2" strokeDasharray="3 3" />
+          <polygon points="-5,-8 0,-5 5,-8 3,-4 0,-5 -3,-4" fill="#E62626" />
+          <circle cx="-7" cy="1" r="1.3" fill="#E62626" />
+          <circle cx="7" cy="3" r="1.3" fill="#FFD700" />
+          <circle cx="0" cy="11" r="1.3" fill="#E62626" />
+        </g>
+      </svg>
     );
   }
 
