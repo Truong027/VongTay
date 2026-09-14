@@ -6,11 +6,15 @@ import {
   dbDeleteVoucher,
   dbToggleVoucherActive
 } from '../data/dbStore.js';
+import { cacheService } from '../utils/cacheService.js';
 
 export const getVouchers = async (req, res) => {
   try {
     const includeInactive = req.query.all === 'true';
-    const vouchers = await dbGetVouchers(includeInactive);
+    const cacheKey = `db:vouchers:${includeInactive ? 'all' : 'active'}`;
+    const vouchers = await cacheService.wrap(cacheKey, 60, async () => {
+      return await dbGetVouchers(includeInactive);
+    });
     res.json({
       success: true,
       data: vouchers
@@ -47,6 +51,7 @@ export const createVoucher = async (req, res) => {
       expiresAt
     });
 
+    cacheService.invalidatePrefix('db:vouchers');
     res.status(201).json({
       success: true,
       message: `Tạo mã giảm giá "${created.code}" thành công`,
@@ -64,6 +69,7 @@ export const updateVoucher = async (req, res) => {
   try {
     const { id } = req.params;
     const updated = await dbUpdateVoucher(id, req.body);
+    cacheService.invalidatePrefix('db:vouchers');
     res.json({
       success: true,
       message: `Cập nhật mã giảm giá "${updated.code}" thành công`,
@@ -81,6 +87,7 @@ export const deleteVoucher = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await dbDeleteVoucher(id);
+    cacheService.invalidatePrefix('db:vouchers');
     res.json(result);
   } catch (err) {
     res.status(400).json({
@@ -94,6 +101,7 @@ export const toggleVoucherActive = async (req, res) => {
   try {
     const { id } = req.params;
     const result = await dbToggleVoucherActive(id);
+    cacheService.invalidatePrefix('db:vouchers');
     res.json({
       success: true,
       message: `Đã ${result.isActive ? 'kích hoạt' : 'tạm ngưng'} mã giảm giá "${result.code}"`,

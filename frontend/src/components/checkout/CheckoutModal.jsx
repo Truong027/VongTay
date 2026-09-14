@@ -15,11 +15,13 @@ import {
   Gift,
   Tag,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
+import { playTingTingSound } from '../../utils/soundEffects';
 
 export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSuccess, currentUser }) {
   if (!isOpen) return null;
@@ -119,6 +121,42 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
     setVoucherCodeInput('');
     setVoucherError('');
   };
+
+  // Real-time auto-payment polling via Webhook
+  useEffect(() => {
+    if (!completedOrder || !completedOrder.id) return;
+    const isVietQR = completedOrder.paymentMethod === 'VietQR' || String(completedOrder.paymentMethod || '').includes('VietQR');
+    if (!isVietQR) return;
+    if (completedOrder.paymentStatus === 'Đã thanh toán' || completedOrder.paymentStatus === 'paid') return;
+
+    let isSubscribed = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.checkPaymentStatus(completedOrder.id);
+        if (res && res.isPaid && isSubscribed) {
+          playTingTingSound();
+          confetti({
+            particleCount: 120,
+            spread: 80,
+            origin: { y: 0.5 }
+          });
+          setCompletedOrder(prev => ({
+            ...prev,
+            paymentStatus: 'Đã thanh toán',
+            orderStatus: res.orderStatus || prev.orderStatus
+          }));
+          clearInterval(interval);
+        }
+      } catch {
+        // Silently retry
+      }
+    }, 2500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [completedOrder]);
 
   // Real bank info for VietQR
   const bankInfo = {
@@ -295,11 +333,55 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                 <span className="text-[#8C8276]">Hình thức thanh toán:</span>
                 <span className="font-semibold text-[#B86244]">{completedOrder.paymentMethod}</span>
               </div>
+              <div className="flex justify-between border-b border-[#F3ECE1] pb-2">
+                <span className="text-[#8C8276]">Trạng thái thanh toán:</span>
+                <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                  completedOrder.paymentStatus === 'Đã thanh toán' 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {completedOrder.paymentStatus || 'Chờ thanh toán'}
+                </span>
+              </div>
               <div className="flex justify-between pt-1">
                 <span className="font-bold text-[#26211C]">Tổng tiền:</span>
                 <span className="font-bold text-base text-[#B86244]">{completedOrder.totalAmount.toLocaleString('vi-VN')}₫</span>
               </div>
             </div>
+
+            {/* Real-time VietQR payment block */}
+            {(completedOrder.paymentMethod === 'VietQR' || String(completedOrder.paymentMethod || '').includes('VietQR')) && (
+              <div className="max-w-md mx-auto">
+                {completedOrder.paymentStatus === 'Đã thanh toán' ? (
+                  <div className="p-3.5 bg-emerald-50 border-2 border-emerald-400 text-emerald-900 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold shadow-sm animate-scaleIn">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>🎉 Ngân hàng đã xác nhận thanh toán tự động thành công!</span>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-white rounded-2xl border border-amber-200/90 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between text-xs border-b border-[#F3ECE1] pb-2">
+                      <span className="font-bold text-[#B86244] flex items-center gap-1.5">
+                        <QrCode className="w-4 h-4" /> Quét mã VietQR chuyển khoản
+                      </span>
+                      <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1 font-semibold">
+                        <RefreshCw className="w-3 h-3 animate-spin text-amber-600" />
+                        Chờ biến động số dư tự động
+                      </span>
+                    </div>
+                    <div className="bg-[#FAF7F2] p-3 rounded-xl flex flex-col items-center">
+                      <img 
+                        src={`https://img.vietqr.io/image/MB-0352227188-compact2.png?amount=${completedOrder.totalAmount}&addInfo=KV%20${completedOrder.id}&accountName=NGUYEN%20KHANH%20VY`}
+                        alt="Mã VietQR"
+                        className="w-44 h-44 object-contain rounded-lg shadow-sm border border-stone-200 bg-white p-1"
+                      />
+                      <p className="text-[11px] text-[#6B6258] mt-2 text-center font-medium">
+                        Quét mã bằng App ngân hàng bất kỳ. Hệ thống sẽ tự động xác nhận sau 2 giây!
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="pt-4 flex justify-center gap-3">
               <button

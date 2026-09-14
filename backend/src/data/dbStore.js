@@ -2082,20 +2082,27 @@ export const dbSaveCustomDesign = async (data) => {
 
 export const getDbTelemetry = async () => {
   await ensureNeonConnected();
-  const products = await dbGetProducts();
+  const products = await dbGetProducts(true);
   const orders = await dbGetOrders();
   const users = await dbGetUsers();
   const categories = await dbGetCategories();
-  const vouchers = await dbGetVouchers();
+  const vouchers = await dbGetVouchers(true);
   const reviews = await dbGetReviews();
   const consultations = await dbGetConsultations();
+  const charms = await dbGetCharms();
+  const beads = await dbGetBeads();
+
+  const ordersWithVouchers = orders.filter(o => o.voucherCode).length;
+  const ordersWithUsers = orders.filter(o => o.userId).length;
+  const verifiedReviews = reviews.filter(r => r.isVerifiedBuyer).length;
 
   return {
     isNeonConnected: isNeonConnected(),
-    totalTables: 10,
+    totalTables: 12,
     tables: [
       'users', 'categories', 'products', 'orders', 'order_items',
-      'reviews', 'vouchers', 'wishlists', 'custom_designs', 'consultations'
+      'reviews', 'vouchers', 'wishlists', 'custom_designs', 'consultations',
+      'charms', 'beads'
     ],
     counts: {
       users: users.length,
@@ -2105,10 +2112,18 @@ export const getDbTelemetry = async () => {
       reviews: reviews.length,
       vouchers: vouchers.length,
       consultations: consultations.length,
+      charms: charms.length,
+      beads: beads.length,
       wishlists: (memoryData.wishlists || []).length,
       customDesigns: (memoryData.customDesigns || []).length
     },
-    storageType: isNeonConnected() ? 'Neon Cloud PostgreSQL + Local Disk (10 Bảng Chuẩn)' : 'Local Disk File (db.json - 10 Bảng)'
+    relationalIntegrity: {
+      ordersLinkedToVouchers: ordersWithVouchers,
+      ordersLinkedToUsers: ordersWithUsers,
+      verifiedBuyerReviews: verifiedReviews,
+      categoriesWithProducts: categories.filter(c => products.some(p => p.category === (c.slug || c.id))).length
+    },
+    storageType: isNeonConnected() ? 'Neon Cloud PostgreSQL + Local Disk (12 Bảng Chuẩn)' : 'Local Disk File (db.json - 12 Bảng)'
   };
 };
 
@@ -2510,4 +2525,5 @@ export const dbToggleBeadStock = async (id) => {
   const newStockStatus = !bead.inStock;
   return await dbUpdateBead(id, { inStock: newStockStatus });
 };
+
 

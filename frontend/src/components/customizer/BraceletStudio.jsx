@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { api } from '../../services/api';
+import Bracelet3DViewer from './Bracelet3DViewer';
 
 const charmIconMap = {
   Flower2: Flower2,
@@ -334,6 +335,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
   const [charmWiggling, setCharmWiggling] = useState(false);
   const [beadMenhFilter, setBeadMenhFilter] = useState('all');
   const [slotFeedback, setSlotFeedback] = useState(null);
+  const [canvasMode, setCanvasMode] = useState('3d'); // '3d' | '2d'
 
   const getPrimaryMenh = (menh) => {
     if (!menh) return 'Tất cả';
@@ -645,16 +647,54 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
           {/* LEFT: Live Bracelet Preview Canvas */}
           <div className="lg:col-span-5 bg-gradient-to-br from-[#F3ECE1] via-[#EDE4D6] to-[#F3ECE1] p-4 sm:p-6 flex flex-col items-center justify-start border-b lg:border-b-0 lg:border-r border-[#E8DFD3] relative">
 
-            {/* Preview label */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-[10px] uppercase tracking-widest text-[#B86244] font-bold bg-white/70 px-3 py-1 rounded-full border border-[#E8DFD3] shadow-sm">
-                ✦ Mô Phỏng Trực Tiếp
+            {/* Mode toggle bar (3D vs 2D) */}
+            <div className="flex items-center justify-between w-full mb-3 px-1">
+              <span className="text-[10px] uppercase tracking-widest text-[#B86244] font-bold bg-white/80 px-2.5 py-1 rounded-full border border-[#E8DFD3] shadow-xs">
+                ✦ {canvasMode === '3d' ? '3D WebGL 360°' : '2D Bản Vẽ Thủ Công'}
               </span>
+
+              <div className="flex items-center bg-white/90 p-0.5 rounded-xl border border-[#E8DFD3] shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setCanvasMode('3d')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
+                    canvasMode === '3d'
+                      ? 'bg-[#B86244] text-white shadow-xs'
+                      : 'text-[#6B6258] hover:text-[#26211C]'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                  <span>3D 360°</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCanvasMode('2d')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    canvasMode === '2d'
+                      ? 'bg-[#26211C] text-white shadow-xs'
+                      : 'text-[#6B6258] hover:text-[#26211C]'
+                  }`}
+                >
+                  <span>2D</span>
+                </button>
+              </div>
             </div>
 
-            {/* SVG Bracelet Canvas */}
-            <div className="relative w-full max-w-[280px] sm:max-w-[310px] aspect-square flex items-center justify-center mx-auto animate-floatBead">
-              <svg viewBox="0 0 320 296" className="w-full h-full drop-shadow-xl">
+            {/* 3D or 2D Canvas */}
+            {canvasMode === '3d' ? (
+              <Bracelet3DViewer
+                beadPositions={beadPositions}
+                selectedSlotIndex={selectedSlotIndex}
+                onSelectSlot={(idx) => {
+                  setSelectedSlotIndex(idx);
+                  if (activeStep !== 'bead') setActiveStep('bead');
+                }}
+                selectedCord={selectedCord}
+                selectedCharm={selectedCharm}
+              />
+            ) : (
+              <div className="relative w-full max-w-[280px] sm:max-w-[310px] aspect-square flex items-center justify-center mx-auto animate-floatBead">
+                <svg viewBox="0 0 320 296" className="w-full h-full drop-shadow-xl">
                 <defs>
                   {options?.beads?.map(b => (
                     <radialGradient key={b.id} id={`beadGrad-${b.id}`} cx="33%" cy="33%" r="67%">
@@ -884,6 +924,7 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
                 </text>
               </svg>
             </div>
+            )}
 
             {/* Live price summary card */}
             <div className="w-full mt-3 p-3 bg-white/90 rounded-2xl border border-[#E8DFD3] shadow-sm text-xs space-y-2">

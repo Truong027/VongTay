@@ -328,6 +328,11 @@ export const api = {
     return safeParseResponse(res, 'Lỗi xóa đơn hàng');
   },
 
+  async checkPaymentStatus(orderId) {
+    const res = await fetch(`${BASE_URL}/orders/${orderId}/payment-status`);
+    return safeParseResponse(res, 'Không thể kiểm tra trạng thái thanh toán');
+  },
+
   // Admin Stats
   async getAdminStats() {
     const res = await fetch(`${BASE_URL}/admin/stats`);

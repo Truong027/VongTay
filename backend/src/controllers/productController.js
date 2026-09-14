@@ -8,11 +8,18 @@ import {
   dbSetHeroTrending,
   dbGetCategories
 } from '../data/dbStore.js';
+import { cacheService } from '../utils/cacheService.js';
 
 export const getProducts = async (req, res) => {
   try {
     const includeHidden = req.query.includeHidden === 'true' || req.query.all === 'true';
-    const allProducts = await dbGetProducts(includeHidden);
+    const cacheKey = includeHidden ? 'db:products:all' : 'db:products:public';
+    
+    // Cache base products for 60 seconds (sub-millisecond retrieval under high load)
+    const allProducts = await cacheService.wrap(cacheKey, 60, async () => {
+      return await dbGetProducts(includeHidden);
+    });
+
     let result = [...allProducts];
     const { category, menh, search, sort } = req.query;
 
@@ -167,6 +174,8 @@ export const createProduct = async (req, res) => {
     }
 
     const created = await dbCreateProduct(req.body);
+    cacheService.invalidatePrefix('db:products');
+    cacheService.invalidatePrefix('db:categories');
     res.status(201).json({ success: true, data: created, message: 'Thêm sản phẩm mới vào cơ sở dữ liệu thành công!' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -179,6 +188,8 @@ export const updateProduct = async (req, res) => {
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm để cập nhật' });
     }
+    cacheService.invalidatePrefix('db:products');
+    cacheService.invalidatePrefix('db:categories');
     res.json({ success: true, data: updated, message: 'Đã cập nhật sản phẩm thành công!' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -191,6 +202,8 @@ export const deleteProduct = async (req, res) => {
     if (!success) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm để xóa' });
     }
+    cacheService.invalidatePrefix('db:products');
+    cacheService.invalidatePrefix('db:categories');
     res.json({ success: true, message: 'Đã xóa sản phẩm khỏi cơ sở dữ liệu thành công' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -200,6 +213,8 @@ export const deleteProduct = async (req, res) => {
 export const toggleProductVisibility = async (req, res) => {
   try {
     const result = await dbToggleProductVisibility(req.params.id);
+    cacheService.invalidatePrefix('db:products');
+    cacheService.invalidatePrefix('db:categories');
     res.json({
       success: true,
       data: result,
@@ -218,6 +233,7 @@ export const setHeroTrending = async (req, res) => {
     if (!updated) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     }
+    cacheService.invalidatePrefix('db:products');
     res.json({
       success: true,
       data: updated,

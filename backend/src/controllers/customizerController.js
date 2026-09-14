@@ -1,15 +1,19 @@
 import { customizerOptions } from '../data/seedData.js';
 import { dbGetCharms, dbGetBeads } from '../data/dbStore.js';
+import { cacheService } from '../utils/cacheService.js';
 
 export const getCustomizerOptions = async (req, res) => {
   try {
-    const liveCharms = await dbGetCharms();
-    const liveBeads = await dbGetBeads();
-    const options = {
-      ...customizerOptions,
-      charms: liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms,
-      beads: liveBeads && liveBeads.length > 0 ? liveBeads : customizerOptions.beads
-    };
+    const options = await cacheService.wrap('db:customizer:options', 180, async () => {
+      const liveCharms = await dbGetCharms();
+      const liveBeads = await dbGetBeads();
+      return {
+        ...customizerOptions,
+        charms: liveCharms && liveCharms.length > 0 ? liveCharms : customizerOptions.charms,
+        beads: liveBeads && liveBeads.length > 0 ? liveBeads : customizerOptions.beads
+      };
+    });
+
     res.json({
       success: true,
       data: options

@@ -530,7 +530,7 @@ export default function ProductEditorView({
                   onClick={() => {
                     const currentImg = productFormData.images?.[previewImageIndex] || productFormData.images?.[0];
                     if (currentImg) handleAutoAnalyzeImage(currentImg, false);
-                    else alert('Vui lòng tải lên hoặc nhập liên kết ảnh trước khi phân tích AI');
+                    else setAiAnalysisStatus('Vui lòng tải lên hoặc nhập liên kết ảnh trước khi phân tích AI');
                   }}
                   disabled={isAnalyzingCord || !productFormData.images?.[0]}
                   className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#C59B6D] to-[#B86244] text-white text-xs font-bold shadow-sm hover:opacity-90 disabled:opacity-40 flex items-center gap-1.5 transition-all cursor-pointer"

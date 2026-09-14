@@ -33,6 +33,8 @@ process.on('unhandledRejection', (reason, promise) => {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+import { handlePaymentWebhook } from './controllers/paymentWebhookController.js';
+
 // Middlewares
 app.use(cors({
   origin: '*',
@@ -52,6 +54,9 @@ app.use('/api', (req, res, next) => {
   res.setHeader('Expires', '0');
   next();
 });
+
+// Direct Webhook endpoint for SePay / Casso / Bank
+app.post('/api/payment/webhook', handlePaymentWebhook);
 
 // Routes across all 11 tables
 app.use('/api/products', productRoutes);

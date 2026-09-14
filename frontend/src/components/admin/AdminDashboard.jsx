@@ -457,7 +457,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         triggerToast(`Đã cập nhật đơn #${orderId} sang "${newStatus}"`);
       }
     } catch (err) {
-      alert('Không thể cập nhật đơn hàng: ' + err.message);
+      triggerToast('Không thể cập nhật đơn hàng: ' + err.message, 'error');
     } finally {
       setUpdatingOrderId(null);
     }
@@ -480,7 +480,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         }));
       } else {
         if (!fileOrUrl) {
-          alert('Vui lòng chọn tải ảnh lên hoặc nhập URL hình ảnh để AI phân tích!');
+          triggerToast('Vui lòng chọn tải ảnh lên hoặc nhập URL hình ảnh để AI phân tích!', 'warning');
           setIsAnalyzingCord(false);
           return;
         }
@@ -526,7 +526,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       }
     } catch (err) {
       console.error('Lỗi phân tích hình ảnh sản phẩm:', err);
-      alert('Không thể tự động phân tích ảnh: ' + (err.message || 'Lỗi kết nối AI'));
+      triggerToast('Không thể tự động phân tích ảnh: ' + (err.message || 'Lỗi kết nối AI'), 'error');
     } finally {
       setIsAnalyzingCord(false);
       setTimeout(() => setAiAnalysisStatus(''), 4000);
@@ -621,7 +621,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         triggerToast(`Đã ghim "${prod.name}" làm sản phẩm xu hướng đầu trang chủ!`);
       }
     } catch (err) {
-      alert('Không thể ghim xu hướng: ' + err.message);
+      triggerToast('Không thể ghim xu hướng: ' + err.message, 'error');
     }
   };
 
@@ -630,13 +630,13 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     if (isSavingProduct) return;
 
     if (!productFormData.name?.trim()) {
-      alert('Vui lòng nhập tên sản phẩm.');
+      triggerToast('Vui lòng nhập tên sản phẩm.', 'warning');
       return;
     }
 
     const parsedPrice = Number(productFormData.price);
     if (isNaN(parsedPrice) || parsedPrice < 0 || productFormData.price === '') {
-      alert('Vui lòng nhập giá bán lẻ hợp lệ (ví dụ: 68000).');
+      triggerToast('Vui lòng nhập giá bán lẻ hợp lệ (ví dụ: 68000).', 'warning');
       return;
     }
 
@@ -697,9 +697,9 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
       console.error('Lỗi lưu sản phẩm chi tiết:', err);
       const errMsg = String(err?.message || '');
       if (errMsg.includes('pattern') || err?.name === 'SyntaxError') {
-        alert('Trình duyệt của bạn đang lưu bộ nhớ tạm phiên bản cũ. Vui lòng tải lại trang (vuốt xuống hoặc nhấn F5) để hệ thống tự động cập nhật phiên bản mới nhất nhé!');
+        triggerToast('Trình duyệt của bạn đang lưu bộ nhớ tạm phiên bản cũ. Vui lòng tải lại trang (F5) nhé!', 'warning');
       } else {
-        alert('Lỗi lưu sản phẩm: ' + errMsg);
+        triggerToast('Lỗi lưu sản phẩm: ' + errMsg, 'error');
       }
     } finally {
       setIsSavingProduct(false);
@@ -707,7 +707,6 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   };
 
   const handleDeleteProduct = async (id, name) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm "${name}" khỏi cơ sở dữ liệu? Hành động này sẽ xóa hoàn toàn và không thể khôi phục.`)) return;
     try {
       const res = await api.deleteProduct(id);
       if (res.success) {
@@ -715,7 +714,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         triggerToast(`Đã xóa vĩnh viễn sản phẩm "${name}" khỏi cơ sở dữ liệu`);
       }
     } catch (err) {
-      alert('Lỗi xóa sản phẩm: ' + err.message);
+      triggerToast('Lỗi xóa sản phẩm: ' + err.message, 'error');
     }
   };
 
@@ -731,7 +730,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         triggerToast(res.message || (res.data.isHidden ? `Đã ẩn "${prod.name}" khỏi gian hàng` : `Đã hiện "${prod.name}" lên gian hàng`));
       }
     } catch (err) {
-      alert('Lỗi thay đổi trạng thái ẩn/hiện: ' + err.message);
+      triggerToast('Lỗi thay đổi trạng thái ẩn/hiện: ' + err.message, 'error');
     }
   };
 
@@ -771,7 +770,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         }
       }
     } catch (err) {
-      alert('Lỗi lưu tài khoản: ' + err.message);
+      triggerToast('Lỗi lưu tài khoản: ' + err.message, 'error');
     }
   };
 
@@ -784,12 +783,11 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         triggerToast(`Đã cập nhật vai trò của ${user.fullName} thành ${newRole}`);
       }
     } catch (err) {
-      alert('Lỗi cập nhật vai trò: ' + err.message);
+      triggerToast('Lỗi cập nhật vai trò: ' + err.message, 'error');
     }
   };
 
   const handleDeleteUser = async (id, email) => {
-    if (!window.confirm(`Xóa tài khoản ${email} khỏi hệ thống?`)) return;
     try {
       const res = await api.deleteUser(id);
       if (res.success) {
@@ -797,7 +795,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         triggerToast(`Đã xóa tài khoản khỏi cơ sở dữ liệu`);
       }
     } catch (err) {
-      alert('Lỗi xóa tài khoản: ' + err.message);
+      triggerToast('Lỗi xóa tài khoản: ' + err.message, 'error');
     }
   };
 
@@ -956,7 +954,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         loadAllAdminData();
       }
     } catch (err) {
-      alert('Lỗi đồng bộ: ' + err.message);
+      triggerToast('Lỗi đồng bộ: ' + err.message, 'error');
     } finally {
       setIsSyncingNeon(false);
     }
@@ -1451,6 +1449,18 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                           {v.usedCount || 0} / {v.usageLimit || '∞'} lượt
                         </strong>
                       </div>
+                      <div className="flex justify-between items-center">
+                        <span>Đơn hàng đã dùng:</span>
+                        <button
+                          type="button"
+                          onClick={() => setAdminTab('orders')}
+                          className="font-bold text-[#B86244] hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Bấm để chuyển sang tab Đơn hàng"
+                        >
+                          <ShoppingBag className="w-3 h-3" />
+                          <span>{orders.filter(o => o.voucherCode === v.code).length} đơn đã liên kết</span>
+                        </button>
+                      </div>
                       <div className="flex justify-between">
                         <span>Hạn dùng:</span>
                         <strong className="text-[#26211C]">
@@ -1806,6 +1816,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                       <th className="py-3.5 px-4">Email & SĐT</th>
                       <th className="py-3.5 px-4">Địa Chỉ Mặc Định</th>
                       <th className="py-3.5 px-4">Vai Trò</th>
+                      <th className="py-3.5 px-4">Đơn Đã Đặt</th>
                       <th className="py-3.5 px-4">Ngày Tạo</th>
                       <th className="py-3.5 px-4 text-right">Thao Tác</th>
                     </tr>
@@ -1841,6 +1852,30 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                           }`}>
                             {u.role === 'admin' ? 'Quản Trị Viên' : u.role === 'artisan' ? 'Nghệ Nhân' : 'Khách Hàng'}
                           </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {(() => {
+                            const userOrders = orders.filter(o => o.userId === u.id || (u.phone && o.phone === u.phone) || (u.email && o.email === u.email));
+                            const totalSpent = userOrders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+                            return (
+                              <div>
+                                <button
+                                  onClick={() => {
+                                    setSearchQuery(u.email || u.phone || u.fullName);
+                                    setActiveTab('orders');
+                                  }}
+                                  className="font-bold text-[#B86244] hover:underline flex items-center gap-1 cursor-pointer"
+                                  title="Xem danh sách đơn hàng của tài khoản này"
+                                >
+                                  {userOrders.length} đơn
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                                {userOrders.length > 0 && (
+                                  <p className="text-[10px] text-[#6B6258] mt-0.5 font-medium">{totalSpent.toLocaleString('vi-VN')}₫</p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-3.5 px-4 text-[#6B6258] text-[11px]">
                           {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Mới tạo'}

@@ -403,7 +403,7 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
       if (triggerToast) triggerToast(`Đã chuyển trạng thái charm ${charm.name}: ${res.data?.inStock ? 'Còn hàng' : 'Tạm hết'}`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert('Lỗi đổi trạng thái charm: ' + err.message);
+      if (triggerToast) triggerToast('Lỗi đổi trạng thái charm: ' + err.message, 'error');
     }
   };
 
@@ -413,33 +413,31 @@ export default function CharmManagerView({ charms = [], beads = [], onRefresh, t
       if (triggerToast) triggerToast(`Đã chuyển trạng thái hạt đá ${bead.name}: ${res.data?.inStock ? 'Còn hàng' : 'Tạm hết'}`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert('Lỗi đổi trạng thái hạt đá: ' + err.message);
+      if (triggerToast) triggerToast('Lỗi đổi trạng thái hạt đá: ' + err.message, 'error');
     }
   };
 
   const handleDeleteCharm = async (charm) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa charm "${charm.name}" khỏi kho?`)) return;
     setIsDeletingId(charm.id);
     try {
       await api.deleteCharm(charm.id);
       if (triggerToast) triggerToast(`Đã xóa charm "${charm.name}" thành công!`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert('Lỗi xóa charm: ' + err.message);
+      if (triggerToast) triggerToast('Lỗi xóa charm: ' + err.message, 'error');
     } finally {
       setIsDeletingId(null);
     }
   };
 
   const handleDeleteBead = async (bead) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa hạt đá "${bead.name}" khỏi kho?`)) return;
     setIsDeletingId(bead.id);
     try {
       await api.deleteBead(bead.id);
       if (triggerToast) triggerToast(`Đã xóa hạt đá "${bead.name}" thành công!`);
       if (onRefresh) onRefresh();
     } catch (err) {
-      alert('Lỗi xóa hạt đá: ' + err.message);
+      if (triggerToast) triggerToast('Lỗi xóa hạt đá: ' + err.message, 'error');
     } finally {
       setIsDeletingId(null);
     }
