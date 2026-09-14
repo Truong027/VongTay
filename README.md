@@ -51,7 +51,7 @@ e:\VIBANVONGTAY\
 - **Xưởng Tự Phối Vòng Tay Độc Bản (Bracelet Studio)**: Khách hàng tự chọn loại dây (dây sáp chống nước, dây chỉ may mắn Tây Tạng, dây chỉ sáp Macrame), chọn charm & phụ kiện thủ công (Gốm hoa pastel, Men sứ phong cảnh, Thẻ gỗ khắc tên, Nút thắt cát tường...). Vòng tay được mô phỏng đồ họa 2D xoay vòng thời gian thực kèm tính giá linh kiện tự động.
 - **Bộ lọc thông minh**: Lọc theo danh mục, theo Ngũ Hành Cung Mệnh (Kim, Mộc, Thủy, Hỏa, Thổ), sắp xếp theo mức độ phổ biến / giá.
 - **Bảng Đo Size Cổ Tay Trực Quan**: Hướng dẫn đo bằng thước dây hoặc giấy, bảng đối chiếu size XS - XL và số lượng hạt chuẩn tương ứng.
-- **Giỏ hàng & Thanh toán thông minh**: Giỏ trượt bên phải, áp dụng mã giảm giá (`MAYMAN` hoặc `ANYEN`), tích hợp tạo mã **VietQR** ngân hàng tự động kèm nội dung chuyển khoản mã đơn.
+- **Giỏ hàng & Thanh toán thông minh**: Giỏ trượt bên phải, áp dụng mã giảm giá thực tế tạo từ Admin, tích hợp tạo mã **VietQR** ngân hàng tự động kèm nội dung chuyển khoản mã đơn.
 - **Tra cứu hành trình đơn hàng**: Khách nhập mã đơn hoặc số điện thoại để xem timeline nghệ nhân đang xâu hạt -> hoàn thiện -> bàn giao bưu tá.
 
 ### 2. Quản Trị Đơn Hàng Song Song (Web Admin & Desktop App)

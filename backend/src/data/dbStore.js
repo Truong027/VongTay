@@ -77,7 +77,15 @@ try {
     if (parsed.orders) memoryData.orders = parsed.orders;
     if (parsed.users) memoryData.users = parsed.users;
     if (parsed.categories) memoryData.categories = parsed.categories;
-    if (parsed.vouchers) memoryData.vouchers = parsed.vouchers;
+    if (parsed.vouchers) {
+      const SAMPLE_CODES = new Set(['KHANHVY10', 'FREESHIP', 'BANMOI20K', 'TRIANXUONG50K', 'MAYMAN', 'ANYEN']);
+      memoryData.vouchers = parsed.vouchers.filter(v => 
+        !SAMPLE_CODES.has(String(v.code || '').trim().toUpperCase()) &&
+        !String(v.id || '').startsWith('vouch-')
+      );
+    } else {
+      memoryData.vouchers = [];
+    }
     if (parsed.reviews) memoryData.reviews = parsed.reviews;
     if (parsed.wishlists) memoryData.wishlists = parsed.wishlists;
     if (parsed.customDesigns) memoryData.customDesigns = parsed.customDesigns;
@@ -413,7 +421,18 @@ export const syncAllDataToNeon = async () => {
       }
     })),
 
-    // Vouchers
+    // Dọn dẹp các mã giảm giá mẫu cũ trong Neon DB
+    (async () => {
+      try {
+        await query(
+          "DELETE FROM vouchers WHERE UPPER(code) IN ('KHANHVY10', 'FREESHIP', 'BANMOI20K', 'TRIANXUONG50K', 'MAYMAN', 'ANYEN') OR id LIKE 'vouch-%'"
+        );
+      } catch (e) {
+        console.warn('Lỗi dọn dẹp voucher mẫu Neon DB:', e.message);
+      }
+    })(),
+
+    // Vouchers (chỉ đồng bộ các mã thật do người dùng tạo)
     Promise.all((memoryData.vouchers || []).map(async (v) => {
       try {
         await query(
@@ -1312,6 +1331,10 @@ export const dbGetOrders = async () => {
           phone: r.phone,
           address: r.address,
           items: safeParseArray(r.items),
+          subtotal: r.subtotal ? Number(r.subtotal) : null,
+          wholesaleDiscount: Number(r.wholesale_discount || 0),
+          voucherDiscount: Number(r.voucher_discount || 0),
+          voucherCode: r.voucher_code || null,
           totalAmount: Number(r.total_amount),
           shippingFee: Number(r.shipping_fee),
           paymentMethod: r.payment_method,
@@ -1345,16 +1368,22 @@ export const dbSaveOrder = async (order) => {
     try {
       await query(
         `INSERT INTO orders (
-          id, user_id, customer_name, phone, address, items, total_amount, shipping_fee,
+          id, user_id, customer_name, phone, address, items, subtotal, wholesale_discount,
+          voucher_discount, voucher_code, total_amount, shipping_fee,
           payment_method, payment_status, order_status, note, timeline, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         ON CONFLICT (id) DO UPDATE SET
           user_id = EXCLUDED.user_id,
+          subtotal = EXCLUDED.subtotal,
+          wholesale_discount = EXCLUDED.wholesale_discount,
+          voucher_discount = EXCLUDED.voucher_discount,
+          voucher_code = EXCLUDED.voucher_code,
           order_status = EXCLUDED.order_status,
           payment_status = EXCLUDED.payment_status,
           timeline = EXCLUDED.timeline`,
         [
           order.id, order.userId || null, order.customerName, order.phone, order.address, JSON.stringify(order.items),
+          order.subtotal || null, order.wholesaleDiscount || 0, order.voucherDiscount || 0, order.voucherCode || null,
           order.totalAmount, order.shippingFee || 25000, order.paymentMethod || 'VietQR',
           order.paymentStatus || 'Chờ thanh toán', order.orderStatus || 'Chờ xác nhận',
           order.note || '', JSON.stringify(order.timeline || []), order.createdAt
@@ -1362,6 +1391,26 @@ export const dbSaveOrder = async (order) => {
       );
     } catch (err) {
       console.warn('Lỗi ghi order Neon DB:', err.message);
+    }
+  }
+
+  // Tự động tăng số lượt đã sử dụng (used_count) cho mã giảm giá
+  if (order.voucherCode) {
+    const cleanCode = String(order.voucherCode).trim().toUpperCase();
+    const v = (memoryData.vouchers || []).find(item => item.code === cleanCode || item.id === cleanCode);
+    if (v) {
+      v.usedCount = (Number(v.usedCount) || 0) + 1;
+      saveToDisk();
+    }
+    if (isNeonConnected()) {
+      try {
+        await query(
+          'UPDATE vouchers SET used_count = COALESCE(used_count, 0) + 1 WHERE UPPER(code) = $1 OR id = $1',
+          [cleanCode]
+        );
+      } catch (e) {
+        console.warn('Lỗi cập nhật used_count voucher:', e.message);
+      }
     }
   }
 };
@@ -1731,7 +1780,12 @@ export const dbValidateAndApplyVoucher = async (code, orderTotal) => {
     return { success: false, message: `Mã giảm giá "${cleanCode}" đã hết hạn sử dụng` };
   }
 
-  if (orderTotal < (voucher.minOrderValue || 0)) {
+  if (voucher.usageLimit && Number(voucher.usedCount || 0) >= Number(voucher.usageLimit)) {
+    return { success: false, message: `Mã giảm giá "${cleanCode}" đã đạt giới hạn số lượt sử dụng toàn xưởng` };
+  }
+
+  const numOrderTotal = Number(orderTotal) || 0;
+  if (numOrderTotal < (voucher.minOrderValue || 0)) {
     return {
       success: false,
       message: `Mã ${cleanCode} chỉ áp dụng cho đơn hàng từ ${(voucher.minOrderValue).toLocaleString('vi-VN')}₫`
@@ -1740,18 +1794,22 @@ export const dbValidateAndApplyVoucher = async (code, orderTotal) => {
 
   let discountAmount = 0;
   if (voucher.discountType === 'percentage') {
-    discountAmount = Math.round((orderTotal * voucher.discountValue) / 100);
+    discountAmount = Math.round((numOrderTotal * voucher.discountValue) / 100);
     if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
       discountAmount = voucher.maxDiscount;
     }
   } else {
-    discountAmount = voucher.discountValue;
+    discountAmount = Math.min(voucher.discountValue, numOrderTotal);
   }
 
   return {
     success: true,
     code: voucher.code,
     discountAmount,
+    discountType: voucher.discountType,
+    discountValue: voucher.discountValue,
+    minOrderValue: voucher.minOrderValue || 0,
+    maxDiscount: voucher.maxDiscount || null,
     description: voucher.description,
     message: `Áp dụng mã ${voucher.code} thành công! Giảm ${discountAmount.toLocaleString('vi-VN')}₫`
   };

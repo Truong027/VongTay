@@ -188,6 +188,7 @@ const createTables = async () => {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal NUMERIC;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS wholesale_discount NUMERIC DEFAULT 0;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS voucher_discount NUMERIC DEFAULT 0;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS voucher_code VARCHAR(50);
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(100);
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier VARCHAR(100);
 

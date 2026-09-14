@@ -92,7 +92,23 @@ export const getOrderById = async (req, res) => {
 
 export const createOrder = async (req, res) => {
   try {
-    const { customerName, phone, address, items, totalAmount, shippingFee, paymentMethod, note, userId } = req.body;
+    const { 
+      customerName, 
+      phone, 
+      address, 
+      items, 
+      totalAmount, 
+      subtotal, 
+      wholesaleDiscount,
+      wholesaleSavings,
+      voucherDiscount,
+      discount,
+      voucherCode,
+      shippingFee, 
+      paymentMethod, 
+      note, 
+      userId 
+    } = req.body;
 
     if (!customerName || !customerName.trim()) {
       return res.status(400).json({ success: false, message: 'Vui lòng cung cấp họ và tên người nhận hàng' });
@@ -111,7 +127,10 @@ export const createOrder = async (req, res) => {
     const now = new Date();
     const formattedDate = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth()+1).toString().padStart(2, '0')}/${now.getFullYear()}`;
 
-    const calculatedTotal = totalAmount || items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0) + (shippingFee || 25000);
+    const finalSubtotal = subtotal !== undefined ? Number(subtotal) : items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
+    const finalVoucherDiscount = Number(voucherDiscount || discount || 0);
+    const finalWholesaleDiscount = Number(wholesaleDiscount || wholesaleSavings || 0);
+    const calculatedTotal = totalAmount !== undefined ? Number(totalAmount) : (finalSubtotal - finalVoucherDiscount + (shippingFee || 25000));
 
     const newOrder = {
       id: newId,
@@ -120,6 +139,10 @@ export const createOrder = async (req, res) => {
       phone: phone.trim(),
       address: address.trim(),
       items,
+      subtotal: finalSubtotal,
+      wholesaleDiscount: finalWholesaleDiscount,
+      voucherDiscount: finalVoucherDiscount,
+      voucherCode: voucherCode ? String(voucherCode).trim().toUpperCase() : null,
       totalAmount: calculatedTotal,
       shippingFee: shippingFee || 25000,
       paymentMethod: paymentMethod || 'VietQR',

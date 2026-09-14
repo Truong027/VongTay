@@ -13,11 +13,14 @@ export default function CartDrawer({ onProceedToCheckout }) {
     retailSubtotal,
     wholesaleSavings,
     hasWholesaleDiscount,
-    totalCount 
+    totalCount,
+    appliedVoucher,
+    voucherDiscount,
+    applyVoucher,
+    removeVoucher
   } = useCart();
   const [promoCode, setPromoCode] = useState('');
-  const [discount, setDiscount] = useState(0);
-  const [promoApplied, setPromoApplied] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [promoError, setPromoError] = useState('');
 
   if (!isCartOpen) return null;
@@ -26,17 +29,26 @@ export default function CartDrawer({ onProceedToCheckout }) {
   const remainingForFreeShip = Math.max(0, freeShippingThreshold - subtotal);
   const progressPercent = Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
 
-  const handleApplyPromo = (e) => {
+  const handleApplyPromo = async (e) => {
     e.preventDefault();
     setPromoError('');
-    if (promoCode.trim().toUpperCase() === 'MAYMAN' || promoCode.trim().toUpperCase() === 'ANYEN') {
-      setDiscount(30000);
-      setPromoApplied(true);
+    const code = promoCode.trim();
+    if (!code) {
+      setPromoError('Vui lòng nhập mã giảm giá');
+      return;
+    }
+    setIsApplying(true);
+    const res = await applyVoucher(code);
+    setIsApplying(false);
+    if (!res.success) {
+      setPromoError(res.message || 'Mã giảm giá không hợp lệ');
     } else {
-      setPromoError('Mã ưu đãi không hợp lệ. Thử: MAYMAN hoặc ANYEN');
+      setPromoCode('');
+      setPromoError('');
     }
   };
 
+  const discount = voucherDiscount;
   const shippingFee = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 25000;
   const finalTotal = Math.max(0, subtotal - discount + (subtotal > 0 ? shippingFee : 0));
 
@@ -225,34 +237,59 @@ export default function CartDrawer({ onProceedToCheckout }) {
             <div className="p-5 bg-white border-t border-[#E8DFD3] space-y-3.5">
               
               {/* Promo code box */}
-              <form onSubmit={handleApplyPromo} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Tag className="w-3.5 h-3.5 text-[#8C8276] absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    placeholder="Nhập mã: MAYMAN (-30k)"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    className="w-full text-xs pl-8 pr-3 py-2.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] uppercase focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                  />
+              {appliedVoucher ? (
+                <div className="p-3 bg-[#EDF5F0] border border-[#C2DEC8] rounded-xl flex items-center justify-between text-xs text-[#2E583A]">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#3A754B] shrink-0" />
+                    <div>
+                      <span className="font-bold block">
+                        Đã áp dụng mã: {appliedVoucher.code} (-{discount.toLocaleString('vi-VN')}₫)
+                      </span>
+                      {appliedVoucher.description && (
+                        <span className="text-[10px] text-[#4E6857] block">
+                          {appliedVoucher.description}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removeVoucher();
+                      setPromoError('');
+                    }}
+                    className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold underline cursor-pointer shrink-0 ml-2"
+                  >
+                    Gỡ mã
+                  </button>
                 </div>
-                <button
-                  type="submit"
-                  className="px-4 py-2.5 rounded-xl bg-[#26211C] text-white text-xs font-semibold hover:bg-[#3D352E] transition-colors"
-                >
-                  Áp Dụng
-                </button>
-              </form>
-
-              {promoApplied && (
-                <p className="text-[11px] text-[#4E6857] font-semibold flex items-center gap-1">
-                  ✓ Đã áp dụng mã ưu đãi: Giảm ngay 30.000₫
-                </p>
-              )}
-              {promoError && (
-                <p className="text-[11px] text-red-600 font-medium">
-                  {promoError}
-                </p>
+              ) : (
+                <form onSubmit={handleApplyPromo} className="space-y-1.5">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="w-3.5 h-3.5 text-[#8C8276] absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        placeholder="Nhập mã voucher giảm giá..."
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        className="w-full text-xs pl-8 pr-3 py-2.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] uppercase font-bold tracking-wide focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isApplying}
+                      className="px-4 py-2.5 rounded-xl bg-[#26211C] text-white text-xs font-semibold hover:bg-[#3D352E] transition-colors disabled:opacity-50"
+                    >
+                      {isApplying ? 'Đang kiểm tra...' : 'Áp Dụng'}
+                    </button>
+                  </div>
+                  {promoError && (
+                    <p className="text-[11px] text-rose-600 font-medium">
+                      ⚠️ {promoError}
+                    </p>
+                  )}
+                </form>
               )}
 
               {/* Price Calculation rows */}
@@ -280,8 +317,8 @@ export default function CartDrawer({ onProceedToCheckout }) {
                 )}
 
                 {discount > 0 && (
-                  <div className="flex justify-between text-[#4E6857]">
-                    <span>Ưu đãi mã giảm:</span>
+                  <div className="flex justify-between text-[#4E6857] font-semibold">
+                    <span>Ưu đãi mã giảm ({appliedVoucher?.code}):</span>
                     <span>-{discount.toLocaleString('vi-VN')}₫</span>
                   </div>
                 )}
@@ -301,7 +338,10 @@ export default function CartDrawer({ onProceedToCheckout }) {
                   closeCart();
                   onProceedToCheckout({
                     items: cartItems,
+                    subtotal,
                     discount,
+                    voucherCode: appliedVoucher?.code || null,
+                    voucherDiscount: discount,
                     shippingFee,
                     finalTotal,
                     retailSubtotal,

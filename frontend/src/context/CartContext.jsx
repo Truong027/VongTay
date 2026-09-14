@@ -269,6 +269,59 @@ export const CartProvider = ({ children, currentUser }) => {
   const wholesaleSavings = retailSubtotal - subtotal;
   const hasWholesaleDiscount = wholesaleSavings > 0;
 
+  // Quản lý trạng thái mã giảm giá (Voucher) toàn cục
+  const [appliedVoucher, setAppliedVoucher] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('viban_applied_voucher');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const applyVoucher = async (code) => {
+    const cleanCode = String(code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false, message: 'Vui lòng nhập mã giảm giá' };
+    }
+    try {
+      const res = await api.applyVoucher(cleanCode, subtotal);
+      if (res && res.success) {
+        setAppliedVoucher(res);
+        try {
+          sessionStorage.setItem('viban_applied_voucher', JSON.stringify(res));
+        } catch (e) {}
+        return { success: true, data: res, message: res.message };
+      } else {
+        return { success: false, message: res?.message || 'Mã giảm giá không hợp lệ hoặc đã hết hạn' };
+      }
+    } catch (err) {
+      return { success: false, message: err.message || 'Không thể kiểm tra mã giảm giá lúc này' };
+    }
+  };
+
+  const removeVoucher = () => {
+    setAppliedVoucher(null);
+    try {
+      sessionStorage.removeItem('viban_applied_voucher');
+    } catch (e) {}
+  };
+
+  // Tính số tiền giảm giá động dựa trên subtotal hiện tại
+  let voucherDiscount = 0;
+  if (appliedVoucher) {
+    if (subtotal >= (appliedVoucher.minOrderValue || 0)) {
+      if (appliedVoucher.discountType === 'percentage') {
+        voucherDiscount = Math.round((subtotal * appliedVoucher.discountValue) / 100);
+        if (appliedVoucher.maxDiscount && voucherDiscount > appliedVoucher.maxDiscount) {
+          voucherDiscount = appliedVoucher.maxDiscount;
+        }
+      } else {
+        voucherDiscount = Math.min(appliedVoucher.discountAmount || appliedVoucher.discountValue || 0, subtotal);
+      }
+    }
+  }
+
   return (
     <CartContext.Provider value={{
       cartItems: processedCartItems,
@@ -289,6 +342,10 @@ export const CartProvider = ({ children, currentUser }) => {
       retailSubtotal,
       wholesaleSavings,
       hasWholesaleDiscount,
+      appliedVoucher,
+      voucherDiscount,
+      applyVoucher,
+      removeVoucher,
       wishlist,
       isWishlisted,
       toggleWishlist,

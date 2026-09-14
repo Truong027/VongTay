@@ -24,7 +24,14 @@ import { api } from '../../services/api';
 export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSuccess, currentUser }) {
   if (!isOpen) return null;
 
-  const { clearCart, cartItems: contextCartItems } = useCart();
+  const { 
+    clearCart, 
+    cartItems: contextCartItems,
+    appliedVoucher,
+    voucherDiscount,
+    applyVoucher,
+    removeVoucher
+  } = useCart();
   const cartItems = (checkoutData?.items && checkoutData.items.length > 0)
     ? checkoutData.items
     : (contextCartItems && contextCartItems.length > 0)
@@ -73,17 +80,21 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
   const [isGiftBox, setIsGiftBox] = useState(false);
   const [giftCardMessage, setGiftCardMessage] = useState('');
 
-  // Voucher Promotion state
+  // Voucher input state
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
-  const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState('');
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
 
-  const rawTotal = checkoutData?.finalTotal || 0;
-  const discount = (checkoutData?.discount || 0) + (appliedVoucher?.discountAmount || 0);
-  const shippingFee = checkoutData?.shippingFee || 25000;
+  const itemsSubtotal = (checkoutData?.subtotal !== undefined) 
+    ? Number(checkoutData.subtotal) 
+    : cartItems.reduce((s, i) => s + (i.effectivePrice || i.price) * (i.quantity || 1), 0);
+  
+  const discount = voucherDiscount;
+  const shippingFee = (checkoutData?.shippingFee !== undefined)
+    ? Number(checkoutData.shippingFee)
+    : (itemsSubtotal >= 400000 || itemsSubtotal === 0 ? 0 : 25000);
   const giftBoxFee = isGiftBox ? 25000 : 0;
-  const finalTotal = Math.max(0, rawTotal + giftBoxFee - (appliedVoucher?.discountAmount || 0));
+  const finalTotal = Math.max(0, itemsSubtotal - discount + shippingFee + giftBoxFee);
 
   const handleApplyVoucher = async (codeToApply = null) => {
     const code = (codeToApply || voucherCodeInput).trim().toUpperCase();
@@ -93,25 +104,18 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
     }
     setVoucherError('');
     setIsCheckingVoucher(true);
-    try {
-      const res = await api.applyVoucher(code, rawTotal);
-      if (res.success) {
-        setAppliedVoucher(res);
-        setVoucherCodeInput(res.code);
-      } else {
-        setVoucherError(res.message || 'Mã giảm giá không hợp lệ');
-        setAppliedVoucher(null);
-      }
-    } catch (e) {
-      setVoucherError('Lỗi kiểm tra mã giảm giá');
-      setAppliedVoucher(null);
-    } finally {
-      setIsCheckingVoucher(false);
+    const res = await applyVoucher(code);
+    setIsCheckingVoucher(false);
+    if (res.success) {
+      setVoucherCodeInput('');
+      setVoucherError('');
+    } else {
+      setVoucherError(res.message || 'Mã giảm giá không hợp lệ');
     }
   };
 
   const handleRemoveVoucher = () => {
-    setAppliedVoucher(null);
+    removeVoucher();
     setVoucherCodeInput('');
     setVoucherError('');
   };
@@ -194,11 +198,12 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
           customDetails: item.customDetails || null,
           note: item.note || ''
         })),
+        subtotal: itemsSubtotal,
         totalAmount: finalTotal,
         shippingFee,
         discount,
         voucherCode: appliedVoucher?.code || null,
-        voucherDiscount: appliedVoucher?.discountAmount || 0,
+        voucherDiscount: discount,
         wholesaleSavings: checkoutData?.wholesaleSavings || 0
       };
 
@@ -214,6 +219,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
 
         setCompletedOrder(res.data);
         clearCart();
+        removeVoucher();
         if (onOrderSuccess) onOrderSuccess(res.data);
       }
     } catch (err) {
@@ -567,7 +573,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                   </div>
                 )}
 
-                {/* NEW: Voucher Promo Code Box */}
+                {/* Voucher Promo Code Box */}
                 <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#EADBCC] space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-[#26211C] flex items-center gap-1.5">
@@ -578,7 +584,7 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                       <button
                         type="button"
                         onClick={handleRemoveVoucher}
-                        className="text-[10px] text-rose-600 hover:underline font-semibold"
+                        className="text-[10px] text-rose-600 hover:underline font-semibold cursor-pointer"
                       >
                         Gỡ bỏ
                       </button>
@@ -586,30 +592,34 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                   </div>
 
                   {appliedVoucher ? (
-                    <div className="p-2 bg-[#EDF5F0] border border-[#C2DEC8] rounded-lg flex items-center justify-between text-xs text-[#2E583A]">
-                      <span className="font-bold flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-[#3A754B]" />
-                        Đã áp dụng: {appliedVoucher.code} (-{appliedVoucher.discountAmount.toLocaleString('vi-VN')}₫)
-                      </span>
-                      <span className="text-[10px] font-medium text-[#4E6857]">
-                        {appliedVoucher.description}
-                      </span>
+                    <div className="p-2.5 bg-[#EDF5F0] border border-[#C2DEC8] rounded-xl flex items-center justify-between text-xs text-[#2E583A]">
+                      <div>
+                        <span className="font-bold flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-[#3A754B]" />
+                          Đã áp dụng: {appliedVoucher.code} (-{discount.toLocaleString('vi-VN')}₫)
+                        </span>
+                        {appliedVoucher.description && (
+                          <span className="text-[10px] font-medium text-[#4E6857] block mt-0.5">
+                            {appliedVoucher.description}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <>
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="Nhập mã (VD: KHANHVY10, FREESHIP)..."
+                          placeholder="Nhập mã voucher giảm giá..."
                           value={voucherCodeInput}
                           onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
-                          className="flex-1 text-xs p-2 rounded-lg border border-[#E8DFD3] bg-white uppercase font-bold tracking-wider focus:outline-none focus:ring-1 focus:ring-[#B86244]"
+                          className="flex-1 text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-white uppercase font-bold tracking-wider focus:outline-none focus:ring-1 focus:ring-[#B86244]"
                         />
                         <button
                           type="button"
                           onClick={() => handleApplyVoucher()}
                           disabled={isCheckingVoucher}
-                          className="px-3.5 py-2 bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap shadow-xs"
+                          className="px-4 py-2 bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap shadow-xs"
                         >
                           {isCheckingVoucher ? 'Đang kiểm tra...' : 'Áp Dụng'}
                         </button>
@@ -620,30 +630,19 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                           ⚠️ {voucherError}
                         </p>
                       )}
-
-                      {/* Quick Voucher Suggestions */}
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[10px] text-[#8C8276]">Gợi ý mã:</span>
-                        {['KHANHVY10', 'FREESHIP', 'BANMOI20K'].map(code => (
-                          <button
-                            key={code}
-                            type="button"
-                            onClick={() => handleApplyVoucher(code)}
-                            className="text-[10px] px-2 py-0.5 rounded-full bg-white border border-[#EADBCC] text-[#845339] font-semibold hover:border-[#B86244] hover:text-[#B86244] transition-colors"
-                          >
-                            🏷️ {code}
-                          </button>
-                        ))}
-                      </div>
                     </>
                   )}
                 </div>
 
                 {/* Final Price Breakdown */}
-                <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] space-y-1 text-xs">
+                <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] space-y-1.5 text-xs">
                   <div className="flex justify-between text-[#8C8276]">
                     <span>Số lượng sản phẩm:</span>
                     <span className="font-medium text-[#26211C]">{cartItems.length} món ({cartItems.reduce((s, i) => s + i.quantity, 0)} chiếc)</span>
+                  </div>
+                  <div className="flex justify-between text-[#8C8276]">
+                    <span>Tạm tính tiền hàng:</span>
+                    <span className="font-medium text-[#26211C]">{itemsSubtotal.toLocaleString('vi-VN')}₫</span>
                   </div>
                   {checkoutData?.wholesaleSavings > 0 && (
                     <div className="flex justify-between text-[#2E583A] font-medium bg-[#EDF5F0] -mx-1 px-2 py-1 rounded">
@@ -652,8 +651,8 @@ export default function CheckoutModal({ isOpen, onClose, checkoutData, onOrderSu
                     </div>
                   )}
                   {discount > 0 && (
-                    <div className="flex justify-between text-[#4E6857]">
-                      <span>Mã giảm giá:</span>
+                    <div className="flex justify-between text-[#4E6857] font-semibold">
+                      <span>Mã giảm giá ({appliedVoucher?.code}):</span>
                       <span>-{discount.toLocaleString('vi-VN')}₫</span>
                     </div>
                   )}

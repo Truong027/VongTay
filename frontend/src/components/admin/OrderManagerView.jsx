@@ -757,7 +757,7 @@ export default function OrderManagerView({
 
                 {Number(selectedOrder.voucherDiscount || 0) > 0 && (
                   <div className="flex justify-between text-rose-600 font-semibold">
-                    <span>Mã giảm giá ưu đãi:</span>
+                    <span>Mã giảm giá ưu đãi {selectedOrder.voucherCode ? `(${selectedOrder.voucherCode})` : ''}:</span>
                     <span className="font-mono">-{new Intl.NumberFormat('vi-VN').format(selectedOrder.voucherDiscount)}đ</span>
                   </div>
                 )}

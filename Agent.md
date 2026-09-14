@@ -77,7 +77,7 @@ e:\VIBANVONGTAY\
 | :--- | :--- | :--- | :--- |
 | **layout** | `Navbar.jsx` | Thanh điều hướng đầu trang, danh mục, thanh tìm kiếm, giỏ hàng badge, nút mở Customizer, AI Camera, Admin. | `onOpenCart`, `onOpenWishlist`, `onOpenCustomizer`, `onOpenAiCamera`, `onOpenAdmin`, `searchQuery` |
 | | `Footer.jsx` | Chân trang phong cách Artisanal Warm Boutique, chính sách bảo hành đá tự nhiên, bảo dưỡng dây trọn đời, hotline. | Tĩnh & link điều hướng |
-| | `AnnouncementBar.jsx`| Thanh thông báo ưu đãi chạy đầu trang (VD: Freeship đơn >300k, mã `MAYMAN` giảm 10%). | Tĩnh / Cấu hình từ admin |
+| | `AnnouncementBar.jsx`| Thanh thông báo ưu đãi chạy đầu trang (VD: Freeship đơn >300k, ưu đãi độc quyền theo mùa). | Tĩnh / Cấu hình từ admin |
 | | `MobileBottomBar.jsx`| Thanh điều hướng cố định chân màn hình điện thoại (Trang chủ, Xưởng phối, AI Scan, Giỏ hàng, Tra cứu). | Nhận handler mở modal tương tự Navbar |
 | **home** | `HeroSection.jsx` | Banner giới thiệu giá trị vòng tay thủ công, chất liệu gốm pastel, đá tự nhiên, nút CTA "Phối vòng ngay". | Callback chuyển tab / mở Customizer |
 | **product** | `ProductCard.jsx` | Card hiển thị từng mẫu vòng: ảnh sắc nét, badge ngũ hành, giá bán, nút xem nhanh, nút thả tim (Wishlist). | `product`, `onSelect`, `onQuickAdd` |
@@ -87,13 +87,15 @@ e:\VIBANVONGTAY\
 | **customizer**| `BraceletStudio.jsx`| **Xưởng tự phối độc bản 2D**: Canvas mô phỏng vòng tròn thời gian thực. Khách chọn loại dây (sáp/chỉ/macrame), từng hạt đá, charm gốm, charm bạc. Tự tính tổng chi phí động. | `isOpen`, `onClose`, `onAddToCart`, gọi `/api/customizer/options` và `/api/customizer/calculate` |
 | **ai** | `AICameraModal.jsx` | **AI Scan Đa Năng**: Chụp/Upload ảnh cổ tay để tính chu vi (dùng thẻ ATM làm mốc tỉ lệ chuẩn), hoặc chụp ảnh mẫu vòng để catalog-match tìm sản phẩm tương đương; tư vấn phong thủy AI. | `isOpen`, `onClose`, `mode` ('wrist' \| 'catalog_match'), gọi `/api/ai/measure-wrist` và `/api/ai/match-product` |
 | **personalization**| `PersonalizedSection.jsx`| Tư vấn phong thủy theo ngày tháng năm sinh, âm lịch, cung hoàng đạo, gợi ý màu đá tương sinh/tương hợp. | `onSelectProduct` |
-| **cart** | `CartDrawer.jsx` | Giỏ hàng trượt cạnh phải: Thanh tiến trình Freeship, danh sách sản phẩm (kèm chi tiết charm/hạt custom), nhập mã Voucher, nút chuyển sang Thanh toán. | `isOpen`, `onClose`, `onOpenCheckout`, dùng `useCart()` |
+| **cart** | `CartDrawer.jsx` | Giỏ hàng trượt cạnh phải: Thanh tiến trình Freeship, danh sách sản phẩm (kèm chi tiết charm/hạt custom), nhập mã Voucher động, nút chuyển sang Thanh toán. | `isOpen`, `onClose`, `onOpenCheckout`, dùng `useCart()` |
 | | `WishlistDrawer.jsx`| Danh sách các mẫu vòng khách đã thả tim lưu lại xem sau. | `isOpen`, `onClose`, dùng `useCart()` |
 | **checkout** | `CheckoutModal.jsx` | Điền thông tin người nhận, chọn phương thức (COD hoặc Chuyển khoản QR), **tạo mã VietQR tự động** (kèm số tiền và mã đơn chuẩn xác). | `isOpen`, `onClose`, `cartItems`, `totalAmount`, gọi `/api/orders` |
 | **tracking** | `OrderTrackingModal.jsx`| Khách nhập mã đơn hàng (hoặc SĐT) để tra cứu tiến độ thời gian thực: *Đã tiếp nhận -> Thợ đang xâu hạt -> Đóng gói hộp quà -> Đang giao hàng*. | `isOpen`, `onClose`, gọi `/api/orders/:id` hoặc `/api/orders/track` |
 | **auth** | `AuthModal.jsx` | Đăng nhập / Đăng ký qua SĐT, Email hoặc tài khoản Quản trị viên (Admin). | `isOpen`, `onClose`, `onSuccess` |
 | | `UserProfileModal.jsx`| Xem thông tin tài khoản, danh sách đơn hàng đã đặt, điểm tích lũy thành viên, địa chỉ giao hàng mặc định. | `isOpen`, `onClose`, `currentUser` |
-| **admin** | `AdminDashboard.jsx`| Bảng điều khiển quản trị toàn diện: Xem biểu đồ doanh thu, quản lý 10 bảng dữ liệu (Sản phẩm, Đơn hàng, Voucher, Đánh giá, Tư vấn, Danh mục, Khách hàng). Cập nhật trạng thái đơn xâu vòng. | `isOpen`, `onClose`, gọi toàn bộ `/api/admin/*` |
+| **admin** | `AdminDashboard.jsx`| Bảng điều khiển quản trị toàn diện: Xem biểu đồ doanh thu, quản lý các bảng dữ liệu (Sản phẩm, Đơn hàng, Voucher, Đánh giá, Tư vấn, Danh mục, Khách hàng). Cập nhật trạng thái đơn xâu vòng. | `isOpen`, `onClose`, gọi toàn bộ `/api/admin/*` |
+| | `ProductEditorView.jsx`| **Trang cứng thêm/sửa sản phẩm**: Giao diện độc lập thay thế modal, quản lý ảnh, thuộc tính, mệnh, kho hàng. | `product`, `onSave`, `onCancel` |
+| | `VoucherEditorView.jsx`| **Trang cứng thêm/sửa mã giảm giá**: Giao diện độc lập thay thế modal (không dùng notice/alert), xem trước vé voucher trực quan. | `voucher`, `onSave`, `onCancel` |
 
 ### 3.2. Frontend State Management & API Service
 

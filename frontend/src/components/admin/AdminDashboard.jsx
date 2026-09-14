@@ -53,6 +53,7 @@ import { compressImage, compressMultipleImages } from '../../utils/imageUtils';
 import ProductEditorView from './ProductEditorView';
 import CharmManagerView from './CharmManagerView';
 import OrderManagerView from './OrderManagerView';
+import VoucherEditorView from './VoucherEditorView';
 
 const schemaTables = [
   {
@@ -344,8 +345,10 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   const [vouchers, setVouchers] = useState([]);
   const [voucherSearch, setVoucherSearch] = useState('');
   const [voucherFilter, setVoucherFilter] = useState('all'); // 'all' | 'active' | 'inactive' | 'percentage' | 'fixed'
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState(null);
+  const [isSavingVoucher, setIsSavingVoucher] = useState(false);
+  const [voucherFormError, setVoucherFormError] = useState('');
+  const [voucherDeleteConfirmId, setVoucherDeleteConfirmId] = useState(null);
   const [voucherFormData, setVoucherFormData] = useState({
     code: '',
     discountType: 'percentage',
@@ -353,7 +356,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
     minOrderValue: 200000,
     maxDiscount: 50000,
     usageLimit: 500,
-    description: 'Ưu đãi tri ân khách hàng Vòng Tay Nhà Zy',
+    description: '',
     isActive: true,
     expiresAt: ''
   });
@@ -801,95 +804,122 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
   // ================= VOUCHERS HANDLERS =================
   const handleOpenCreateVoucher = () => {
     setEditingVoucher(null);
+    setVoucherFormError('');
     setVoucherFormData({
       code: '',
       discountType: 'percentage',
-      discountValue: 15,
-      minOrderValue: 200000,
-      maxDiscount: 50000,
+      discountValue: '',
+      minOrderValue: '',
+      maxDiscount: '',
       usageLimit: 500,
-      description: 'Ưu đãi tri ân khách hàng thân thiết Vòng Tay Nhà Zy',
+      description: '',
       isActive: true,
       expiresAt: ''
     });
-    setIsVoucherModalOpen(true);
+    setAdminTab('voucher-editor');
   };
 
   const handleOpenEditVoucher = (voucher) => {
     setEditingVoucher(voucher);
+    setVoucherFormError('');
     setVoucherFormData({
       code: voucher.code,
       discountType: voucher.discountType || 'percentage',
-      discountValue: voucher.discountValue || 0,
-      minOrderValue: voucher.minOrderValue || 0,
+      discountValue: voucher.discountValue || '',
+      minOrderValue: voucher.minOrderValue || '',
       maxDiscount: voucher.maxDiscount || '',
       usageLimit: voucher.usageLimit || 500,
       description: voucher.description || '',
       isActive: voucher.isActive !== false,
       expiresAt: voucher.expiresAt ? voucher.expiresAt.substring(0, 10) : ''
     });
-    setIsVoucherModalOpen(true);
+    setAdminTab('voucher-editor');
   };
 
   const handleSaveVoucher = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    setVoucherFormError('');
     try {
       const cleanCode = String(voucherFormData.code || '').trim().toUpperCase();
       if (!cleanCode) {
-        alert('Vui lòng nhập mã giảm giá');
+        setVoucherFormError('Vui lòng nhập mã giảm giá (Code)');
         return;
       }
 
+      const val = Number(voucherFormData.discountValue);
+      if (!val || val <= 0) {
+        setVoucherFormError('Vui lòng nhập giá trị chiết khấu hợp lệ lớn hơn 0');
+        return;
+      }
+
+      if (voucherFormData.discountType === 'percentage' && val > 100) {
+        setVoucherFormError('Tỷ lệ phần trăm giảm giá không được vượt quá 100%');
+        return;
+      }
+
+      setIsSavingVoucher(true);
       const payload = {
         ...voucherFormData,
         code: cleanCode,
-        discountValue: Number(voucherFormData.discountValue) || 0,
+        discountValue: val,
         minOrderValue: Number(voucherFormData.minOrderValue) || 0,
-        maxDiscount: voucherFormData.maxDiscount ? Number(voucherFormData.maxDiscount) : null,
+        maxDiscount: voucherFormData.discountType === 'percentage' && voucherFormData.maxDiscount ? Number(voucherFormData.maxDiscount) : null,
         usageLimit: Number(voucherFormData.usageLimit) || 500
       };
 
       if (editingVoucher) {
         const res = await api.updateVoucher(editingVoucher.id, payload);
-        if (res.success) {
-          triggerToast(`Đã cập nhật mã giảm giá "${res.data.code}"`);
+        if (res && res.success) {
+          triggerToast(`Đã cập nhật mã giảm giá "${res.data.code}" thành công`);
+          setAdminTab('vouchers');
+        } else {
+          setVoucherFormError(res?.message || 'Lỗi cập nhật mã giảm giá');
         }
       } else {
         const res = await api.createVoucher(payload);
-        if (res.success) {
-          triggerToast(`Đã tạo mới mã giảm giá "${res.data.code}"`);
+        if (res && res.success) {
+          triggerToast(`Đã tạo mới mã giảm giá "${res.data.code}" thành công`);
+          setAdminTab('vouchers');
+        } else {
+          setVoucherFormError(res?.message || 'Lỗi tạo mã giảm giá');
         }
       }
-      setIsVoucherModalOpen(false);
       const vRes = await api.getVouchers(true);
-      if (vRes.success) setVouchers(vRes.data);
+      if (vRes && vRes.success) setVouchers(vRes.data);
     } catch (err) {
-      alert('Lỗi lưu mã giảm giá: ' + err.message);
+      setVoucherFormError(err.message || 'Lỗi lưu mã giảm giá');
+    } finally {
+      setIsSavingVoucher(false);
     }
   };
 
-  const handleDeleteVoucher = async (id, code) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa vĩnh viễn mã giảm giá "${code}"?`)) return;
+  const handleConfirmDeleteVoucher = async (id, code) => {
     try {
       const res = await api.deleteVoucher(id);
-      if (res.success) {
+      if (res && res.success) {
         setVouchers(prev => prev.filter(v => v.id !== id && v.code !== id));
         triggerToast(`Đã xóa mã voucher "${code}" thành công`);
+      } else {
+        triggerToast(res?.message || 'Không thể xóa mã', 'error');
       }
     } catch (err) {
-      alert('Lỗi xóa voucher: ' + err.message);
+      triggerToast(err.message || 'Lỗi xóa mã voucher', 'error');
+    } finally {
+      setVoucherDeleteConfirmId(null);
     }
   };
 
   const handleToggleVoucher = async (id) => {
     try {
       const res = await api.toggleVoucher(id);
-      if (res.success) {
+      if (res && res.success) {
         setVouchers(prev => prev.map(v => (v.id === id || v.code === id) ? { ...v, isActive: res.data.isActive } : v));
         triggerToast(res.message);
+      } else {
+        triggerToast(res?.message || 'Lỗi chuyển trạng thái', 'error');
       }
     } catch (err) {
-      alert('Lỗi chuyển trạng thái: ' + err.message);
+      triggerToast(err.message || 'Lỗi chuyển trạng thái', 'error');
     }
   };
 
@@ -1054,6 +1084,33 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
           handleAutoAnalyzeImage={handleAutoAnalyzeImage}
           isAnalyzingCord={isAnalyzingCord}
           aiAnalysisStatus={aiAnalysisStatus}
+        />
+      </div>
+    );
+  }
+
+  // TRANG CỨNG: THÊM / SỬA MÃ GIẢM GIÁ RIÊNG BIỆT (KHÔNG DÙNG MODAL ĐÈ MÀN HÌNH, KHÔNG NOTICE / ALERT)
+  if (adminTab === 'voucher-editor') {
+    return (
+      <div className="min-h-screen py-4 sm:py-6">
+        {successMsg && (
+          <div className="fixed top-5 right-5 z-50 bg-[#231F1C] text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 text-xs border border-emerald-500 animate-slideIn">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{successMsg}</span>
+          </div>
+        )}
+        <VoucherEditorView
+          editingVoucher={editingVoucher}
+          voucherFormData={voucherFormData}
+          setVoucherFormData={setVoucherFormData}
+          onSave={handleSaveVoucher}
+          isSaving={isSavingVoucher}
+          onCancel={() => {
+            setAdminTab('vouchers');
+            setVoucherFormError('');
+          }}
+          errorMessage={voucherFormError}
+          setErrorMessage={setVoucherFormError}
         />
       </div>
     );
@@ -1408,22 +1465,40 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
                     <span className="text-[10px] text-[#8C8276]">
                       Loại: <span className="font-semibold text-[#26211C]">{v.discountType === 'percentage' ? 'Theo tỷ lệ %' : 'Tiền mặt cố định'}</span>
                     </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenEditVoucher(v)}
-                        className="p-2 rounded-xl bg-[#FAF4ED] text-[#B86244] hover:bg-[#B86244] hover:text-white transition-colors"
-                        title="Chỉnh sửa mã giảm giá"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVoucher(v.id || v.code, v.code)}
-                        className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors"
-                        title="Xóa mã giảm giá vĩnh viễn"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {voucherDeleteConfirmId === (v.id || v.code) ? (
+                      <div className="flex items-center gap-1 bg-rose-50 p-1 rounded-xl border border-rose-200 animate-fadeIn">
+                        <span className="text-[10px] text-rose-700 font-bold px-1">Xóa mã?</span>
+                        <button
+                          onClick={() => handleConfirmDeleteVoucher(v.id || v.code, v.code)}
+                          className="px-2 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 cursor-pointer"
+                        >
+                          Xác nhận
+                        </button>
+                        <button
+                          onClick={() => setVoucherDeleteConfirmId(null)}
+                          className="px-2 py-1 rounded-lg bg-white border border-gray-200 text-[#6B6258] text-[10px] hover:bg-gray-100 cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenEditVoucher(v)}
+                          className="p-2 rounded-xl bg-[#FAF4ED] text-[#B86244] hover:bg-[#B86244] hover:text-white transition-colors cursor-pointer"
+                          title="Chỉnh sửa mã giảm giá"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setVoucherDeleteConfirmId(v.id || v.code)}
+                          className="p-2 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
+                          title="Xóa mã giảm giá"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -2504,184 +2579,7 @@ export default function AdminDashboard({ onBackToStore, currentUser, onOpenAuth,
         </div>
       )}
 
-      {/* ================= MODAL: TẠO / CHỈNH SỬA MÃ GIẢM GIÁ ================= */}
-      {isVoucherModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
-          onClick={() => { setIsVoucherModalOpen(false); setEditingVoucher(null); }}
-        >
-          <div 
-            className="bg-white w-full max-w-lg rounded-3xl border border-[#E8DFD3] shadow-2xl overflow-hidden my-6 max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-[#26211C] text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#B86244] text-white flex items-center justify-center font-bold">
-                  <Ticket className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-serif-boutique text-lg font-bold">
-                    {editingVoucher ? 'CHỈNH SỬA MÃ GIẢM GIÁ' : 'TẠO MÃ GIẢM GIÁ MỚI'}
-                  </h3>
-                  <p className="text-[10px] text-[#CFC1B0]">
-                    {editingVoucher ? `Chỉnh sửa mã ưu đãi ${editingVoucher.code}` : 'Thiết lập chính sách chiết khấu cho khách hàng'}
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsVoucherModalOpen(false)} 
-                className="p-1 rounded-full text-white/70 hover:text-white hover:bg-white/10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSaveVoucher} className="p-6 overflow-y-auto space-y-4 text-xs">
-              {/* Mã code */}
-              <div>
-                <label className="font-bold text-[#26211C] block mb-1">Mã Giảm Giá (Code): *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: KHANHVY15, TRIAN50K, FREESHIP..."
-                  value={voucherFormData.code}
-                  onChange={(e) => setVoucherFormData({ ...voucherFormData, code: e.target.value.toUpperCase() })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none focus:ring-1 focus:ring-[#B86244] font-mono font-bold uppercase tracking-wider text-sm text-[#B86244]"
-                />
-                <p className="text-[10px] text-[#8C8276] mt-1">Khách hàng sẽ nhập chính xác mã này tại trang thanh toán.</p>
-              </div>
-
-              {/* Loại chiết khấu & Giá trị */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Hình Thức Giảm: *</label>
-                  <select
-                    value={voucherFormData.discountType}
-                    onChange={(e) => setVoucherFormData({ ...voucherFormData, discountType: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-semibold text-[#26211C]"
-                  >
-                    <option value="percentage">Giảm theo tỷ lệ phần trăm (%)</option>
-                    <option value="fixed">Giảm số tiền cố định (₫)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">
-                    {voucherFormData.discountType === 'percentage' ? 'Tỷ Lệ Giảm (%): *' : 'Số Tiền Giảm (₫): *'}
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    placeholder={voucherFormData.discountType === 'percentage' ? '15' : '30000'}
-                    value={voucherFormData.discountValue}
-                    onChange={(e) => setVoucherFormData({ ...voucherFormData, discountValue: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none font-bold text-[#26211C]"
-                  />
-                </div>
-              </div>
-
-              {/* Điều kiện đơn tối thiểu & Giảm tối đa */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Đơn Hàng Tối Thiểu (₫):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="10000"
-                    placeholder="150000"
-                    value={voucherFormData.minOrderValue}
-                    onChange={(e) => setVoucherFormData({ ...voucherFormData, minOrderValue: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
-                  />
-                  <span className="text-[10px] text-[#8C8276] mt-0.5 block">0₫ nếu không yêu cầu</span>
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Giảm Tối Đa (₫) (Nếu giảm %):</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="5000"
-                    placeholder="50000"
-                    value={voucherFormData.maxDiscount}
-                    onChange={(e) => setVoucherFormData({ ...voucherFormData, maxDiscount: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
-                  />
-                  <span className="text-[10px] text-[#8C8276] mt-0.5 block">Để trống nếu không giới hạn trần</span>
-                </div>
-              </div>
-
-              {/* Giới hạn lượt dùng & Hạn dùng */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Giới Hạn Lượt Dùng Toàn Xưởng:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="500"
-                    value={voucherFormData.usageLimit}
-                    onChange={(e) => setVoucherFormData({ ...voucherFormData, usageLimit: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#26211C] block mb-1">Hạn Sử Dụng (Tùy chọn):</label>
-                  <input
-                    type="date"
-                    value={voucherFormData.expiresAt}
-                    onChange={(e) => setVoucherFormData({ ...voucherFormData, expiresAt: e.target.value })}
-                    className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none text-[#26211C]"
-                  />
-                </div>
-              </div>
-
-              {/* Mô tả */}
-              <div>
-                <label className="font-bold text-[#26211C] block mb-1">Mô Tả Mã Giảm Giá:</label>
-                <textarea
-                  rows={2}
-                  placeholder="Ví dụ: Giảm 15% tối đa 50k cho đơn vòng tay từ 200k nhân dịp ra mắt bộ sưu tập mới"
-                  value={voucherFormData.description}
-                  onChange={(e) => setVoucherFormData({ ...voucherFormData, description: e.target.value })}
-                  className="w-full bg-[#FAF7F2] p-2.5 rounded-xl border border-[#E8DFD3] focus:outline-none"
-                />
-              </div>
-
-              {/* Trạng thái hoạt động */}
-              <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-[#26211C] block">Kích Hoạt Sử Dụng Ngay</span>
-                  <span className="text-[10px] text-[#6B6258]">Bật để khách hàng có thể áp dụng mã này khi đặt vòng</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={voucherFormData.isActive}
-                  onChange={(e) => setVoucherFormData({ ...voucherFormData, isActive: e.target.checked })}
-                  className="w-5 h-5 accent-[#B86244] cursor-pointer"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2 border-t border-[#F0EAE1]">
-                <button
-                  type="button"
-                  onClick={() => setIsVoucherModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-[#6B6258] font-semibold hover:bg-gray-50"
-                >
-                  Hủy Bỏ
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold shadow-sm"
-                >
-                  {editingVoucher ? 'Lưu Thay Đổi' : 'Tạo Mã Giảm Giá'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
     </div>
   );
