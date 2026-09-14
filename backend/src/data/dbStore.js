@@ -1383,6 +1383,13 @@ export const dbGetOrders = async () => {
   }));
 };
 
+export const dbGetOrderById = async (id) => {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) return null;
+  const orders = await dbGetOrders();
+  return orders.find(o => String(o.id) === cleanId) || null;
+};
+
 export const dbSaveOrder = async (order) => {
   memoryData.orders.unshift(order);
   saveToDisk();
