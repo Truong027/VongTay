@@ -69,7 +69,8 @@ export default function Bracelet3DViewer({
 
     // 5. Main Bracelet Group
     const braceletGroup = new THREE.Group();
-    // Tilt slightly forward for optimal aesthetic view
+    // Tilt slightly forward for optimal aesthetic view, shifted up slightly to give room for dangling charms
+    braceletGroup.position.y = 0.22;
     braceletGroup.rotation.x = 0.35;
     scene.add(braceletGroup);
     braceletGroupRef.current = braceletGroup;
@@ -90,10 +91,11 @@ export default function Bracelet3DViewer({
     const cordMesh = new THREE.Mesh(cordGeo, cordMat);
     braceletGroup.add(cordMesh);
 
-    // 7. Render 3D Beads
+    // 7. Render 3D Beads & Slot Charms (Không gò bó thiết kế - bất kỳ hạt nào cũng có thể là charm)
     const count = beadPositions.length || 21;
     const beadRadius = 0.22;
     const sphereGeo = new THREE.SphereGeometry(beadRadius, 32, 32);
+    const textureLoader = new THREE.TextureLoader();
     const beadMeshes = [];
 
     beadPositions.forEach((pos, idx) => {
@@ -101,81 +103,189 @@ export default function Bracelet3DViewer({
       const x = cordRadius * Math.cos(angle);
       const y = cordRadius * Math.sin(angle);
 
-      const colorHex = pos.bead?.color || '#EAA9A9';
+      const isSlotCharm = Boolean(pos.bead?.isCharm || pos.bead?.type === 'charm');
       const isSelected = selectedSlotIndex === pos.index;
 
-      // Realistic gemstone material (smooth crystal sheen with physical clearcoat)
-      const beadMat = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color(colorHex),
-        roughness: 0.18,
-        metalness: 0.08,
-        clearcoat: 0.95,
-        clearcoatRoughness: 0.1,
-        reflectivity: 0.85
-      });
+      if (isSlotCharm) {
+        // RENDER 3D CHARM TRÊN VỊ TRÍ HẠT
+        const slotCharmGroup = new THREE.Group();
+        slotCharmGroup.position.set(x, y, 0);
+        // Rotate tangent to the cord circle
+        slotCharmGroup.rotation.z = angle + Math.PI / 2;
 
-      const beadMesh = new THREE.Mesh(sphereGeo, beadMat);
-      beadMesh.position.set(x, y, 0);
-      beadMesh.userData = { slotIndex: pos.index };
-      beadMesh.castShadow = true;
-      beadMesh.receiveShadow = true;
+        const isGoldCharm = pos.bead?.id?.includes('gold') || pos.bead?.color === '#D4AF37';
 
-      // Add selection ring if active
-      if (isSelected) {
-        const ringGeo = new THREE.RingGeometry(0.28, 0.32, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ 
-          color: 0xB86244, 
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.9 
+        // 1. Bail Ring through cord
+        const bailGeo = new THREE.TorusGeometry(0.11, 0.028, 12, 24);
+        const metalMat = new THREE.MeshStandardMaterial({
+          color: isGoldCharm ? 0xEDC967 : 0xE5E8EC,
+          metalness: 0.95,
+          roughness: 0.15
         });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        ringMesh.position.z = 0.01;
-        beadMesh.add(ringMesh);
-      }
+        const bailMesh = new THREE.Mesh(bailGeo, metalMat);
+        bailMesh.rotation.x = Math.PI / 2;
+        slotCharmGroup.add(bailMesh);
 
-      braceletGroup.add(beadMesh);
-      beadMeshes.push(beadMesh);
+        // 2. Medallion Disc
+        const discGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.05, 32);
+        discGeo.rotateX(Math.PI / 2);
+
+        let faceMat;
+        if (pos.bead?.image) {
+          const charmTex = textureLoader.load(pos.bead.image, (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.needsUpdate = true;
+          });
+          faceMat = new THREE.MeshPhysicalMaterial({
+            map: charmTex,
+            roughness: 0.2,
+            metalness: 0.3,
+            clearcoat: 0.9,
+            clearcoatRoughness: 0.1
+          });
+        } else {
+          faceMat = new THREE.MeshPhysicalMaterial({
+            color: isGoldCharm ? 0xE8C15A : 0xDCE0E5,
+            metalness: 0.92,
+            roughness: 0.15,
+            clearcoat: 0.8
+          });
+        }
+
+        const discMesh = new THREE.Mesh(discGeo, faceMat);
+        discMesh.position.y = -0.16;
+        discMesh.castShadow = true;
+        slotCharmGroup.add(discMesh);
+
+        // Outer Bezel Ring around Charm
+        const bezelGeo = new THREE.TorusGeometry(0.26, 0.022, 12, 32);
+        const bezelMesh = new THREE.Mesh(bezelGeo, metalMat);
+        bezelMesh.position.y = -0.16;
+        slotCharmGroup.add(bezelMesh);
+
+        // Click selection data
+        discMesh.userData = { slotIndex: pos.index };
+        bailMesh.userData = { slotIndex: pos.index };
+
+        if (isSelected) {
+          const ringGeo = new THREE.RingGeometry(0.32, 0.36, 32);
+          const ringMat = new THREE.MeshBasicMaterial({ 
+            color: 0xB86244, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.95 
+          });
+          const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.position.set(0, -0.16, 0.04);
+          slotCharmGroup.add(ringMesh);
+        }
+
+        braceletGroup.add(slotCharmGroup);
+        beadMeshes.push(discMesh);
+      } else {
+        // RENDER HẠT ĐÁ QUÝ TỰ NHIÊN
+        const colorHex = pos.bead?.color || '#EAA9A9';
+
+        // Realistic gemstone material (smooth crystal sheen with physical clearcoat)
+        const beadMat = new THREE.MeshPhysicalMaterial({
+          color: new THREE.Color(colorHex),
+          roughness: 0.18,
+          metalness: 0.08,
+          clearcoat: 0.95,
+          clearcoatRoughness: 0.1,
+          reflectivity: 0.85
+        });
+
+        const beadMesh = new THREE.Mesh(sphereGeo, beadMat);
+        beadMesh.position.set(x, y, 0);
+        beadMesh.userData = { slotIndex: pos.index };
+        beadMesh.castShadow = true;
+        beadMesh.receiveShadow = true;
+
+        // Add selection ring if active
+        if (isSelected) {
+          const ringGeo = new THREE.RingGeometry(0.28, 0.32, 32);
+          const ringMat = new THREE.MeshBasicMaterial({ 
+            color: 0xB86244, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.95 
+          });
+          const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.position.z = 0.01;
+          beadMesh.add(ringMesh);
+        }
+
+        braceletGroup.add(beadMesh);
+        beadMeshes.push(beadMesh);
+      }
     });
     beadMeshesRef.current = beadMeshes;
 
-    // 8. Dangling 3D Charm at bottom
+    // 8. Dangling 3D Central Charm at bottom (Treo Đáy Vòng)
     if (selectedCharm) {
       const charmGroup = new THREE.Group();
       charmGroup.position.set(0, -cordRadius - 0.05, 0);
 
-      // Connecting Silver Bail / Jump Ring
-      const ringGeo = new THREE.TorusGeometry(0.12, 0.025, 12, 24);
+      const isGold = selectedCharm.id?.includes('gold') || selectedCharm.color === '#D4AF37';
+
+      // Connecting Silver/Gold Bail / Jump Ring
+      const ringGeo = new THREE.TorusGeometry(0.13, 0.03, 16, 32);
       const silverMat = new THREE.MeshStandardMaterial({
-        color: 0xE0E0E0,
-        metalness: 0.9,
-        roughness: 0.18
+        color: isGold ? 0xF2D06B : 0xE8ECF0,
+        metalness: 0.95,
+        roughness: 0.12
       });
       const bailMesh = new THREE.Mesh(ringGeo, silverMat);
       bailMesh.rotation.x = Math.PI / 2;
       charmGroup.add(bailMesh);
 
-      // Charm Body (Polished Silver / Rose Gold Figurine Disc)
-      const discGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.06, 32);
+      // Charm Body: Dual-sided Medallion Bezel with high-resolution texture
+      const discGeo = new THREE.CylinderGeometry(0.40, 0.40, 0.06, 36);
       discGeo.rotateX(Math.PI / 2);
-      const charmMat = new THREE.MeshStandardMaterial({
-        color: selectedCharm.id?.includes('gold') ? 0xEDC967 : 0xDCE0E5,
-        metalness: 0.92,
-        roughness: 0.15
-      });
-      const charmBody = new THREE.Mesh(discGeo, charmMat);
-      charmBody.position.y = -0.32;
+
+      let charmFaceMat;
+      if (selectedCharm.image) {
+        const charmTex = textureLoader.load(selectedCharm.image, (tex) => {
+          tex.colorSpace = THREE.SRGBColorSpace;
+          tex.needsUpdate = true;
+        });
+        charmFaceMat = new THREE.MeshPhysicalMaterial({
+          map: charmTex,
+          roughness: 0.22,
+          metalness: 0.25,
+          clearcoat: 0.95,
+          clearcoatRoughness: 0.1
+        });
+      } else {
+        charmFaceMat = new THREE.MeshPhysicalMaterial({
+          color: isGold ? 0xEDC967 : 0xDCE0E5,
+          metalness: 0.95,
+          roughness: 0.15,
+          clearcoat: 0.9
+        });
+      }
+
+      const charmBody = new THREE.Mesh(discGeo, charmFaceMat);
+      charmBody.position.y = -0.34;
+      charmBody.castShadow = true;
       charmGroup.add(charmBody);
 
-      // Inner Symbol Emblem
-      const emblemGeo = new THREE.SphereGeometry(0.16, 16, 16);
+      // Outer Bezel Ring (Viền kim loại bảo vệ charm)
+      const bezelGeo = new THREE.TorusGeometry(0.40, 0.035, 16, 36);
+      const bezelMesh = new THREE.Mesh(bezelGeo, silverMat);
+      bezelMesh.position.y = -0.34;
+      charmGroup.add(bezelMesh);
+
+      // Engraved 925 Hallmark Emblem on back
+      const emblemGeo = new THREE.SphereGeometry(0.12, 16, 16);
       const emblemMat = new THREE.MeshStandardMaterial({
-        color: 0xB86244,
-        roughness: 0.3,
-        metalness: 0.5
+        color: isGold ? 0xB8860B : 0x7B8590,
+        roughness: 0.25,
+        metalness: 0.85
       });
       const emblem = new THREE.Mesh(emblemGeo, emblemMat);
-      emblem.position.set(0, -0.32, 0.02);
+      emblem.position.set(0, -0.34, 0.035);
       charmGroup.add(emblem);
 
       braceletGroup.add(charmGroup);

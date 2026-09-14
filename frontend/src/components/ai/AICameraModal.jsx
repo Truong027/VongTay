@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   X, 
   Camera, 
@@ -522,7 +522,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-black/75 backdrop-blur-md overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-black/75 backdrop-blur-md overflow-y-auto animate-fadeIn"
       onClick={onClose}
     >
       <div 
@@ -1532,8 +1532,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     const depthFactor = 0.8 + 0.35 * Math.sin(angle);
                     const radius = 8.5 * scale * depthFactor;
                     const beadCustom = b.beadPositions?.[i];
+                    const isCharm = Boolean(beadCustom?.isCharm || beadCustom?.item?.isCharm || beadCustom?.type === 'charm');
+                    const charmImage = beadCustom?.image || beadCustom?.item?.image || null;
                     const color = beadCustom?.color || beadCustom?.item?.color || b.beadColor || '#F7C6D0';
-                    beadItems.push({ x, y, radius, depthFactor, angle, color, index: i });
+                    beadItems.push({ x, y, radius, depthFactor, angle, color, index: i, isCharm, charmImage });
                   }
                   // Sort beads by depth so front beads overlap back beads realistically
                   beadItems.sort((first, second) => first.y - second.y);
@@ -1556,6 +1558,12 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                               <feMergeNode in="SourceGraphic" />
                             </feMerge>
                           </filter>
+                          <clipPath id="charmClip">
+                            <circle cx="0" cy="11" r="10" />
+                          </clipPath>
+                          <clipPath id="slotCharmClip">
+                            <circle cx="0" cy="0" r="8" />
+                          </clipPath>
                         </defs>
 
                         {/* Cord Ring */}
@@ -1571,7 +1579,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                           filter="url(#wristShadow)"
                         />
 
-                        {/* Beads along ellipse */}
+                        {/* Beads & Slot Charms along ellipse */}
                         {beadItems.map((bead) => (
                           <g key={bead.index}>
                             <defs>
@@ -1580,24 +1588,77 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                                 <stop offset="40%" stopColor={bead.color} />
                                 <stop offset="100%" stopColor="#1E130D" stopOpacity="0.88" />
                               </radialGradient>
+                              <radialGradient id={`arCharmGrad-${bead.index}`} cx="30%" cy="30%" r="70%">
+                                <stop offset="0%" stopColor="#FFF4D0" />
+                                <stop offset="50%" stopColor="#E5C158" />
+                                <stop offset="100%" stopColor="#8A641A" />
+                              </radialGradient>
                             </defs>
-                            <circle
-                              cx={bead.x}
-                              cy={bead.y}
-                              r={bead.radius}
-                              fill={`url(#arBeadGrad-${bead.index})`}
-                              stroke="#FFFFFF"
-                              strokeWidth="0.8"
-                              opacity={0.96}
-                            />
-                            {/* Specular shine */}
-                            <circle
-                              cx={bead.x - bead.radius * 0.3}
-                              cy={bead.y - bead.radius * 0.3}
-                              r={bead.radius * 0.28}
-                              fill="#FFFFFF"
-                              opacity={0.85}
-                            />
+                            
+                            {bead.isCharm ? (
+                              /* 3D-styled Slot Charm Medallion on Wrist */
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                {/* Outer gold/silver charm bezel */}
+                                <circle
+                                  cx="0"
+                                  cy="0"
+                                  r={bead.radius * 1.15}
+                                  fill={`url(#arCharmGrad-${bead.index})`}
+                                  stroke="#FFFFFF"
+                                  strokeWidth="0.8"
+                                  filter="url(#wristShadow)"
+                                />
+                                <circle
+                                  cx="0"
+                                  cy="0"
+                                  r={bead.radius * 0.95}
+                                  fill="#FFFDF7"
+                                  stroke="#C59B6D"
+                                  strokeWidth="0.5"
+                                />
+                                {bead.charmImage ? (
+                                  <image
+                                    href={bead.charmImage}
+                                    x={-bead.radius * 0.8}
+                                    y={-bead.radius * 0.8}
+                                    width={bead.radius * 1.6}
+                                    height={bead.radius * 1.6}
+                                  />
+                                ) : (
+                                  <text
+                                    x="0"
+                                    y="2.5"
+                                    textAnchor="middle"
+                                    fontSize={bead.radius * 0.9}
+                                    fill="#845339"
+                                    fontWeight="bold"
+                                  >
+                                    ✦
+                                  </text>
+                                )}
+                              </g>
+                            ) : (
+                              /* Gemstone Bead */
+                              <>
+                                <circle
+                                  cx={bead.x}
+                                  cy={bead.y}
+                                  r={bead.radius}
+                                  fill={`url(#arBeadGrad-${bead.index})`}
+                                  stroke="#FFFFFF"
+                                  strokeWidth="0.8"
+                                  opacity={0.96}
+                                />
+                                {/* Specular shine */}
+                                <circle
+                                  cx={bead.x - bead.radius * 0.3}
+                                  cy={bead.y - bead.radius * 0.3}
+                                  r={bead.radius * 0.28}
+                                  fill="#FFFFFF"
+                                  opacity={0.85}
+                                />
+                              </>
+                            )}
                           </g>
                         ))}
 
@@ -1642,7 +1703,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-[#26211C]">Chọn mẫu vòng để ướm thử:</span>
                   <span className="text-[11px] text-[#B86244] font-semibold">
-                    {availableBracelets[arSelectedBracelet]?.name}
+                    {availableBracelets[arSelectedBracelet]?.name || 'Vòng Tự Phối'}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
@@ -1670,7 +1731,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                             {item.charmName ? item.charmName.split(' ')[0] : 'Charm'}
                           </span>
                         </div>
-                        <p className="font-bold text-[11px] text-[#26211C] line-clamp-1">{item.name.replace('Vòng ', '')}</p>
+                        <p className="font-bold text-[11px] text-[#26211C] line-clamp-1">{(item.name || 'Vòng Tay').replace('Vòng ', '')}</p>
                         <p className="text-[10px] text-[#B86244] font-bold mt-0.5">{formatPrice(item.price)}</p>
                       </button>
                     );
@@ -1816,11 +1877,14 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     type="button"
                     onClick={() => {
                       const b = availableBracelets[arSelectedBracelet];
-                      handleApplyPreset({
-                        mainBeadId: b.id === 'ar-strawberry' ? 'bead-strawberry-quartz' : 'bead-tiger-eye',
-                        charmId: 'charm-lotus',
-                        sizeId: 'size-m'
-                      });
+                      if (onApplyCustomPreset && b) {
+                        onApplyCustomPreset({
+                          mainBeadId: b.id === 'ar-strawberry' ? 'bead-strawberry-quartz' : 'bead-tiger-eye',
+                          charmId: 'charm-lotus',
+                          sizeId: 'size-m'
+                        });
+                      }
+                      onClose();
                     }}
                     className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[#B86244] text-[#B86244] hover:bg-[#FAF7F2] font-bold text-xs transition-all flex items-center justify-center gap-1.5"
                   >
