@@ -37,13 +37,15 @@ function darkenColor(hex, factor = 0.4) {
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-function renderArCharmSvg(charm) {
+function renderArCharmSvg(charm, scaleFactor = 0.75) {
   if (!charm) return null;
   const charmId = charm.id || '';
+  const sf = Math.max(0.45, Math.min(1.0, scaleFactor));
 
   if (charmId === 'charm-whale-blue') {
+    const s = 0.70 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.15)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <defs>
           <radialGradient id="arWhaleGrad" cx="30%" cy="30%" r="70%">
             <stop offset="0%" stopColor="#C6EEFD" />
@@ -68,8 +70,9 @@ function renderArCharmSvg(charm) {
 
   if (charmId === 'charm-mint-flower' || charmId === 'charm-lotus') {
     const fc = charmId === 'charm-lotus' ? '#A8D8B0' : '#A3E4D7';
+    const s = 0.75 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.1)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <circle cx="-8" cy="-5" r="6" fill={fc} opacity="0.92" filter="url(#beadDropShadow)" />
         <circle cx="8" cy="-5" r="6" fill={fc} opacity="0.92" filter="url(#beadDropShadow)" />
         <circle cx="-5" cy="7" r="6" fill={fc} opacity="0.92" filter="url(#beadDropShadow)" />
@@ -82,8 +85,9 @@ function renderArCharmSvg(charm) {
   }
 
   if (charmId === 'charm-flower-kv') {
+    const s = 0.75 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.1)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <circle cx="-8" cy="-5" r="6" fill="#F9D5E5" opacity="0.92" filter="url(#beadDropShadow)" />
         <circle cx="8" cy="-5" r="6" fill="#F9D5E5" opacity="0.92" filter="url(#beadDropShadow)" />
         <circle cx="-5" cy="7" r="6" fill="#FADDE8" opacity="0.92" filter="url(#beadDropShadow)" />
@@ -96,8 +100,9 @@ function renderArCharmSvg(charm) {
   }
 
   if (charmId === 'charm-butterfly-hologram') {
+    const s = 0.72 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.05)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <path d="M 0 0 C -8 -15 -18 -11 -15 0 C -14 8 -3 8 0 2 Z" fill="#D4B4F0" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.92" filter="url(#beadDropShadow)" />
         <path d="M 0 0 C 8 -15 18 -11 15 0 C 14 8 3 8 0 2 Z" fill="#D4B4F0" stroke="#FFFFFF" strokeWidth="0.8" opacity="0.92" filter="url(#beadDropShadow)" />
         <path d="M 0 2 C -5 6 -10 13 -3 13 C 0 13 0 6 0 2 Z" fill="#C8F0D8" stroke="#FFFFFF" strokeWidth="0.7" opacity="0.85" />
@@ -108,8 +113,9 @@ function renderArCharmSvg(charm) {
   }
 
   if (charmId === 'charm-clover') {
+    const s = 0.75 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.1)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <circle cx="-5" cy="-5" r="5.5" fill="#7DD87A" filter="url(#beadDropShadow)" />
         <circle cx="5" cy="-5" r="5.5" fill="#7DD87A" filter="url(#beadDropShadow)" />
         <circle cx="-5" cy="5" r="5.5" fill="#7DD87A" filter="url(#beadDropShadow)" />
@@ -120,8 +126,9 @@ function renderArCharmSvg(charm) {
   }
 
   if (charmId === 'charm-moon-star') {
+    const s = 0.75 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.1)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <path d="M 0 -10 C -3 -8 -3 -3 0 0 C 5 0 9 -4 9 -8 C 7 -11 3 -13 0 -10 Z" fill="#D4D8F0" stroke="#C8CCE8" strokeWidth="0.8" filter="url(#beadDropShadow)" />
         <polygon points="11,-6 12.5,-2 16.5,-2 13.5,0.5 14.5,4.5 11,2.5 7.5,4.5 8.5,0.5 5.5,-2 9.5,-2" fill="#F9E876" stroke="#DDCC00" strokeWidth="0.5" />
       </g>
@@ -129,8 +136,9 @@ function renderArCharmSvg(charm) {
   }
 
   if (charmId === 'charm-pixiu') {
+    const s = 0.75 * sf;
     return (
-      <g transform="translate(0, 14) scale(1.1)">
+      <g transform={`translate(0, ${10 * sf}) scale(${s})`}>
         <ellipse cx="0" cy="4" rx="10" ry="7" fill="#D4B060" stroke="#9E7624" strokeWidth="0.8" filter="url(#beadDropShadow)" />
         <circle cx="-5" cy="-4" r="4" fill="#E8C776" stroke="#9E7624" strokeWidth="0.7" />
         <circle cx="5" cy="-4" r="4" fill="#E8C776" stroke="#9E7624" strokeWidth="0.7" />
@@ -260,6 +268,15 @@ const AR_BRACELETS = [
   }
 ];
 
+// Hàm trích xuất chu vi cổ tay (cm) chuẩn xác từ chuỗi size (ví dụ "14 - 15 cm" -> 14.5)
+export const parseWristSizeCm = (wristSizeStr) => {
+  if (!wristSizeStr) return 15.5;
+  const numbers = String(wristSizeStr).match(/\d+(\.\d+)?/g);
+  if (!numbers || numbers.length === 0) return 15.5;
+  if (numbers.length === 1) return parseFloat(numbers[0]);
+  return (parseFloat(numbers[0]) + parseFloat(numbers[1])) / 2;
+};
+
 export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, initialMode = 'wrist', customBracelet = null }) {
   if (!isOpen) return null;
 
@@ -318,9 +335,14 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     ];
   }, [customBracelet]);
 
-  // Mode 3: AR Try-On State
+  // Mode 3: AR Try-On State (Tự động khởi tạo theo size mà khách đã chọn trong Tự Phối)
+  const initialWristCm = useMemo(() => {
+    return customBracelet ? parseWristSizeCm(customBracelet.wristSize) : 15.5;
+  }, [customBracelet]);
+
   const [arSelectedBracelet, setArSelectedBracelet] = useState(0);
-  const [arSizeCm, setArSizeCm] = useState(16);
+  const [arSizeCm, setArSizeCm] = useState(initialWristCm);
+  const [userCustomSize, setUserCustomSize] = useState(initialWristCm);
   const [arAngle, setArAngle] = useState(0);
   const [arOffsetX, setArOffsetX] = useState(0);
   const [arOffsetY, setArOffsetY] = useState(0);
@@ -366,9 +388,12 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     }
   };
 
-  // When customBracelet is passed or updated, prioritize it
+  // Đồng bộ chuẩn xác khi mẫu tự phối customBracelet được truyền vào
   useEffect(() => {
     if (customBracelet) {
+      const parsedCm = parseWristSizeCm(customBracelet.wristSize);
+      setArSizeCm(parsedCm);
+      setUserCustomSize(parsedCm);
       setArSelectedBracelet(0);
       setArOffsetX(0);
       setArOffsetY(0);
@@ -376,7 +401,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     }
   }, [customBracelet]);
 
-  // Real-time AI Wrist Tracking Loop (Computer Vision Skin & Arm Contour Analysis)
+  // Real-time AI Wrist Tracking Loop (Computer Vision Skin & Arm Linear Contour Analysis)
   useEffect(() => {
     if (!cameraActive || modalMode !== 'ar_tryon') return;
 
@@ -389,7 +414,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
         return;
       }
 
-      if (time - lastProcess > 85) { // ~12 FPS for smooth edge tracking without heating device
+      if (time - lastProcess > 85) { // ~12 FPS
         lastProcess = time;
         try {
           const video = videoRef.current;
@@ -400,7 +425,22 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
           }
           const tCanvas = trackingCanvasRef.current;
           const tCtx = tCanvas.getContext('2d', { willReadFrequently: true });
-          tCtx.drawImage(video, 0, 0, 120, 90);
+
+          // Cắt video đúng tỷ lệ hiển thị object-cover tương ứng viewport container 4:3
+          const vw = video.videoWidth || 640;
+          const vh = video.videoHeight || 480;
+          const containerAspect = 4 / 3;
+          const videoAspect = vw / vh;
+          let sx = 0, sy = 0, sWidth = vw, sHeight = vh;
+          if (videoAspect > containerAspect) {
+            sWidth = vh * containerAspect;
+            sx = (vw - sWidth) / 2;
+          } else {
+            sHeight = vw / containerAspect;
+            sy = (vh - sHeight) / 2;
+          }
+
+          tCtx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 120, 90);
           const imgData = tCtx.getImageData(0, 0, 120, 90);
           const data = imgData.data;
 
@@ -410,14 +450,14 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
           for (let y = 10; y < 85; y += 2) {
             let minX = 120, maxX = 0, count = 0;
             let sumX = 0;
-            for (let x = 10; x < 110; x += 2) {
+            for (let x = 6; x < 114; x += 2) {
               const idx = (y * 120 + x) * 4;
               const r = data[idx];
               const g = data[idx + 1];
               const b = data[idx + 2];
 
-              // Skin chroma detection in human tones
-              const isSkin = (r > 70 && g > 45 && b > 28 && r > g && r > b && (r - g) > 10 && (r - b) > 12 && Math.abs(r - g) < 115);
+              // Nhận diện sắc tố da người Việt Nam
+              const isSkin = (r > 65 && g > 42 && b > 25 && r > g && r > b && (r - g) > 8 && (r - b) > 10 && Math.abs(r - g) < 115);
               if (isSkin) {
                 count++;
                 sumX += x;
@@ -425,66 +465,55 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 if (x > maxX) maxX = x;
               }
             }
-            if (count >= 4) {
+            if (count >= 5 && (maxX - minX) >= 12) {
               totalSkinCount += count;
               rowStats.push({ y, count, minX, maxX, width: maxX - minX, centerX: sumX / count });
             }
           }
 
-          if (rowStats.length >= 8) {
-            // Find wrist inflection point (local minimum in width with forearm below and palm above)
-            let bestIdx = -1;
-            let minWidth = 999;
-            for (let i = 2; i < rowStats.length - 2; i++) {
-              const cur = rowStats[i].width;
-              if (cur < minWidth && cur > 10 && cur < 65) {
-                minWidth = cur;
-                bestIdx = i;
-              }
+          if (rowStats.length >= 6) {
+            // Lấy lát cắt cẳng tay ở khoảng giữa
+            const bestIdx = Math.floor(rowStats.length * 0.52);
+            const wristRow = rowStats[bestIdx] || rowStats[0];
+            const normX = wristRow.centerX / 120;
+            const normY = wristRow.y / 90;
+            const normW = wristRow.width / 120;
+
+            // Tính góc nghiêng cẳng tay bằng Hồi quy tuyến tính (Linear Regression) trên các lát cắt
+            let sumY = 0, sumX = 0, sumXY = 0, sumY2 = 0;
+            const n = rowStats.length;
+            for (const row of rowStats) {
+              sumX += row.centerX;
+              sumY += row.y;
+              sumXY += row.centerX * row.y;
+              sumY2 += row.y * row.y;
             }
+            const denom = n * sumY2 - sumY * sumY;
+            const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
+            // Góc xoay của cẳng tay so với trục dọc
+            const armAngleDeg = Math.round(Math.atan(slope) * (180 / Math.PI) * 1.15);
+            const clampedAngle = Math.max(-75, Math.min(75, armAngleDeg));
 
-            if (bestIdx !== -1) {
-              const wristRow = rowStats[bestIdx];
-              const normX = wristRow.centerX / 120;
-              const normY = wristRow.y / 90;
-              const normW = wristRow.width / 120;
+            const conf = Math.min(98, Math.max(68, Math.round((totalSkinCount / 400) * 88)));
 
-              // Calculate arm angle
-              const lowerRow = rowStats[Math.min(rowStats.length - 1, bestIdx + 3)];
-              const upperRow = rowStats[Math.max(0, bestIdx - 3)];
-              const dx = upperRow.centerX - lowerRow.centerX;
-              const dy = lowerRow.y - upperRow.y;
-              const angleRad = Math.atan2(dx, dy);
-              const angleDeg = Math.round(angleRad * (180 / Math.PI));
+            setDetectedWrist({
+              x: normX * 100,
+              y: normY * 100,
+              width: normW * 100,
+              angle: clampedAngle,
+              confidence: conf
+            });
+            setTrackingConfidence(conf);
+            setTrackingFeedback(`Khóa cổ tay ${conf}% (YOLO Auto-Snap)`);
 
-              const conf = Math.min(97, Math.max(72, Math.round((totalSkinCount / 380) * 88)));
+            if (isAutoTracking) {
+              const targetOffsetX = (normX - 0.5) * 220;
+              const targetOffsetY = (normY - 0.5) * 190 + 5;
 
-              setDetectedWrist({
-                x: normX * 100,
-                y: normY * 100,
-                width: normW * 100,
-                angle: angleDeg,
-                confidence: conf
-              });
-              setTrackingConfidence(conf);
-              setTrackingFeedback(`Khóa cổ tay ${conf}% (YOLO Auto-Snap)`);
-              if (isAutoTracking) {
-                // Tọa độ X và Y tương ứng trên khung 320x320
-                const targetOffsetX = (normX - 0.5) * 220;
-                // Điểm rơi tự nhiên của vòng: lùi nhẹ dọc theo cẳng tay khoảng 12px (~1.5cm)
-                const targetOffsetY = (normY - 0.5) * 190 + 10;
-                // Góc nghiêng tự nhiên hỗ trợ tư thế đưa tay chéo lên tới 80 độ
-                const targetAng = Math.max(-80, Math.min(80, angleDeg));
-                const targetSize = Math.max(14, Math.min(19, Math.round(14 + normW * 14)));
-
-                setArOffsetX(prev => Math.round(prev + (targetOffsetX - prev) * 0.32));
-                setArOffsetY(prev => Math.round(prev + (targetOffsetY - prev) * 0.32));
-                setArAngle(prev => Math.round(prev + (targetAng - prev) * 0.28));
-                setArSizeCm(prev => Math.max(14, Math.min(19, Math.round(prev + (targetSize - prev) * 0.2))));
-              }
-            } else {
-              setTrackingConfidence(prev => Math.max(0, prev - 4));
-              setTrackingFeedback('Đưa cổ tay vào giữa khung camera...');
+              // Lọc êm ái EMA không bị giật, GIỮ NGUYÊN arSizeCm người dùng đã chọn
+              setArOffsetX(prev => Math.round(prev + (targetOffsetX - prev) * 0.22));
+              setArOffsetY(prev => Math.round(prev + (targetOffsetY - prev) * 0.22));
+              setArAngle(prev => Math.round(prev + (clampedAngle - prev) * 0.20));
             }
           } else {
             setTrackingConfidence(prev => Math.max(0, prev - 4));
@@ -498,9 +527,6 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     };
 
     animId = requestAnimationFrame(processFrame);
-    return () => {
-      if (animId) cancelAnimationFrame(animId);
-    };
   }, [cameraActive, modalMode, isAutoTracking]);
 
   // Sync initialMode when modal opens
@@ -1754,38 +1780,45 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   </div>
                 </div>
 
-                {/* REAL-TIME AR BRACELET OVERLAY (3D Cylindrical Wrapping & Real Wrist Snug Fit) */}
+                {/* REAL-TIME AR BRACELET OVERLAY (3D Cylindrical Wrapping & Snug Real-Wrist Fit) */}
                 {(() => {
                   const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
 
-                  // 1. TÍNH TOÁN BÁN KÍNH KHỚP CHÍNH XÁC VỚI CỔ TAY THỰC TẾ TRÊN VIEWPORT 320x320
-                  // Khung camera 320x320: Cổ tay người thật thường có bề ngang từ 60px - 85px
-                  const detectedWristPx = (detectedWrist && detectedWrist.width > 8)
-                    ? Math.min(100, Math.max(58, (detectedWrist.width / 100) * 320))
-                    : 74;
+                  // 1. TÍNH TOÁN BÁN KÍNH KHỚP CHÍNH XÁC VỚI BỀ NGANG CÁNH TAY TRÊN VIEWPORT 320x320
+                  // Cánh tay người dùng trong khung camera thực tế thường có bề ngang từ 110px - 180px
+                  const armWidthPx = (detectedWrist && detectedWrist.width > 12)
+                    ? Math.min(210, Math.max(90, (detectedWrist.width / 100) * 320))
+                    : 140;
 
-                  // Tỷ lệ co giãn theo chu vi cổ tay (14cm - 19cm, mốc chuẩn 16cm)
-                  const sizeRatio = arSizeCm / 16;
+                  // Bán kính cơ sở của cánh tay:
+                  const armBaseRadius = armWidthPx * 0.50;
 
-                  // Bán kính ngang elip: Bằng bán kính cổ tay + 3.5px để tâm hạt nằm tiếp xúc khít khao lên mép da tay
-                  const rx = (detectedWristPx * 0.51) * sizeRatio;
+                  // Hệ số tỷ lệ theo chu vi vòng tay đã chọn trong Tự Phối (mốc chuẩn 15.5cm):
+                  // Size 14cm -> ôm sát khít da (fitScale ~ 0.94)
+                  // Size 15.5cm -> vừa vặn chuẩn chạm 2 mép tay (fitScale = 1.00)
+                  // Size 17.5cm -> buông lơi tự nhiên (fitScale ~ 1.13)
+                  const fitScale = arSizeCm / 15.5;
 
-                  // Độ dẹp elip cổ tay (anatomical wrist ratio ~ 0.35): Tạo độ cong nhẹ nhàng ôm sát mu cổ tay
-                  const ry = rx * 0.35;
+                  // Bán kính ngang elip: Đúng bằng bề ngang cánh tay nhân hệ số vừa vặn
+                  const rx = armBaseRadius * fitScale;
+
+                  // Độ dẹp elip mu tay và độ võng rơi tự nhiên theo trọng lực (anatomical sagging):
+                  const sagFactor = Math.max(0, Math.min(1, (arSizeCm - 14) / 5));
+                  const ry = rx * (0.30 + sagFactor * 0.08);
 
                   const cx = 160 + arOffsetX;
                   const cy = 160 + arOffsetY;
 
                   // 2. CHUẨN BỊ DANH SÁCH HẠT HIỂN THỊ TRÊN CUNG TRƯỚC (VISIBLE FRONT ARC)
-                  // Với rx ~ 38px - 44px, cung trước nhìn thấy vừa vặn khít khao 9 hạt (hạt số 4 ở chính giữa)
-                  const frontCount = 9;
+                  // Với rx ~ 65px - 85px, cung trước nhìn thấy hiển thị 11 hạt ôm mượt mà (hạt số 5 ở chính giữa treo charm)
+                  const frontCount = 11;
                   let displayBeads = [];
 
                   if (b.isCustom && b.beadPositions && b.beadPositions.length > 0) {
                     const total = b.beadPositions.length;
                     // Trong BraceletStudio, charm chính nằm ở đáy (vị trí gần Math.floor(total / 2))
                     const centerIdx = Math.floor(total / 2);
-                    const halfFront = Math.floor(frontCount / 2); // 4 hạt mỗi bên
+                    const halfFront = Math.floor(frontCount / 2); // 5 hạt mỗi bên quanh tâm
 
                     for (let offset = -halfFront; offset <= halfFront; offset++) {
                       const rawIdx = (centerIdx + offset + total) % total;
@@ -1804,7 +1837,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                       });
                     }
                   } else if (b.floralBeads && b.floralBeads.length > 0) {
-                    // Mẫu hoa hồng pha lê: Trích xuất 9 phần tử cân xứng với hoa hồng ở chính giữa
+                    // Mẫu hoa hồng pha lê: Trích xuất 11 phần tử cân xứng với hoa hồng ở chính giữa
                     const floralTotal = b.floralBeads.length;
                     const centerIdx = b.floralBeads.findIndex(fb => fb.type === 'flower');
                     const cIdx = centerIdx !== -1 ? centerIdx : Math.floor(floralTotal / 2);
@@ -1824,7 +1857,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                       });
                     }
                   } else {
-                    // Preset thông thường: 9 hạt phân bổ đều
+                    // Preset thông thường: 11 hạt phân bổ đều
                     for (let i = 0; i < frontCount; i++) {
                       displayBeads.push({
                         id: `preset-bead-${i}`,
@@ -1845,21 +1878,21 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   // 3. TÍNH TOÁN VỊ TRÍ, KÍCH THƯỚC VÀ HIỆU ỨNG PHỐI CẢNH 3D (CYLINDRICAL FORESHORTENING)
                   for (let i = 0; i < beadCount; i++) {
                     const t = beadCount > 1 ? i / (beadCount - 1) : 0.5;
-                    // Góc từ -82 độ đến +82 độ ôm sát hai bên sườn cổ tay
-                    const angle = (-Math.PI * 0.46) + t * (Math.PI * 0.92);
+                    // Góc từ -84 độ đến +84 độ ôm trọn hai bên sườn cổ tay
+                    const angle = (-Math.PI * 0.47) + t * (Math.PI * 0.94);
                     const bx = cx + rx * Math.sin(angle);
                     const by = cy + ry * Math.cos(angle);
 
-                    // Chiều sâu Z: Hạt ở chính diện (angle = 0) nổi bật nhất, hạt ở mép thu nhỏ và đậm hơn
+                    // Chiều sâu Z: Hạt ở chính diện (angle = 0) nổi bật nhất, hạt ở mép thu nhỏ và chuyển sắc
                     const depthFactor = 0.85 + 0.25 * Math.cos(angle);
                     const item = displayBeads[i];
 
                     // Kích thước hạt tỉ lệ theo kích thước vòng ôm thật
-                    const baseRadius = (item.isFlower ? 9.8 : (item.isSpacer ? 3.4 : 5.8)) * (rx / 40);
+                    const baseRadius = (item.isFlower ? 8.5 : (item.isSpacer ? 3.0 : 5.4)) * (rx / 65);
                     const radius = baseRadius * depthFactor;
 
-                    // Độ dẹp ngang theo góc nhìn (Foreshortening) khi hạt cuộn sang mép cổ tay
-                    const rxBead = radius * (0.80 + 0.20 * Math.cos(angle));
+                    // Độ dẹp ngang theo góc nhìn phối cảnh (Foreshortening) khi hạt cuộn sang mép cổ tay
+                    const rxBead = radius * (0.75 + 0.25 * Math.cos(angle));
                     const ryBead = radius;
 
                     beadItems.push({
@@ -1883,11 +1916,11 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   }
 
                   // Đường cung ôm trước cổ tay (Front arc path ôm khít mu tay)
-                  const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.62} ${cy + ry * 1.05}, ${cx + rx * 0.62} ${cy + ry * 1.05}, ${cx + rx} ${cy}`;
+                  const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.60} ${cy + ry * 1.06}, ${cx + rx * 0.60} ${cy + ry * 1.06}, ${cx + rx} ${cy}`;
 
                   // Đường dây luồn nhẹ ra sau cẳng tay ở 2 mép biên (tạo cảm giác vòng khép kín 360 độ quanh cổ tay)
-                  const leftWrapBack = `M ${cx - rx} ${cy} C ${cx - rx - 2} ${cy - ry * 0.3}, ${cx - rx + 10} ${cy - ry * 0.5}, ${cx - rx + 18} ${cy - ry * 0.55}`;
-                  const rightWrapBack = `M ${cx + rx} ${cy} C ${cx + rx + 2} ${cy - ry * 0.3}, ${cx + rx - 10} ${cy - ry * 0.5}, ${cx + rx - 18} ${cy - ry * 0.55}`;
+                  const leftWrapBack = `M ${cx - rx} ${cy} C ${cx - rx - 4} ${cy - ry * 0.35}, ${cx - rx + 14} ${cy - ry * 0.55}, ${cx - rx + 24} ${cy - ry * 0.60}`;
+                  const rightWrapBack = `M ${cx + rx} ${cy} C ${cx + rx + 4} ${cy - ry * 0.35}, ${cx + rx - 14} ${cy - ry * 0.55}, ${cx + rx - 24} ${cy - ry * 0.60}`;
 
                   return (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -2078,13 +2111,13 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                             </g>
                           ))}
 
-                          {/* 5. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NỐI DƯỚI ĐÁY HẠT SỐ 4) */}
+                          {/* 5. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NỐI DƯỚI ĐÁY HẠT SỐ 5, ĐONG ĐƯA THEO TRỌNG LỰC) */}
                           {b.selectedCharm && !b.isFloralModel && (
-                            <g transform={`translate(${cx}, ${cy + ry + 2})`}>
-                              {/* Jump ring connector */}
-                              <circle cx="0" cy="0" r="2.8" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
-                              <line x1="0" y1="2" x2="0" y2="7" stroke="#D4AF37" strokeWidth="1.4" />
-                              {renderArCharmSvg(b.selectedCharm)}
+                            <g transform={`translate(${cx}, ${cy + ry + 1}) rotate(${-arAngle * 0.75})`}>
+                              {/* Jump ring connector nhỏ nhắn tinh xảo */}
+                              <circle cx="0" cy="0" r="2.2" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
+                              <line x1="0" y1="1.5" x2="0" y2="5" stroke="#D4AF37" strokeWidth="1.3" />
+                              {renderArCharmSvg(b.selectedCharm, Math.max(0.55, Math.min(0.85, (rx / 65) * 0.70)))}
                             </g>
                           )}
                         </g>
@@ -2162,33 +2195,33 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     type="button"
                     onClick={() => setArSizeCm(14.5)}
                     className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      arSizeCm <= 15
+                      arSizeCm <= 14.8
                         ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
                         : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
                     }`}
                   >
-                    <span>🤏 Ôm Sát Da</span>
+                    <span>🤏 Ôm Khít Da</span>
                     <span className="text-[9px] opacity-80">14 - 15 cm</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setArSizeCm(16)}
+                    onClick={() => setArSizeCm(userCustomSize || 15.5)}
                     className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      arSizeCm > 15 && arSizeCm <= 17
+                      Math.abs(arSizeCm - (userCustomSize || 15.5)) < 0.4
                         ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
                         : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
                     }`}
                   >
-                    <span>✨ Vừa Chuẩn</span>
-                    <span className="text-[9px] opacity-80">16 cm (Mặc định)</span>
+                    <span>✨ Chuẩn Đã Phối</span>
+                    <span className="text-[9px] opacity-80">{customBracelet?.wristSize || `${userCustomSize || 15.5} cm`}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setArSizeCm(17.5)}
                     className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      arSizeCm > 17
+                      arSizeCm >= 17.2
                         ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
                         : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
                     }`}
@@ -2198,9 +2231,16 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   </button>
                 </div>
 
+                {customBracelet?.wristSize && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-[#8C6828] bg-[#FAF4ED] px-3 py-1.5 rounded-xl border border-[#EADBCC]">
+                    <Sparkles className="w-3.5 h-3.5 text-[#B86244] shrink-0" />
+                    <span>Vòng đang ướm chuẩn theo kích cỡ cổ tay bạn đã chọn trong Xưởng 3D: <strong>{customBracelet.wristSize}</strong></span>
+                  </div>
+                )}
+
                 {isAutoTracking && (
                   <p className="text-[11px] text-[#8C8276] italic bg-[#FAF7F2] p-2 rounded-lg border border-[#F3ECE1]">
-                    💡 AI YOLO đang tự động nhận diện góc nghiêng và chu vi cổ tay theo thời gian thực. Bạn có thể bấm chọn chế độ đeo ở trên hoặc kéo trượt thêm bên dưới!
+                    💡 AI YOLO đang nhận diện góc nghiêng và bề ngang cánh tay để vòng tự động bám sát tự nhiên. Bạn có thể kéo trượt để tinh chỉnh thêm nếu muốn!
                   </p>
                 )}
 

@@ -178,9 +178,9 @@ def render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, angle_deg, 
     """
     scale = max(0.5, min(1.8, wrist_w / 95.0))
     
-    # Bán kính elip thiết diện cổ tay người thật (ôm sát khít bề mặt da)
+    # Bán kính elip thiết diện cổ tay người thật (ôm trọn bề ngang cẳng tay)
     rx = wrist_w * 0.50
-    ry = rx * 0.35
+    ry = rx * 0.32
 
     # Vị trí rơi tự nhiên của vòng tay:
     # Lùi nhẹ về phía cẳng tay khoảng 0.12 * wrist_w
@@ -197,10 +197,10 @@ def render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, angle_deg, 
     cy = wrist_cy - perp_y * (wrist_w * 0.12)
 
     bead_seq = preset["bead_sequence"]
-    # Chuẩn hóa 9 hạt nhìn thấy trên cung trước (hạt hoa/charm ở chính giữa)
-    if len(bead_seq) > 9:
+    # Chuẩn hóa 11 hạt nhìn thấy trên cung trước (hạt hoa/charm ở vị trí số 5 - chính giữa)
+    if len(bead_seq) > 11:
         center_idx = len(bead_seq) // 2
-        bead_seq = bead_seq[center_idx - 4 : center_idx + 5]
+        bead_seq = bead_seq[center_idx - 5 : center_idx + 6]
     total_beads = len(bead_seq)
 
     # 1. VẼ LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA CỔ TAY (Ambient Contact Shadow)
@@ -239,8 +239,8 @@ def render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, angle_deg, 
     front_items = []
     for i in range(total_beads):
         t = (i / (total_beads - 1)) if total_beads > 1 else 0.5
-        # Góc từ -82 độ đến +82 độ ôm sát hai bên sườn cổ tay
-        theta = (-math.pi * 0.46) + t * (math.pi * 0.92)
+        # Góc từ -84 độ đến +84 độ ôm trọn hai bên sườn cổ tay
+        theta = (-math.pi * 0.47) + t * (math.pi * 0.94)
 
         raw_x = rx * math.sin(theta)
         raw_y = ry * math.cos(theta)
