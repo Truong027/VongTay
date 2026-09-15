@@ -283,18 +283,38 @@ export const parseWristSizeCm = (wristSizeStr) => {
   return (parseFloat(numbers[0]) + parseFloat(numbers[1])) / 2;
 };
 
-export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, initialMode = 'wrist', customBracelet = null }) {
-  if (!isOpen) return null;
-
+export default function AICameraModal({
+  isOpen,
+  onClose,
+  initialMode = 'wrist',
+  customBracelet = null,
+  onApplyCustomPreset = null
+}) {
   const { addToCart } = useCart();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const trackingCanvasRef = useRef(null);
-  const fileInputRef = useRef(null);
   const nativeCameraWristRef = useRef(null);
   const matchFileInputRef = useRef(null);
   const nativeCameraMatchRef = useRef(null);
+
+  // Viewport size for fullscreen AR SVG overlay
+  const [viewportSize, setViewportSize] = useState({
+    w: typeof window !== 'undefined' ? window.innerWidth : 390,
+    h: typeof window !== 'undefined' ? window.innerHeight : 844
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportSize({ w: window.innerWidth, h: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
 
   // Active Tab / Mode: 'wrist' | 'catalog_match' | 'ar_tryon'
   const [modalMode, setModalMode] = useState(initialMode || 'wrist');
@@ -362,18 +382,21 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [shutterFlash, setShutterFlash] = useState(false);
   const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
 
-  // Auto AI YOLO / Vision Wrist Tracking State
+  // Auto AI MediaPipe Hands & Sticky Wrist Tracking State
   const [isAutoTracking, setIsAutoTracking] = useState(true);
-  const [isWristLocked, setIsWristLocked] = useState(false); // Trạng thái Gắn Cứng Cổ Tay 100%
+  const [isWristLocked, setIsWristLocked] = useState(false);
   const [trackingConfidence, setTrackingConfidence] = useState(0);
   const [trackingFeedback, setTrackingFeedback] = useState('Đang tìm cổ tay...');
   const [detectedWrist, setDetectedWrist] = useState(null);
   const lockStreakRef = useRef(0);
+  const lastDetectionTimeRef = useRef(0);
+  const prevConfRef = useRef(0);
+  const handsRef = useRef(null);
+  const [mediaPipeLoaded, setMediaPipeLoaded] = useState(false);
 
   // Smooth Snap-On Wear Animation State (Mở ra từ mu bàn tay -> Trượt xuống cổ tay -> Co ôm khít)
   const [isWearingAnim, setIsWearingAnim] = useState(true);
   const [wearAnimKey, setWearAnimKey] = useState(0);
-  const prevConfRef = useRef(0);
 
   const triggerWearAnimation = () => {
     setWearAnimKey(prev => prev + 1);
@@ -383,40 +406,238 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     }, 1150);
   };
 
+  // 1. Tải MediaPipe Hands từ CDN chính thức của Google
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.Hands) {
+      setMediaPipeLoaded(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
+    script.crossOrigin = 'anonymous';
+    script.async = true;
+    script.onload = () => {
+      setMediaPipeLoaded(true);
+    };
+    document.head.appendChild(script);
+  }, []);
+
+  // 2. Khởi tạo instance Hands
+  useEffect(() => {
+    if (!mediaPipeLoaded || !window.Hands) return;
+    try {
+      const hands = new window.Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.50,
+        minTrackingConfidence: 0.50
+      });
+
+      hands.onResults((results) => {
+        if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+          // Nếu mất tay thì giảm confidence từ từ
+          if (Date.now() - lastDetectionTimeRef.current > 1200) {
+            lockStreakRef.current = 0;
+            if (!isWristLocked) {
+              setTrackingConfidence(prev => Math.max(0, prev - 6));
+              setTrackingFeedback('Đưa cổ tay trần vào giữa camera...');
+            } else {
+              setTrackingFeedback('🔒 Đã Ghim Cố Định Trên Cổ Tay');
+            }
+          }
+          return;
+        }
+
+        const landmarks = results.multiHandLandmarks[0];
+        lastDetectionTimeRef.current = Date.now();
+
+        // Điểm neo giải phẫu MediaPipe:
+        // 0: Wrist (ngấn cổ tay)
+        // 5: Index finger MCP (gốc ngón trỏ)
+        // 9: Middle finger MCP (gốc ngón giữa)
+        // 17: Pinky finger MCP (gốc ngón út)
+        const lmWrist = landmarks[0];
+        const lmIndex = landmarks[5];
+        const lmMiddle = landmarks[9];
+        const lmPinky = landmarks[17];
+
+        // Trục cẳng tay: từ gốc ngón giữa (lm9) xuống cổ tay (lm0)
+        const dirX = lmWrist.x - lmMiddle.x;
+        const dirY = lmWrist.y - lmMiddle.y;
+        const dirLen = Math.hypot(dirX, dirY) || 0.001;
+        const dirNormX = dirX / dirLen;
+        const dirNormY = dirY / dirLen;
+
+        // Điểm tâm ngấn cổ tay đeo vòng (ở ngay ngấn hoặc lùi nhẹ xuống cẳng tay 6%)
+        const creaseNormX = lmWrist.x + dirNormX * (dirLen * 0.06);
+        const creaseNormY = lmWrist.y + dirNormY * (dirLen * 0.06);
+
+        // Bề ngang bàn tay đo qua các đốt ngón (knuckle span)
+        const handSpan = Math.hypot(lmIndex.x - lmPinky.x, lmIndex.y - lmPinky.y);
+
+        // Góc xoay cẳng tay so với trục dọc
+        const angleRad = Math.atan2(dirNormY, dirNormX) - Math.PI / 2;
+        const angleDeg = Math.max(-80, Math.min(80, Math.round(angleRad * (180 / Math.PI))));
+
+        // Chuyển đổi tọa độ Normalized (0..1) sang tọa độ màn hình Fullscreen với CSS object-cover
+        const sw = window.innerWidth;
+        const sh = window.innerHeight;
+        const video = videoRef.current;
+        const vw = (video && video.videoWidth) ? video.videoWidth : 1280;
+        const vh = (video && video.videoHeight) ? video.videoHeight : 720;
+        const videoAspect = vw / vh;
+        const screenAspect = sw / sh;
+
+        let renderW, renderH, offX, offY;
+        if (screenAspect < videoAspect) {
+          // Màn hình điện thoại dọc: video bị cắt 2 bên trái/phải
+          renderH = sh;
+          renderW = sh * videoAspect;
+          offX = (renderW - sw) / 2;
+          offY = 0;
+        } else {
+          // Màn hình ngang: video bị cắt trên/dưới
+          renderW = sw;
+          renderH = sw / videoAspect;
+          offX = 0;
+          offY = (renderH - sh) / 2;
+        }
+
+        let screenX = creaseNormX * renderW - offX;
+        let screenY = creaseNormY * renderH - offY;
+
+        // Nếu là camera trước thì lật gương ngang
+        if (facingMode === 'user') {
+          screenX = sw - screenX;
+        }
+
+        // Bề rộng cổ tay thực tế trên màn hình (knuckle span x 0.88 khớp chuẩn với chu vi ngấn cổ tay)
+        const rawWristPx = handSpan * renderW * 0.88;
+        const wristWidthPx = Math.max(75, Math.min(sw * 0.68, Math.round(rawWristPx)));
+        const conf = 96;
+
+        setDetectedWrist({
+          screenX: Math.round(screenX),
+          screenY: Math.round(screenY),
+          wristWidthPx,
+          angle: angleDeg,
+          confidence: conf
+        });
+        setTrackingConfidence(conf);
+
+        lockStreakRef.current += 1;
+        if (lockStreakRef.current >= 2 && !isWristLocked) {
+          setIsWristLocked(true);
+          setTrackingFeedback('🔒 Đã Ghim Cứng Cổ Tay (100%)');
+        }
+
+        // Kích hoạt animation khi phát hiện tay lần đầu
+        if (prevConfRef.current < 50 && conf >= 70) {
+          triggerWearAnimation();
+        }
+        prevConfRef.current = conf;
+
+        if (isAutoTracking) {
+          // Thuật toán Ghim Cứng (Deadband Filter)
+          setArAngle(prev => {
+            const delta = angleDeg - prev;
+            if (Math.abs(delta) < 3.0) return prev;
+            return Number((prev + delta * 0.35).toFixed(1));
+          });
+        }
+      });
+
+      handsRef.current = hands;
+    } catch (err) {
+      console.warn('MediaPipe hands init error:', err);
+    }
+
+    return () => {
+      if (handsRef.current) {
+        try { handsRef.current.close(); } catch {}
+        handsRef.current = null;
+      }
+    };
+  }, [mediaPipeLoaded, facingMode, isAutoTracking, isWristLocked]);
+
+  // 3. Vòng lặp gửi frame video tới MediaPipe Hands (25 FPS)
+  useEffect(() => {
+    if (!cameraActive || modalMode !== 'ar_tryon') return;
+
+    let animId = null;
+    let lastTime = 0;
+
+    const loop = async (time) => {
+      if (videoRef.current && videoRef.current.readyState >= 2) {
+        if (time - lastTime > 40) { // ~25 FPS
+          lastTime = time;
+          if (handsRef.current) {
+            try {
+              await handsRef.current.send({ image: videoRef.current });
+            } catch {}
+          }
+        }
+      }
+      animId = requestAnimationFrame(loop);
+    };
+
+    animId = requestAnimationFrame(loop);
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [cameraActive, modalMode]);
+
   // Hàm chụp ảnh Shutter phong cách iPhone Camera
   const handleShutterClick = async () => {
-    // 1. Hiệu ứng chớp sáng màn hình như iOS Camera
     setShutterFlash(true);
     setTimeout(() => setShutterFlash(false), 220);
 
-    // Nếu ở chế độ 1 (Quét cổ tay đo size) thì chụp ảnh để AI Gemini Vision phân tích
     if (modalMode === 'wrist') {
       await handleCaptureWrist();
       return;
     }
 
-    // Nếu ở chế độ 3 (Ướm vòng 3D AR) thì chụp ảnh lồng ghép vòng tay 3D vào cổ tay người dùng
     if (!videoRef.current) return;
     const video = videoRef.current;
-    const vw = video.videoWidth || 1280;
-    const vh = video.videoHeight || 720;
+    const sw = window.innerWidth;
+    const sh = window.innerHeight;
 
     const snapCanvas = document.createElement('canvas');
-    snapCanvas.width = vw;
-    snapCanvas.height = vh;
+    snapCanvas.width = sw;
+    snapCanvas.height = sh;
     const ctx = snapCanvas.getContext('2d');
 
-    // Vẽ luồng video (lật gương nếu dùng camera trước)
-    if (facingMode === 'user') {
-      ctx.translate(vw, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(video, 0, 0, vw, vh);
-    if (facingMode === 'user') {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+    const videoAspect = vw / vh;
+    const screenAspect = sw / sh;
+
+    let renderW, renderH, offX, offY;
+    if (screenAspect < videoAspect) {
+      renderH = sh;
+      renderW = sh * videoAspect;
+      offX = (renderW - sw) / 2;
+      offY = 0;
+    } else {
+      renderW = sw;
+      renderH = sw / videoAspect;
+      offX = 0;
+      offY = (renderH - sh) / 2;
     }
 
-    // Ghép lớp vòng tay 3D SVG lên ảnh chụp
+    ctx.save();
+    if (facingMode === 'user') {
+      ctx.translate(sw, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, -offX, -offY, renderW, renderH);
+    ctx.restore();
+
+    // Ghép lớp vòng tay SVG lên ảnh chụp
     const svgEl = document.getElementById('ar-bracelet-svg');
     if (svgEl) {
       try {
@@ -426,25 +647,25 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
         const url = DOMURL.createObjectURL(svgBlob);
         const svgImg = new Image();
         svgImg.onload = () => {
-          ctx.drawImage(svgImg, 0, 0, vw, vh);
+          ctx.drawImage(svgImg, 0, 0, sw, sh);
           DOMURL.revokeObjectURL(url);
-          const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+          const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.94);
           setArCapturedSnapshot(dataUrl);
           setSnapshotModalOpen(true);
         };
         svgImg.onerror = () => {
-          const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+          const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.94);
           setArCapturedSnapshot(dataUrl);
           setSnapshotModalOpen(true);
         };
         svgImg.src = url;
       } catch {
-        const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+        const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.94);
         setArCapturedSnapshot(dataUrl);
         setSnapshotModalOpen(true);
       }
     } else {
-      const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+      const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.94);
       setArCapturedSnapshot(dataUrl);
       setSnapshotModalOpen(true);
     }
@@ -462,7 +683,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
       startOffY: arOffsetY
     };
     setIsAutoTracking(false);
-    setTrackingFeedback('Đang chỉnh vị trí bằng tay (Chạm kéo để đặt vào cổ tay)...');
+    setTrackingFeedback('Chạm kéo thủ công để chỉnh vị trí...');
   };
 
   const handlePointerMove = (e) => {
@@ -471,8 +692,8 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     const clientY = e.clientY ?? (e.touches && e.touches[0]?.clientY) ?? 0;
     const dx = clientX - dragStartRef.current.x;
     const dy = clientY - dragStartRef.current.y;
-    setArOffsetX(Math.max(-130, Math.min(130, Math.round(dragStartRef.current.startOffX + dx * 0.75))));
-    setArOffsetY(Math.max(-130, Math.min(130, Math.round(dragStartRef.current.startOffY + dy * 0.75))));
+    setArOffsetX(Math.max(-200, Math.min(200, Math.round(dragStartRef.current.startOffX + dx))));
+    setArOffsetY(Math.max(-200, Math.min(200, Math.round(dragStartRef.current.startOffY + dy))));
   };
 
   const handlePointerUp = () => {
@@ -495,173 +716,6 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     }
   }, [customBracelet]);
 
-  // Real-time AI Wrist Tracking Loop (Computer Vision Skin & Arm Linear Contour Analysis)
-  useEffect(() => {
-    if (!cameraActive || modalMode !== 'ar_tryon') return;
-
-    let animId = null;
-    let lastProcess = 0;
-
-    const processFrame = (time) => {
-      if (!videoRef.current || videoRef.current.readyState < 2) {
-        animId = requestAnimationFrame(processFrame);
-        return;
-      }
-
-      if (time - lastProcess > 85) { // ~12 FPS
-        lastProcess = time;
-        try {
-          const video = videoRef.current;
-          if (!trackingCanvasRef.current) {
-            trackingCanvasRef.current = document.createElement('canvas');
-            trackingCanvasRef.current.width = 120;
-            trackingCanvasRef.current.height = 90;
-          }
-          const tCanvas = trackingCanvasRef.current;
-          const tCtx = tCanvas.getContext('2d', { willReadFrequently: true });
-
-          // Cắt video đúng tỷ lệ hiển thị object-cover tương ứng viewport container 4:3
-          const vw = video.videoWidth || 640;
-          const vh = video.videoHeight || 480;
-          const containerAspect = 4 / 3;
-          const videoAspect = vw / vh;
-          let sx = 0, sy = 0, sWidth = vw, sHeight = vh;
-          if (videoAspect > containerAspect) {
-            sWidth = vh * containerAspect;
-            sx = (vw - sWidth) / 2;
-          } else {
-            sHeight = vw / containerAspect;
-            sy = (vh - sHeight) / 2;
-          }
-
-          tCtx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, 120, 90);
-          const imgData = tCtx.getImageData(0, 0, 120, 90);
-          const data = imgData.data;
-
-          const rowStats = [];
-          let totalSkinCount = 0;
-
-          for (let y = 10; y < 85; y += 2) {
-            let minX = 120, maxX = 0, count = 0;
-            let sumX = 0;
-            for (let x = 6; x < 114; x += 2) {
-              const idx = (y * 120 + x) * 4;
-              const r = data[idx];
-              const g = data[idx + 1];
-              const b = data[idx + 2];
-
-              // Nhận diện sắc tố da người Việt Nam
-              const isSkin = (r > 65 && g > 42 && b > 25 && r > g && r > b && (r - g) > 8 && (r - b) > 10 && Math.abs(r - g) < 115);
-              if (isSkin) {
-                count++;
-                sumX += x;
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-              }
-            }
-            if (count >= 5 && (maxX - minX) >= 12) {
-              totalSkinCount += count;
-              rowStats.push({ y, count, minX, maxX, width: maxX - minX, centerX: sumX / count });
-            }
-          }
-
-          if (rowStats.length >= 6) {
-            // Lấy lát cắt cẳng tay ở khoảng giữa
-            const bestIdx = Math.floor(rowStats.length * 0.52);
-            const wristRow = rowStats[bestIdx] || rowStats[0];
-            const normX = wristRow.centerX / 120;
-            const normY = wristRow.y / 90;
-            const normW = wristRow.width / 120;
-
-            // Tính góc nghiêng cẳng tay bằng Hồi quy tuyến tính (Linear Regression) trên các lát cắt
-            let sumY = 0, sumX = 0, sumXY = 0, sumY2 = 0;
-            const n = rowStats.length;
-            for (const row of rowStats) {
-              sumX += row.centerX;
-              sumY += row.y;
-              sumXY += row.centerX * row.y;
-              sumY2 += row.y * row.y;
-            }
-            const denom = n * sumY2 - sumY * sumY;
-            const slope = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
-            // Góc xoay của cẳng tay so với trục dọc
-            const armAngleDeg = Math.round(Math.atan(slope) * (180 / Math.PI) * 1.15);
-            const clampedAngle = Math.max(-75, Math.min(75, armAngleDeg));
-
-            const conf = Math.min(98, Math.max(68, Math.round((totalSkinCount / 400) * 88)));
-
-            setDetectedWrist({
-              x: normX * 100,
-              y: normY * 100,
-              width: normW * 100,
-              angle: clampedAngle,
-              confidence: conf
-            });
-            setTrackingConfidence(conf);
-
-            // Khi nhận diện cổ tay ổn định, TỰ ĐỘNG GẮN CỨNG VÀO CỔ TAY LUÔN
-            lockStreakRef.current += 1;
-            if (conf >= 68 && lockStreakRef.current >= 2) {
-              if (!isWristLocked) {
-                setIsWristLocked(true);
-              }
-              setTrackingFeedback(`🔒 Đã Gắn Cứng Cổ Tay (${conf}%)`);
-            } else {
-              setTrackingFeedback(`🎯 Đang dò cổ tay ${conf}%...`);
-            }
-
-            // Tự động kích hoạt animation đeo trượt vào tay khi khóa cổ tay thành công lần đầu
-            if (prevConfRef.current < 55 && conf >= 68) {
-              triggerWearAnimation();
-            }
-            prevConfRef.current = conf;
-
-            if (isAutoTracking) {
-              const targetOffsetX = (normX - 0.5) * 220;
-              const targetOffsetY = (normY - 0.5) * 190 + 5;
-
-              // Thuật toán GẮN CỨNG CỔ TAY (Deadband Sticky Filter):
-              // Khi cổ tay giữ yên hoặc chỉ rung lắc nhẹ (< 4.5px), vòng tay được GHIM CỨNG 100% không trôi, không giật.
-              // Khi người dùng di chuyển cổ tay rõ ràng (> 4.5px), vòng tay đi theo mượt mà và ngay lập tức bám cứng lại vị trí mới!
-              setArOffsetX(prev => {
-                const delta = targetOffsetX - prev;
-                if (Math.abs(delta) < 4.5) return prev; // Gắn cứng hoàn toàn
-                return Number((prev + delta * 0.25).toFixed(1));
-              });
-
-              setArOffsetY(prev => {
-                const delta = targetOffsetY - prev;
-                if (Math.abs(delta) < 4.5) return prev; // Gắn cứng hoàn toàn
-                return Number((prev + delta * 0.25).toFixed(1));
-              });
-
-              setArAngle(prev => {
-                const delta = clampedAngle - prev;
-                if (Math.abs(delta) < 3.0) return prev; // Gắn cứng góc xoay
-                return Number((prev + delta * 0.20).toFixed(1));
-              });
-            }
-          } else {
-            lockStreakRef.current = 0;
-            // Nếu đã gắn cứng rồi thì GIỮ NGUYÊN vị trí, không để vòng tay bị trôi mất
-            if (isWristLocked) {
-              setTrackingFeedback('🔒 Đang Giữ Cố Định Vòng Trên Cổ Tay');
-              setTrackingConfidence(prev => Math.max(50, prev - 2));
-            } else {
-              setTrackingConfidence(prev => Math.max(0, prev - 4));
-              setTrackingFeedback('Đưa cổ tay vào giữa khung camera...');
-            }
-          }
-        } catch (e) {
-          // Ignore transient read errors
-        }
-      }
-      animId = requestAnimationFrame(processFrame);
-    };
-
-    animId = requestAnimationFrame(processFrame);
-  }, [cameraActive, modalMode, isAutoTracking]);
-
   // Sync initialMode when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -673,83 +727,36 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
       stopCamera();
     }
     return () => stopCamera();
-  }, [isOpen, initialMode]);
+  }, [isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Start webcam with multi-tier fallback for all iOS & Android devices
-  const startCamera = async (mode = facingMode) => {
-    setCameraError('');
-    stopCamera();
-
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError('Trình duyệt chưa hỗ trợ luồng camera trực tiếp (hoặc đang mở trong app Zalo/Facebook). Bạn hãy bấm nút "Chụp Bằng Camera Máy" bên dưới để mở ngay!');
-      return;
-    }
-
-    // Multi-tier fallback constraints:
-    // Tier 1: Ideal facingMode + 720p/HD resolution
-    // Tier 2: Simple facingMode
-    // Tier 3: Opposite facingMode (if device lacks requested one)
-    // Tier 4: { video: true } universal fallback guaranteed on 100% of mobile & desktop browsers
-    const constraintTiers = [
-      { video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 720 } } },
-      { video: { facingMode: mode } },
-      { video: { facingMode: mode === 'environment' ? 'user' : 'environment' } },
-      { video: true }
-    ];
-
-    let activeStream = null;
-    let lastErr = null;
-
-    for (const constraints of constraintTiers) {
-      try {
-        activeStream = await navigator.mediaDevices.getUserMedia(constraints);
-        if (activeStream) break;
-      } catch (err) {
-        lastErr = err;
-        console.warn('Camera tier constraint failed, trying next tier...', err.name, err.message);
+  const startCamera = async (facing = facingMode) => {
+    try {
+      setCameraError('');
+      if (videoRef.current && videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
       }
-    }
 
-    if (activeStream) {
-      if (videoRef.current) {
-        videoRef.current.srcObject = activeStream;
-        try {
-          // iOS Safari requires explicit play() call
-          await videoRef.current.play();
-        } catch (playErr) {
-          console.warn('Video play() failed:', playErr);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facing,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
-        setCameraActive(true);
-        setCameraError('');
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
+          setCameraActive(true);
+        };
       }
-    } else {
-      console.warn('All camera tiers failed:', lastErr);
-      let msg = 'Không thể mở luồng camera trực tiếp.';
-      if (lastErr?.name === 'NotAllowedError' || lastErr?.name === 'PermissionDeniedError') {
-        msg = 'Quyền Camera đang bị chặn trên trình duyệt. Bạn hãy cấp quyền hoặc nhấn nút "📸 Chụp Bằng Camera Máy" bên dưới để chụp ngay nhé!';
-      } else if (lastErr?.name === 'NotFoundError' || lastErr?.name === 'DevicesNotFoundError') {
-        msg = 'Không tìm thấy thiết bị camera trên máy.';
-      } else {
-        msg = 'Camera bị hạn chế hoặc đang bận. Bạn hãy dùng nút "📸 Chụp Bằng Camera Máy" bên dưới để chụp trực tiếp!';
-      }
-      setCameraError(msg);
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setCameraError('Không thể truy cập camera. Bạn hãy cấp quyền hoặc tải ảnh lên.');
       setCameraActive(false);
     }
-  };
-
-  const toggleFacingMode = () => {
-    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
-    setFacingMode(nextMode);
-    startCamera(nextMode);
   };
 
   const stopCamera = () => {
@@ -761,91 +768,53 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     setCameraActive(false);
   };
 
-  // Nén ảnh client-side xuống max 1000px để request siêu nhẹ, siêu nhanh và tránh payload limit
-  const compressImage = (dataUrl, maxDimension = 1000, quality = 0.82) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => resolve(dataUrl);
-      img.src = dataUrl;
-    });
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
   };
 
-  // Capture frame from webcam for Mode 1
   const handleCaptureWrist = async () => {
     if (!videoRef.current) return;
-    const canvas = canvasRef.current || document.createElement('canvas');
     const video = videoRef.current;
+    const canvas = canvasRef.current || document.createElement('canvas');
     canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 640;
+    canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const rawDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-    const optimized = await compressImage(rawDataUrl, 1000, 0.82);
-    setCapturedImage(optimized);
-    stopCamera();
-  };
-
-  // File upload for Mode 1 (Wrist)
-  const handleFileUploadWrist = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const optimized = await compressImage(event.target.result, 1000, 0.82);
-      setCapturedImage(optimized);
-      stopCamera();
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // File upload for Mode 2 (Bead/Charm Matching)
-  const handleFileUploadMatch = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const optimized = await compressImage(event.target.result, 1000, 0.82);
-      setMatchImage(optimized);
-      setMatchError('');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Call Mode 1: Analyze Wrist
-  const handleAnalyzeWrist = async () => {
-    if (!capturedImage && !userNotes) {
-      setWristError('Vui lòng chụp ảnh hoặc điền thông tin để AI tư vấn.');
-      return;
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
     }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    setCapturedImage(dataUrl);
+    stopCamera();
+    handleAnalyzeWrist(dataUrl);
+  };
 
+  const handleFileUploadWrist = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      setCapturedImage(dataUrl);
+      stopCamera();
+      handleAnalyzeWrist(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAnalyzeWrist = async (imageData) => {
     setIsAnalyzingWrist(true);
     setWristError('');
+    setWristResult(null);
 
     try {
       const res = await api.analyzeWrist({
-        imageBase64: capturedImage,
-        userNotes,
-        birthYear
+        imageBase64: imageData,
+        birthYear: birthYear ? parseInt(birthYear) : undefined,
+        userNotes
       });
 
       if (res.success && res.data) {
@@ -860,7 +829,6 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     }
   };
 
-  // Call Mode 2: Match Beads and Charms from Uploaded Image
   const handleMatchBeadsAndCharms = async (overrideImage = null) => {
     const targetImage = overrideImage || matchImage;
     if (!targetImage && !matchNotes) {
@@ -889,7 +857,6 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     }
   };
 
-  // Chuyển từ ảnh cổ tay không hợp lệ sang chế độ phối hạt & charm từ ảnh đó
   const handlePivotToMatchFromWrist = () => {
     if (!capturedImage) return;
     setMatchImage(capturedImage);
@@ -898,7 +865,6 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     handleMatchBeadsAndCharms(capturedImage);
   };
 
-  // Áp dụng Preset vào BraceletStudio
   const handleApplyPreset = (preset) => {
     if (preset && onApplyCustomPreset) {
       onApplyCustomPreset(preset);
@@ -906,6 +872,8 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
       onClose();
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div 
@@ -975,12 +943,12 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
           ) : isAutoTracking && trackingConfidence > 65 ? (
             <>
               <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" />
-              <span>🎯 Đang Bám Cổ Tay: {trackingConfidence}%</span>
+              <span>🎯 Bám Cổ Tay: {trackingConfidence}%</span>
             </>
           ) : (
             <>
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-              <span>Đưa cổ tay trần vào giữa camera...</span>
+              <span>Đưa cổ tay trần vào camera...</span>
             </>
           )}
         </button>
@@ -1048,21 +1016,27 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
               </span>
             </div>
 
-            {/* REAL-TIME 3D BRACELET SVG OVERLAY */}
+            {/* REAL-TIME FULLSCREEN 3D BRACELET SVG OVERLAY */}
             {(() => {
               const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
-              const armWidthPx = (detectedWrist && detectedWrist.width > 12)
-                ? Math.min(210, Math.max(90, (detectedWrist.width / 100) * 320))
-                : 140;
 
-              const armBaseRadius = armWidthPx * 0.50;
+              // Tâm vòng tay neo trực tiếp vào tọa độ pixel màn hình phát hiện được
+              const baseCenterX = detectedWrist ? detectedWrist.screenX : (viewportSize.w / 2);
+              const baseCenterY = detectedWrist ? detectedWrist.screenY : (viewportSize.h * 0.46);
+
+              const cx = baseCenterX + arOffsetX;
+              const cy = baseCenterY + arOffsetY;
+
+              // Bề rộng cổ tay thực tế được đo từ Camera MediaPipe
+              const wristWidthPx = (detectedWrist && detectedWrist.wristWidthPx)
+                ? detectedWrist.wristWidthPx
+                : Math.min(viewportSize.w * 0.40, 160);
+
+              const armBaseRadius = wristWidthPx * 0.50;
               const fitScale = arSizeCm / 15.5;
               const rx = armBaseRadius * fitScale;
               const sagFactor = Math.max(0, Math.min(1, (arSizeCm - 14) / 5));
               const ry = rx * (0.30 + sagFactor * 0.08);
-
-              const cx = 160 + arOffsetX;
-              const cy = 160 + arOffsetY;
 
               const frontCount = 11;
               let displayBeads = [];
@@ -1132,7 +1106,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 const by = cy + ry * Math.cos(angle);
                 const depthFactor = 0.85 + 0.25 * Math.cos(angle);
                 const item = displayBeads[i];
-                const baseRadius = (item.isFlower ? 8.5 : (item.isSpacer ? 3.0 : 5.4)) * (rx / 65);
+                const baseRadius = (item.isFlower ? 9.5 : (item.isSpacer ? 3.4 : 6.0)) * (rx / 70);
                 const radius = baseRadius * depthFactor;
                 const rxBead = radius * (0.55 + 0.45 * Math.cos(angle));
                 const ryBead = radius;
@@ -1165,25 +1139,25 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
               const contactShadowPath = beadCordPath;
 
               return (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <svg id="ar-bracelet-svg" viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-xl">
+                <div className="absolute inset-0 pointer-events-none">
+                  <svg id="ar-bracelet-svg" viewBox={`0 0 ${viewportSize.w} ${viewportSize.h}`} className="w-full h-full filter drop-shadow-xl">
                     <defs>
                       <style>{`
                         @keyframes smoothWearSlide {
                           0% {
-                            transform: translateY(-80px) scale(1.36);
-                            opacity: 0.15;
+                            transform: translateY(-85px) scale(1.35);
+                            opacity: 0.20;
                           }
-                          32% {
-                            transform: translateY(-35px) scale(1.22);
+                          35% {
+                            transform: translateY(-30px) scale(1.20);
                             opacity: 0.90;
                           }
-                          65% {
+                          70% {
                             transform: translateY(6px) scale(0.96);
                             opacity: 1;
                           }
-                          82% {
-                            transform: translateY(-3px) scale(1.025);
+                          85% {
+                            transform: translateY(-2px) scale(1.02);
                             opacity: 1;
                           }
                           100% {
@@ -1194,7 +1168,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                         @keyframes charmWearSway {
                           0% { transform: rotate(0deg); }
-                          22% { transform: rotate(-22deg); }
+                          22% { transform: rotate(-24deg); }
                           45% { transform: rotate(16deg); }
                           68% { transform: rotate(-8deg); }
                           85% { transform: rotate(3deg); }
@@ -1208,13 +1182,13 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                         }
                       `}</style>
                       <filter id="skinContactBlur" x="-30%" y="-30%" width="160%" height="160%">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" />
                       </filter>
                       <filter id="beadDropShadow" x="-30%" y="-30%" width="160%" height="160%">
-                        <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" />
-                        <feOffset dx="0" dy="2.2" result="offsetblur" />
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="2.5" />
+                        <feOffset dx="0" dy="2.5" result="offsetblur" />
                         <feComponentTransfer>
-                          <feFuncA type="linear" slope="0.48" />
+                          <feFuncA type="linear" slope="0.50" />
                         </feComponentTransfer>
                         <feMerge>
                           <feMergeNode />
@@ -1262,7 +1236,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                       transform={`rotate(${arAngle} ${cx} ${cy})`}
                       style={{
                         transformOrigin: `${cx}px ${cy}px`,
-                        transition: isDraggingOverlay ? 'none' : 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+                        transition: isDraggingOverlay ? 'none' : 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
                       }}
                     >
                       {/* NHÓM ANIMATION MỞ RA VÀ TRƯỢT ÔM VÀO TAY */}
@@ -1307,10 +1281,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                           d={beadCordPath}
                           fill="none"
                           stroke={b.cordColor ? darkenColor(b.cordColor, 0.3) : '#756252'}
-                          strokeWidth={Math.max(1.2, rx * 0.032)}
+                          strokeWidth={Math.max(1.5, rx * 0.035)}
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                          opacity="0.55"
+                          opacity="0.60"
                         />
 
                         {/* 3. Chuỗi hạt 3D */}
@@ -1338,73 +1312,126 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                                       <ellipse
                                         cx="0"
                                         cy="0"
-                                        rx={bead.rxBead * 0.38}
-                                        ry={bead.ryBead * 0.26}
-                                        fill="#FFF5F8"
-                                        opacity="0.85"
+                                        rx={bead.rxBead * 0.28}
+                                        ry={bead.ryBead * 0.22}
+                                        fill="#FFF5F7"
+                                        opacity="0.65"
                                       />
                                     </g>
                                   );
                                 })}
-                                <circle cx="0" cy="0" r={bead.radius * 0.40} fill="url(#sakuraCenterGrad)" stroke="#B8860B" strokeWidth="0.7" />
-                                <circle cx={-bead.radius * 0.12} cy={-bead.radius * 0.12} r={bead.radius * 0.15} fill="#FFFFFF" opacity="0.95" />
-                              </g>
-                            ) : bead.isSpacer ? (
-                              <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
-                                <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
+                                <circle cx="0" cy="0" r={bead.radius * 0.42} fill="url(#sakuraCenterGrad)" stroke="#B8860B" strokeWidth="0.8" />
+                                <circle cx="-0.8" cy="-0.8" r={bead.radius * 0.16} fill="#FFFFFF" opacity="0.9" />
                               </g>
                             ) : bead.isPearl ? (
                               <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.rxBead * 0.52} ry={bead.ryBead * 0.44} fill="#FFFFFF" opacity="0.55" />
-                                <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.95" />
-                              </g>
-                            ) : bead.isCrystal ? (
-                              <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
-                                <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
-                              </g>
-                            ) : (
-                              <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                <defs>
-                                  <radialGradient id={`dynBeadGrad-${bead.index}`} cx="32%" cy="28%" r="72%">
-                                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.88" />
-                                    <stop offset="38%" stopColor={bead.color} />
-                                    <stop offset="85%" stopColor={darkenColor(bead.color, 0.42)} />
-                                    <stop offset="100%" stopColor="#1C0E0A" stopOpacity="0.92" />
-                                  </radialGradient>
-                                </defs>
                                 <ellipse
                                   cx="0"
                                   cy="0"
                                   rx={bead.rxBead}
                                   ry={bead.ryBead}
-                                  fill={`url(#dynBeadGrad-${bead.index})`}
-                                  stroke="rgba(255,255,255,0.7)"
-                                  strokeWidth="0.8"
+                                  fill="url(#pearlLusterGrad)"
+                                  stroke="#C9BEB2"
+                                  strokeWidth="0.5"
                                   filter="url(#beadDropShadow)"
                                 />
-                                <ellipse cx={-bead.rxBead * 0.32} cy={-bead.ryBead * 0.32} rx={bead.rxBead * 0.32} ry={bead.ryBead * 0.28} fill="#FFFFFF" opacity="0.85" />
-                                <ellipse cx={bead.rxBead * 0.25} cy={bead.ryBead * 0.25} rx={bead.rxBead * 0.20} ry={bead.ryBead * 0.18} fill="#FFFFFF" opacity="0.25" />
+                                <ellipse
+                                  cx={-bead.rxBead * 0.26}
+                                  cy={-bead.ryBead * 0.26}
+                                  rx={bead.rxBead * 0.38}
+                                  ry={bead.ryBead * 0.28}
+                                  fill="#FFFFFF"
+                                  opacity="0.88"
+                                />
+                              </g>
+                            ) : bead.isCrystal ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <ellipse
+                                  cx="0"
+                                  cy="0"
+                                  rx={bead.rxBead}
+                                  ry={bead.ryBead}
+                                  fill="url(#crystalGrad)"
+                                  stroke="#8F78B0"
+                                  strokeWidth="0.5"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <polygon
+                                  points={`0,${-bead.ryBead * 0.7} ${bead.rxBead * 0.6},0 0,${bead.ryBead * 0.7} ${-bead.rxBead * 0.6},0`}
+                                  fill="#FFFFFF"
+                                  opacity="0.35"
+                                />
+                                <circle cx={-bead.rxBead * 0.28} cy={-bead.ryBead * 0.28} r={bead.radius * 0.24} fill="#FFFFFF" opacity="0.9" />
+                              </g>
+                            ) : bead.isSpacer ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <ellipse
+                                  cx="0"
+                                  cy="0"
+                                  rx={bead.rxBead}
+                                  ry={bead.ryBead}
+                                  fill="url(#goldSpacerGrad)"
+                                  stroke="#A87A1E"
+                                  strokeWidth="0.6"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <ellipse
+                                  cx={-bead.rxBead * 0.22}
+                                  cy={-bead.ryBead * 0.22}
+                                  rx={bead.rxBead * 0.40}
+                                  ry={bead.ryBead * 0.25}
+                                  fill="#FFFDE8"
+                                  opacity="0.9"
+                                />
+                              </g>
+                            ) : bead.isCharm && bead.charmImage ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <image
+                                  href={bead.charmImage}
+                                  x={-bead.radius * 1.5}
+                                  y={-bead.radius * 1.5}
+                                  width={bead.radius * 3}
+                                  height={bead.radius * 3}
+                                  filter="url(#beadDropShadow)"
+                                />
+                              </g>
+                            ) : (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <ellipse
+                                  cx="0"
+                                  cy="0"
+                                  rx={bead.rxBead}
+                                  ry={bead.ryBead}
+                                  fill={bead.color}
+                                  stroke={darkenColor(bead.color, 0.2)}
+                                  strokeWidth="0.5"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <ellipse
+                                  cx={-bead.rxBead * 0.26}
+                                  cy={-bead.ryBead * 0.26}
+                                  rx={bead.rxBead * 0.40}
+                                  ry={bead.ryBead * 0.30}
+                                  fill="#FFFFFF"
+                                  opacity="0.55"
+                                />
                               </g>
                             )}
                           </g>
                         ))}
 
-                        {/* 4. Charm trung tâm đong đưa vật lý */}
-                        {b.selectedCharm && !b.isFloralModel && (
-                          <g 
-                            transform={`translate(${cx}, ${cy + ry + 1}) rotate(${-arAngle * 0.75})`}
+                        {/* 4. Charm rủ lủng lẳng ở giữa vòng tay */}
+                        {b.charmName && !b.isFloralModel && (
+                          <g
+                            transform={`translate(${cx}, ${cy + ry})`}
                             style={{
                               transformOrigin: '0px 0px',
-                              animation: isWearingAnim ? 'charmWearSway 1.15s cubic-bezier(0.25, 1, 0.5, 1)' : 'none'
+                              animation: isWearingAnim ? 'charmWearSway 1.15s cubic-bezier(0.25, 1, 0.5, 1) forwards' : 'none'
                             }}
                           >
-                            <circle cx="0" cy="0" r="2.2" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
-                            <line x1="0" y1="1.5" x2="0" y2="5" stroke="#D4AF37" strokeWidth="1.3" />
-                            {renderArCharmSvg(b.selectedCharm, Math.max(0.55, Math.min(0.85, (rx / 65) * 0.70)))}
+                            <line x1="0" y1="0" x2="0" y2={10 * (rx / 70)} stroke="#E5C158" strokeWidth="1.8" strokeLinecap="round" />
+                            <circle cx="0" cy="1" r="2.2" fill="#E5C158" />
+                            {renderArCharmSvg(b.selectedCharm || { id: 'charm-flower-kv' }, rx / 70)}
                           </g>
                         )}
                       </g>
@@ -1417,180 +1444,189 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
         )}
 
         {/* ========================================================================= */}
-        {/* MODE 1: QUÉT CỔ TAY ĐO SIZE                                                */}
+        {/* MODE 1: QUÉT CỔ TAY ĐO SIZE                                               */}
         {/* ========================================================================= */}
         {modalMode === 'wrist' && (
-          <div className="relative w-full max-w-md mx-auto p-4 flex flex-col items-center pointer-events-auto">
-            {!wristResult ? (
-              <div className="text-center p-4 rounded-3xl bg-black/55 backdrop-blur-md border border-white/20 shadow-xl space-y-2 max-w-sm">
-                <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center mx-auto">
-                  <Camera className="w-5 h-5" />
+          <div className="relative w-full max-w-md px-6 text-center pointer-events-auto">
+            {isAnalyzingWrist ? (
+              <div className="bg-black/75 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-2xl flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-400 border-t-transparent animate-spin flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-amber-300 animate-pulse" />
                 </div>
-                <h4 className="font-serif-boutique text-sm sm:text-base font-bold text-white">
-                  Căn Chỉnh Cổ Tay Để AI Đo Size
+                <h4 className="font-serif-boutique text-lg font-bold text-amber-200 mb-1">
+                  AI GEMINI ĐANG ĐO SIZE CỔ TAY...
                 </h4>
-                <p className="text-[11px] text-stone-300 leading-relaxed">
-                  Đưa cổ tay hoặc bàn tay vào trước ống kính. Nhấn nút chụp tròn bên dưới để AI quét chu vi và màu da của bạn!
+                <p className="text-xs text-stone-300">
+                  Phân tích chu vi xương cổ tay & gợi ý bản mệnh phong thủy
                 </p>
-                <div className="pt-2 flex justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold flex items-center gap-1.5 border border-white/20 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Tải Ảnh Có Sẵn</span>
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileUploadWrist}
-                  />
-                </div>
               </div>
-            ) : (
-              <div className="w-full bg-[#FAF7F2] text-[#26211C] p-5 rounded-3xl shadow-2xl border border-[#E8DFD3] space-y-4 max-h-[70vh] overflow-y-auto animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-[#E8DFD3] pb-2">
-                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs sm:text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Đã Phân Tích Cổ Tay Thành Công</span>
+            ) : wristResult ? (
+              <div className="bg-[#FAF7F2] text-[#26211C] p-6 rounded-3xl border border-[#E8DFD3] shadow-2xl text-left animate-scaleUp">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <span className="font-bold text-sm">Kết Quả Đo Cổ Tay</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => { setWristResult(null); setCapturedImage(null); startCamera(); }}
-                    className="text-xs text-[#B86244] hover:underline font-semibold cursor-pointer"
-                  >
-                    Chụp lại
-                  </button>
+                  <span className="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full">
+                    AI Vision
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {wristResult.skinTone && (
-                    <div className="p-2.5 bg-white rounded-xl border border-[#E8DFD3]">
-                      <span className="text-[10px] text-[#8C8276] block">🎨 Tone da:</span>
-                      <strong className="text-[11px]">{wristResult.skinTone}</strong>
-                    </div>
-                  )}
-                  {wristResult.wristType && (
-                    <div className="p-2.5 bg-white rounded-xl border border-[#E8DFD3]">
-                      <span className="text-[10px] text-[#8C8276] block">📏 Kích thước gợi ý:</span>
-                      <strong className="text-[11px]">{wristResult.wristType}</strong>
-                    </div>
-                  )}
+                <div className="text-center py-2 bg-amber-50 rounded-2xl mb-4 border border-amber-200">
+                  <p className="text-xs text-stone-600">Chu vi cổ tay ước tính</p>
+                  <p className="text-3xl font-serif-boutique font-bold text-[#B86244]">
+                    {wristResult.estimatedWristSizeCm ? `${wristResult.estimatedWristSizeCm} cm` : (wristResult.wristSizeRecommendation || '15.5 cm')}
+                  </p>
+                  <p className="text-[11px] text-amber-800 font-medium mt-0.5">
+                    {wristResult.wristShapeDescription || 'Dáng cổ tay thon vừa, dễ đeo các mẫu hạt 8mm'}
+                  </p>
                 </div>
-                <div className="text-xs text-[#26211C] leading-relaxed p-3 bg-white rounded-xl border border-[#E8DFD3] max-h-36 overflow-y-auto whitespace-pre-line">
-                  {wristResult.analysis}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (wristResult.presetConfig) handleApplyPreset(wristResult.presetConfig);
-                    }}
-                    className="flex-1 py-2.5 px-4 bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Flower2 className="w-3.5 h-3.5 text-amber-200" />
-                    <span>Áp Dụng Thiết Kế Vào Xưởng</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalMode('ar_tryon');
-                      startCamera();
-                    }}
-                    className="py-2.5 px-4 bg-[#26211C] hover:bg-[#3D352E] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Ướm Thử 3D Ngay</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* MODE 2: TẢI ẢNH GỢI Ý PHỐI HẠT & CHARM                                    */}
-        {/* ========================================================================= */}
-        {modalMode === 'catalog_match' && (
-          <div className="relative w-full max-w-md mx-auto p-4 flex flex-col items-center pointer-events-auto">
-            {!matchResult ? (
-              <div className="w-full bg-black/65 backdrop-blur-md border border-white/20 p-5 rounded-3xl shadow-xl space-y-3 text-center">
-                <div className="w-10 h-10 rounded-full bg-[#B86244]/30 text-amber-300 border border-amber-400/40 flex items-center justify-center mx-auto">
-                  <Palette className="w-5 h-5" />
-                </div>
-                <h4 className="font-serif-boutique text-sm sm:text-base font-bold text-white">
-                  Phối Hạt & Charm Từ Ảnh Cảm Hứng
-                </h4>
-                <p className="text-[11px] text-stone-300 leading-relaxed">
-                  Tải bức ảnh bạn yêu thích (trang phục, phong cảnh, ảnh mẫu) để AI bóc tách màu và gợi ý hạt đá có sẵn tại xưởng!
-                </p>
-
-                {matchImage && (
-                  <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-300 mx-auto shadow-md">
-                    <img src={matchImage} alt="Match preview" className="w-full h-full object-cover" />
+                {wristResult.menhAnalysis && (
+                  <div className="mb-4 text-xs text-stone-700 space-y-1 bg-white p-3 rounded-xl border border-stone-150">
+                    <p><span className="font-bold text-stone-900">Bản mệnh:</span> {wristResult.menhAnalysis.menh} ({wristResult.menhAnalysis.canChi})</p>
+                    <p><span className="font-bold text-stone-900">Màu may mắn:</span> {wristResult.menhAnalysis.favorableColors?.join(', ')}</p>
                   </div>
                 )}
-
-                <div className="pt-2 flex justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => matchFileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{matchImage ? 'Đổi Ảnh Khác' : 'Chọn Ảnh Tải Lên'}</span>
-                  </button>
-                  <input
-                    ref={matchFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileUploadMatch}
-                  />
-
-                  {matchImage && (
-                    <button
-                      type="button"
-                      onClick={() => handleMatchBeadsAndCharms(matchImage)}
-                      disabled={isMatchingBeads}
-                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{isMatchingBeads ? 'Đang Phân Tích...' : 'Bắt Đầu Phối'}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="w-full bg-[#FAF7F2] text-[#26211C] p-5 rounded-3xl shadow-2xl border border-[#E8DFD3] space-y-4 max-h-[70vh] overflow-y-auto animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-[#E8DFD3] pb-2">
-                  <span className="font-bold text-xs sm:text-sm text-[#845339] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-600" />
-                    <span>Bản Phối Hạt Gợi Ý Cho Bạn</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => { setMatchResult(null); setMatchImage(null); }}
-                    className="text-xs text-[#B86244] hover:underline font-semibold cursor-pointer"
-                  >
-                    Chọn ảnh khác
-                  </button>
-                </div>
-                <div className="text-xs text-[#26211C] leading-relaxed p-3 bg-white rounded-xl border border-[#E8DFD3] whitespace-pre-line max-h-36 overflow-y-auto">
-                  {matchResult.stylingAdvice || matchResult.analysis}
-                </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      if (matchResult.suggestedDesign) handleApplyPreset(matchResult.suggestedDesign);
+                      setArSizeCm(wristResult.estimatedWristSizeCm || parseWristSizeCm(wristResult.wristSizeRecommendation));
+                      setModalMode('ar_tryon');
+                      triggerWearAnimation();
                     }}
-                    className="flex-1 py-2.5 px-4 bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 py-3 px-4 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
                   >
-                    <Flower2 className="w-3.5 h-3.5 text-amber-200" />
-                    <span>Áp Dụng Vào Xưởng 3D</span>
+                    <span>Ướm Vòng Theo Size Này</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWristResult(null);
+                      setCapturedImage(null);
+                      startCamera(facingMode);
+                    }}
+                    className="py-3 px-4 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold text-xs cursor-pointer"
+                  >
+                    Đo Lại
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="pointer-events-none">
+                <div className="w-64 h-64 mx-auto rounded-3xl border-2 border-dashed border-amber-300/60 flex flex-col items-center justify-center p-4 bg-black/30 backdrop-blur-xs">
+                  <div className="w-12 h-12 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-300 mb-2">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-semibold text-white">ĐẶT CỔ TAY VÀO ĐÂY</p>
+                  <p className="text-[10px] text-white/70 mt-1">Giữ thẳng cẳng tay & bấm nút chụp bên dưới</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* MODE 2: PHỐI ẢNH AI TỪ TRANG PHỤC / Ý TƯỞNG                              */}
+        {/* ========================================================================= */}
+        {modalMode === 'catalog_match' && (
+          <div className="relative w-full max-w-md px-6 text-center pointer-events-auto">
+            {isMatchingBeads ? (
+              <div className="bg-black/75 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-2xl flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-400 border-t-transparent animate-spin flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-amber-300 animate-pulse" />
+                </div>
+                <h4 className="font-serif-boutique text-lg font-bold text-amber-200 mb-1">
+                  AI ĐANG PHỐI MÀU VÒNG TAY...
+                </h4>
+                <p className="text-xs text-stone-300">
+                  Trích xuất tông màu trang phục & tìm hạt đá tương sinh
+                </p>
+              </div>
+            ) : matchResult ? (
+              <div className="bg-[#FAF7F2] text-[#26211C] p-6 rounded-3xl border border-[#E8DFD3] shadow-2xl text-left animate-scaleUp max-h-[75vh] overflow-y-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-200 mb-3">
+                  <span className="font-bold text-sm">Gợi Ý Bản Phối AI</span>
+                  <span className="text-xs bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full">
+                    {matchResult.matchedColorTheme || 'Tone Sur Tone'}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-600 mb-3">
+                  {matchResult.stylingAdvice || 'Màu sắc rất hợp với trang phục của bạn.'}
+                </p>
+                {matchResult.suggestedPresets && matchResult.suggestedPresets.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {matchResult.suggestedPresets.map((preset, idx) => (
+                      <div key={idx} className="p-3 bg-white rounded-2xl border border-stone-200 flex items-center justify-between">
+                        <div>
+                          <p className="font-serif-boutique font-bold text-sm text-[#26211C]">{preset.name}</p>
+                          <p className="text-[11px] text-stone-500">{preset.description}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyPreset(preset)}
+                          className="px-3 py-1.5 rounded-xl bg-[#B86244] text-white font-bold text-xs cursor-pointer shrink-0"
+                        >
+                          Chọn
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setMatchResult(null); setMatchImage(null); }}
+                  className="w-full py-2.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-semibold text-xs cursor-pointer"
+                >
+                  Chọn Ảnh Khác
+                </button>
+              </div>
+            ) : (
+              <div className="bg-black/60 backdrop-blur-md p-6 rounded-3xl border border-white/20 shadow-2xl">
+                <h4 className="font-serif-boutique text-base font-bold text-amber-200 mb-2">
+                  Tải Ảnh Trang Phục Hoặc Phong Cách
+                </h4>
+                <p className="text-xs text-stone-300 mb-4">
+                  Chụp hoặc tải ảnh bộ đồ bạn dự định mặc để AI phối vòng đồng điệu màu sắc.
+                </p>
+                <div className="flex gap-2">
+                  <label className="flex-1 py-3 px-4 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md">
+                    <Upload className="w-4 h-4" />
+                    <span>Chọn Ảnh Có Sẵn</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          setMatchImage(ev.target.result);
+                          handleMatchBeadsAndCharms(ev.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        const v = videoRef.current;
+                        const c = canvasRef.current || document.createElement('canvas');
+                        c.width = v.videoWidth || 640;
+                        c.height = v.videoHeight || 480;
+                        c.getContext('2d').drawImage(v, 0, 0);
+                        const d = c.toDataURL('image/jpeg', 0.88);
+                        setMatchImage(d);
+                        handleMatchBeadsAndCharms(d);
+                      }
+                    }}
+                    className="py-3 px-4 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Chụp Ngay</span>
                   </button>
                 </div>
               </div>
@@ -1599,344 +1635,250 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
         )}
       </div>
 
-      {/* 5. Bottom Controls (iPhone Camera Layout) */}
-      <div className="relative z-40 w-full bg-gradient-to-t from-black via-black/90 to-transparent pt-3 pb-6 px-4 flex flex-col items-center gap-2.5 pointer-events-auto">
-        {/* Tier 1: Fit Selector (Lens selector: 14.5cm, 15.5cm, 17.5cm) */}
+      {/* 5. iPhone Bottom Control Deck (Glassmorphism & Authentic iOS Camera Layout) */}
+      <div className="relative z-30 w-full pb-6 pt-3 px-4 bg-gradient-to-t from-black via-black/85 to-transparent pointer-events-auto flex flex-col items-center gap-3">
+        {/* HÀNG 1: Lens / Size Selector (.5x, 1x, 2x) */}
         {modalMode === 'ar_tryon' && (
-          <div className="flex items-center gap-2 pb-0.5">
-            <button
-              type="button"
-              onClick={() => { setArSizeCm(14.5); triggerWearAnimation(); }}
-              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border transition-all cursor-pointer ${
-                arSizeCm <= 14.8 ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm' : 'bg-black/50 text-white/80 border-white/20 hover:bg-black/70'
-              }`}
-            >
-              🤏 14.5cm Ôm Sát
-            </button>
-            <button
-              type="button"
-              onClick={() => { setArSizeCm(userCustomSize || 15.5); triggerWearAnimation(); }}
-              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border transition-all cursor-pointer ${
-                Math.abs(arSizeCm - (userCustomSize || 15.5)) < 0.4 ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm' : 'bg-black/50 text-white/80 border-white/20 hover:bg-black/70'
-              }`}
-            >
-              ✨ {customBracelet?.wristSize || `${userCustomSize || 15.5}cm Chuẩn`}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setArSizeCm(17.5); triggerWearAnimation(); }}
-              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border transition-all cursor-pointer ${
-                arSizeCm >= 17.2 ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm' : 'bg-black/50 text-white/80 border-white/20 hover:bg-black/70'
-              }`}
-            >
-              🍃 17.5cm Buông Lơi
-            </button>
+          <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md p-1 rounded-full border border-white/15 shadow-inner">
+            {[
+              { size: 14.5, label: '.5x', desc: '14.5cm Ôm Sát' },
+              { size: 15.5, label: '1x', desc: '15.5cm Nữ Chuẩn' },
+              { size: 17.5, label: '2x', desc: '17.5cm Buông Lơi' }
+            ].map((lens) => (
+              <button
+                key={lens.size}
+                type="button"
+                onClick={() => {
+                  setArSizeCm(lens.size);
+                  setUserCustomSize(lens.size);
+                  triggerWearAnimation();
+                }}
+                className={`w-9 h-9 rounded-full text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
+                  Math.abs(arSizeCm - lens.size) < 0.4
+                    ? 'bg-amber-400 text-black shadow-md scale-105'
+                    : 'text-white/80 hover:text-white hover:bg-white/10'
+                }`}
+                title={lens.desc}
+              >
+                {lens.label}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Tier 2: Horizontal Carousel of Bracelets (iOS Filter / Photographic Styles) */}
+        {/* HÀNG 2: Băng chuyền chọn vòng tay ngang (Horizontal Carousel) */}
         {modalMode === 'ar_tryon' && (
-          <div className="w-full max-w-2xl overflow-x-auto no-scrollbar py-1 px-2 flex items-center gap-2 justify-start sm:justify-center">
-            {availableBracelets.map((item, idx) => {
-              const isSelected = arSelectedBracelet === idx;
-              return (
-                <button
-                  key={item.id || idx}
-                  type="button"
-                  onClick={() => {
-                    setArSelectedBracelet(idx);
-                    triggerWearAnimation();
-                  }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border backdrop-blur-md transition-all shrink-0 cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#B86244]/90 border-amber-300 ring-2 ring-amber-400/40 text-white shadow-lg'
-                      : 'bg-black/50 border-white/15 text-stone-300 hover:bg-black/70'
-                  }`}
-                >
-                  <span 
-                    className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-inner shrink-0" 
-                    style={{ backgroundColor: item.beadColor }} 
-                  />
-                  <div className="text-left">
-                    <p className="text-[11px] font-bold leading-none line-clamp-1">{(item.name || 'Vòng Tay').replace('Vòng ', '')}</p>
-                    <p className="text-[10px] text-amber-200 font-semibold mt-0.5">{formatPrice(item.price)}</p>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="w-full max-w-md overflow-x-auto no-scrollbar py-1 flex items-center gap-3 px-2">
+            {availableBracelets.map((bracelet, idx) => (
+              <button
+                key={bracelet.id}
+                type="button"
+                onClick={() => {
+                  setArSelectedBracelet(idx);
+                  triggerWearAnimation();
+                }}
+                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-full shrink-0 transition-all border cursor-pointer ${
+                  arSelectedBracelet === idx
+                    ? 'bg-white/25 border-amber-400 text-white ring-2 ring-amber-400/40 shadow-lg scale-105'
+                    : 'bg-black/40 border-white/10 text-stone-300 hover:bg-white/10'
+                }`}
+              >
+                <div 
+                  className="w-5 h-5 rounded-full border border-white/40 shrink-0 shadow-sm"
+                  style={{ backgroundColor: bracelet.beadColor || '#F7C6D0' }}
+                />
+                <span className="text-xs font-semibold whitespace-nowrap">
+                  {bracelet.name.replace(/\(.*?\)/g, '')}
+                </span>
+                <span className="text-[11px] font-bold text-amber-300">
+                  {formatPrice(bracelet.price)}
+                </span>
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Tier 3: iPhone Camera Mode Text Selector Row */}
-        <div className="flex items-center justify-center gap-6 sm:gap-10 py-1 text-xs font-bold tracking-wider">
+        {/* HÀNG 3: Chuyển Chế Độ Chữ Vàng iOS (Đo Size, Ướm Vòng 3D, Phối Ảnh) */}
+        <div className="flex items-center justify-center gap-6 text-[12px] font-bold tracking-wider uppercase pt-1">
           <button
             type="button"
-            onClick={() => { setModalMode('wrist'); if (!capturedImage) startCamera(); }}
-            className={`transition-all flex flex-col items-center gap-1 cursor-pointer ${
-              modalMode === 'wrist' ? 'text-amber-300 font-extrabold scale-105' : 'text-stone-400 hover:text-white'
+            onClick={() => {
+              setModalMode('wrist');
+              startCamera(facingMode);
+            }}
+            className={`transition-colors cursor-pointer ${
+              modalMode === 'wrist' ? 'text-amber-400' : 'text-stone-400 hover:text-white'
             }`}
           >
-            <span>ĐO SIZE CỔ TAY</span>
-            {modalMode === 'wrist' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+            Đo Size Cổ Tay
           </button>
 
           <button
             type="button"
-            onClick={() => { setModalMode('ar_tryon'); startCamera(); }}
-            className={`transition-all flex flex-col items-center gap-1 cursor-pointer ${
-              modalMode === 'ar_tryon' ? 'text-amber-300 font-extrabold scale-105' : 'text-stone-400 hover:text-white'
+            onClick={() => {
+              setModalMode('ar_tryon');
+              startCamera(facingMode);
+              triggerWearAnimation();
+            }}
+            className={`transition-colors cursor-pointer flex items-center gap-1.5 ${
+              modalMode === 'ar_tryon' ? 'text-amber-400' : 'text-stone-400 hover:text-white'
             }`}
           >
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>ƯỚM VÒNG 3D AR</span>
-            </span>
-            {modalMode === 'ar_tryon' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Ướm Vòng 3D AR</span>
           </button>
 
           <button
             type="button"
-            onClick={() => { setModalMode('catalog_match'); stopCamera(); }}
-            className={`transition-all flex flex-col items-center gap-1 cursor-pointer ${
-              modalMode === 'catalog_match' ? 'text-amber-300 font-extrabold scale-105' : 'text-stone-400 hover:text-white'
+            onClick={() => {
+              setModalMode('catalog_match');
+              stopCamera();
+            }}
+            className={`transition-colors cursor-pointer ${
+              modalMode === 'catalog_match' ? 'text-amber-400' : 'text-stone-400 hover:text-white'
             }`}
           >
-            <span>PHỐI ẢNH AI</span>
-            {modalMode === 'catalog_match' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+            Phối Ảnh AI
           </button>
         </div>
 
-        {/* Tier 4: Iconic iPhone Shutter Button Row */}
-        <div className="w-full max-w-lg px-4 flex items-center justify-between gap-4">
-          {/* Left: Thumbnail preview snapshot */}
-          <div className="w-16 flex justify-start">
-            {arCapturedSnapshot ? (
-              <button
-                type="button"
-                onClick={() => setSnapshotModalOpen(true)}
-                className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white/60 shadow-lg active:scale-95 transition-transform cursor-pointer"
-                title="Xem lại ảnh vừa chụp"
-              >
-                <img src={arCapturedSnapshot} alt="Snapshot" className="w-full h-full object-cover" />
-              </button>
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-stone-400">
-                <ImageIcon className="w-5 h-5" />
-              </div>
-            )}
-          </div>
+        {/* HÀNG 4: Nút Chụp Ảnh Shutter iPhone Lớn & Nút Phụ */}
+        <div className="w-full max-w-sm flex items-center justify-between px-6 pt-1">
+          {/* Nút góc trái: Tải ảnh cổ tay lên */}
+          <button
+            type="button"
+            onClick={() => nativeCameraWristRef.current?.click()}
+            className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white transition-all active:scale-90 cursor-pointer shadow-md"
+            title="Tải ảnh từ thư viện máy"
+          >
+            <ImageIcon className="w-5 h-5" />
+          </button>
 
-          {/* Center: Iconic iPhone Camera Shutter Button */}
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={handleShutterClick}
-              className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center p-1 shadow-[0_0_20px_rgba(0,0,0,0.5)] active:scale-90 transition-transform cursor-pointer"
-              title="Chụp ảnh ướm vòng tay"
-            >
-              <div className="w-full h-full rounded-full bg-white transition-colors hover:bg-amber-100" />
-            </button>
-          </div>
+          {/* NÚT CHỤP IPHONE SHUTTER LỚN */}
+          <button
+            type="button"
+            onClick={handleShutterClick}
+            className="w-18 h-18 rounded-full border-4 border-white p-1 flex items-center justify-center transition-all active:scale-92 shadow-2xl cursor-pointer"
+            title={modalMode === 'wrist' ? 'Chụp ảnh để AI đo size' : 'Chụp ảnh khoảnh khắc ướm vòng'}
+          >
+            <div className="w-full h-full rounded-full bg-white transition-all hover:bg-stone-200 active:bg-stone-400 shadow-inner" />
+          </button>
 
-          {/* Right: Thêm vào giỏ hàng hoặc Chụp camera máy */}
-          <div className="w-28 sm:w-36 flex justify-end">
-            {modalMode === 'ar_tryon' ? (
-              <button
-                type="button"
-                onClick={() => {
-                  const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
-                  if (b.isCustom) {
-                    addToCart({
-                      id: b.id || 'custom-designed-bracelet',
-                      name: b.name || 'Vòng Tự Phối Độc Bản (AR 3D)',
-                      price: b.price,
-                      isCustom: true,
-                      cordName: b.cordName,
-                      cordColor: b.cordColor,
-                      beadPositions: b.beadPositions,
-                      selectedCharm: b.selectedCharm,
-                      images: [b.selectedCharm?.image || '/images/products/bracelet-strawberry-quartz.webp']
-                    }, 1, {
-                      wristSize: `${arSizeCm} cm`,
-                      beadCount: b.beadPositions?.length || 18,
-                      note: `Đã thử ướm vừa vặn qua AR Camera 3D (Size ${arSizeCm}cm, Tự phối xưởng)`
-                    });
-                  } else {
-                    addToCart({
-                      id: b.id,
-                      name: b.name,
-                      price: b.price,
-                      images: ['/images/products/bracelet-strawberry-quartz.webp']
-                    }, 1, {
-                      wristSize: `${arSizeCm} cm`,
-                      note: `Đã thử ướm vừa vặn qua AR Camera (Size ${arSizeCm}cm, Mệnh ${b.menh})`
-                    });
-                  }
-                  setArAddedSuccess(true);
-                  setTimeout(() => setArAddedSuccess(false), 2500);
-                }}
-                className="px-3 py-2.5 rounded-2xl bg-gradient-to-r from-[#B86244] to-amber-600 hover:from-[#A05237] hover:to-amber-700 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-                title="Thêm vòng đang thử vào giỏ hàng"
-              >
-                {arAddedSuccess ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
-                    <span className="hidden sm:inline">Đã Thêm!</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="w-4 h-4 text-amber-200 shrink-0" />
-                    <span className="hidden sm:inline">Thêm Giỏ</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => nativeCameraWristRef.current?.click()}
-                className="p-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                title="Chụp bằng camera gốc máy"
-              >
-                <Camera className="w-4 h-4 text-amber-200" />
-                <span className="hidden sm:inline">Camera Máy</span>
-              </button>
+          {/* Nút góc phải: Đặt mua ngay hoặc xem giỏ hàng */}
+          <button
+            type="button"
+            onClick={() => {
+              const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
+              addToCart({
+                id: b.id,
+                name: b.name,
+                price: b.price,
+                images: ['/images/products/bracelet-strawberry-quartz.webp']
+              }, 1, {
+                wristSize: `${arSizeCm} cm`,
+                note: `Đặt từ AR Camera Live (Size ${arSizeCm}cm)`
+              });
+              setArAddedSuccess(true);
+              setTimeout(() => setArAddedSuccess(false), 2500);
+            }}
+            className="w-12 h-12 rounded-full bg-[#B86244] hover:bg-[#A05237] text-white flex items-center justify-center transition-all active:scale-90 cursor-pointer shadow-lg relative"
+            title="Thêm vòng này vào giỏ hàng"
+          >
+            <ShoppingBag className="w-5 h-5" />
+            {arAddedSuccess && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-[10px] font-bold flex items-center justify-center text-white animate-bounce">
+                ✓
+              </span>
             )}
-          </div>
+          </button>
         </div>
       </div>
 
-      {/* 6. Slide-Up Drawer (Settings Sheet) for Fine-Tuning */}
-      {showSettingsDrawer && (
-        <div className="absolute inset-x-0 bottom-0 z-50 bg-[#26211C]/95 backdrop-blur-xl border-t border-white/20 p-5 rounded-t-3xl shadow-2xl text-white space-y-4 animate-fadeIn pointer-events-auto">
-          <div className="flex items-center justify-between border-b border-white/15 pb-2">
-            <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-              <Sliders className="w-4 h-4" />
-              <span>Tinh Chỉnh Thủ Công Vòng Tay Cổ Tay</span>
-            </span>
+      {/* 6. Settings Drawer (Bảng Tinh Chỉnh Thủ Công) */}
+      {showSettingsDrawer && modalMode === 'ar_tryon' && (
+        <div className="absolute top-16 right-4 z-40 w-72 bg-black/85 backdrop-blur-xl border border-white/20 rounded-3xl p-4 text-white shadow-2xl pointer-events-auto animate-fadeIn">
+          <div className="flex items-center justify-between pb-2 border-b border-white/15 mb-3">
+            <span className="font-serif-boutique font-bold text-xs text-amber-300">TINH CHỈNH VÒNG TAY</span>
             <button
               type="button"
               onClick={() => setShowSettingsDrawer(false)}
-              className="p-1 rounded-full hover:bg-white/10 text-stone-400 hover:text-white cursor-pointer"
+              className="text-stone-400 hover:text-white"
             >
-              <ChevronDown className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-stone-300">
-                <span>Chu vi:</span>
+          <div className="space-y-3 text-xs">
+            <div>
+              <div className="flex justify-between text-[11px] mb-1">
+                <span className="text-stone-300">Size Cổ Tay</span>
                 <span className="font-bold text-amber-300">{arSizeCm} cm</span>
               </div>
               <input
                 type="range"
-                min="13"
-                max="19"
+                min="13.5"
+                max="19.0"
                 step="0.5"
                 value={arSizeCm}
-                onChange={(e) => setArSizeCm(Number(e.target.value))}
-                className="w-full accent-amber-500 cursor-pointer"
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setArSizeCm(val);
+                  setUserCustomSize(val);
+                }}
+                className="w-full accent-amber-400 cursor-pointer"
               />
             </div>
 
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-stone-300">
-                <span>Góc xoay:</span>
+            <div>
+              <div className="flex justify-between text-[11px] mb-1">
+                <span className="text-stone-300">Xoay Nghiêng</span>
                 <span className="font-bold text-amber-300">{arAngle}°</span>
               </div>
               <input
                 type="range"
-                min="-85"
-                max="85"
+                min="-75"
+                max="75"
                 step="1"
                 value={arAngle}
-                onChange={(e) => setArAngle(Number(e.target.value))}
-                className="w-full accent-amber-500 cursor-pointer"
+                onChange={(e) => setArAngle(parseInt(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
               />
             </div>
 
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-stone-300">
-                <span>Dịch ngang (X):</span>
-                <span className="font-bold text-amber-300">{arOffsetX}px</span>
-              </div>
-              <input
-                type="range"
-                min="-120"
-                max="120"
-                step="2"
-                value={arOffsetX}
-                onChange={(e) => { setArOffsetX(Number(e.target.value)); setIsAutoTracking(false); }}
-                className="w-full accent-amber-500 cursor-pointer"
-              />
+            <div className="pt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setArOffsetX(0);
+                  setArOffsetY(0);
+                  setArAngle(0);
+                  setIsAutoTracking(true);
+                  triggerWearAnimation();
+                }}
+                className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-stone-200 text-[11px] font-semibold cursor-pointer"
+              >
+                Đặt Lại Tâm
+              </button>
             </div>
-
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] text-stone-300">
-                <span>Dịch dọc (Y):</span>
-                <span className="font-bold text-amber-300">{arOffsetY}px</span>
-              </div>
-              <input
-                type="range"
-                min="-120"
-                max="120"
-                step="2"
-                value={arOffsetY}
-                onChange={(e) => { setArOffsetY(Number(e.target.value)); setIsAutoTracking(false); }}
-                className="w-full accent-amber-500 cursor-pointer"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setIsWristLocked(prev => !prev);
-              }}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
-                isWristLocked
-                  ? 'bg-emerald-600/90 text-white border-emerald-400'
-                  : 'bg-white/10 text-stone-300 border-white/20'
-              }`}
-            >
-              {isWristLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-              <span>{isWristLocked ? '🔒 Đã Ghim Cổ Tay' : '🔓 Ghim Vị Trí Cố Định'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setArOffsetX(0);
-                setArOffsetY(0);
-                setArAngle(0);
-                setIsAutoTracking(true);
-                setIsWristLocked(false);
-                triggerWearAnimation();
-              }}
-              className="text-xs text-amber-300 hover:underline cursor-pointer"
-            >
-              🔄 Đặt Lại Trung Tâm
-            </button>
           </div>
         </div>
       )}
 
-      {/* 7. Snapshot Modal Preview */}
+      {/* 7. Modal Xem Ảnh Snapshot Sau Khi Chụp */}
       {snapshotModalOpen && arCapturedSnapshot && (
-        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fadeIn pointer-events-auto">
-          <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border-2 border-amber-300/60 shadow-2xl bg-stone-900 flex flex-col">
-            <div className="relative aspect-[4/3] w-full overflow-hidden">
-              <img src={arCapturedSnapshot} alt="AR Snapshot" className="w-full h-full object-cover" />
-              <button
-                type="button"
-                onClick={() => setSnapshotModalOpen(false)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="relative max-w-sm w-full bg-[#1C1714] border border-amber-400/40 rounded-3xl p-4 shadow-2xl flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSnapshotModalOpen(false)}
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg">
+              <img src={arCapturedSnapshot} alt="Snapshot Ướm Vòng" className="w-full h-auto object-cover" />
             </div>
-            <div className="p-4 space-y-3 bg-[#26211C] text-white">
+            <div className="w-full flex flex-col gap-2 pt-1">
               <div className="text-center">
                 <h4 className="font-serif-boutique font-bold text-sm text-amber-200">
                   {availableBracelets[arSelectedBracelet]?.name || 'Ảnh Ướm Vòng Tay 3D'}

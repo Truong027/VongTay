@@ -325,23 +325,31 @@ def run_live_inference():
         raw_w, raw_ang = 0.0, 0.0
         conf_score = 0.0
 
-        # 1. Thử nhận diện bằng YOLO nếu có
+        # 1. Thử nhận diện bằng YOLOv8-pose đã huấn luyện trên ảnh cổ tay thật
         if model is not None:
             try:
-                results = model(frame, verbose=False, conf=0.30)
-                if results and len(results) > 0 and results[0].keypoints is not None:
-                    kpts = results[0].keypoints.data[0].cpu().numpy()
-                    if len(kpts) >= 3:
-                        kp0 = kpts[0] # Center
-                        kp1 = kpts[1] # Radial
-                        kp2 = kpts[2] # Ulnar
-                        if kp0[2] > 0.28 and kp1[2] > 0.28 and kp2[2] > 0.28:
-                            raw_cx = float(kp0[0])
-                            raw_cy = float(kp0[1])
-                            raw_w = float(np.hypot(kp2[0] - kp1[0], kp2[1] - kp1[1]))
-                            raw_ang = float(math.degrees(math.atan2(kp2[1] - kp1[1], kp2[0] - kp1[0])))
-                            conf_score = float(kp0[2] * 100)
-                            detected_wrist = True
+                results = model(frame, verbose=False, conf=0.35)
+                if results and len(results) > 0 and results[0].keypoints is not None and len(results[0].keypoints.data) > 0:
+                    r0 = results[0]
+                    best_kpt = None
+                    best_score = -1.0
+                    for box, kpt_tensor in zip(r0.boxes, r0.keypoints.data):
+                        mean_conf = float(kpt_tensor[:, 2].mean().item())
+                        if mean_conf > best_score and mean_conf >= 0.65:
+                            best_score = mean_conf
+                            best_kpt = kpt_tensor.cpu().numpy()
+
+                    if best_kpt is not None:
+                        # 0: radial, 1: center, 2: ulnar, 3: palm, 4: forearm
+                        kp_radial = best_kpt[0]
+                        kp_center = best_kpt[1]
+                        kp_ulnar = best_kpt[2]
+                        raw_cx = float(kp_center[0])
+                        raw_cy = float(kp_center[1])
+                        raw_w = float(np.hypot(kp_ulnar[0] - kp_radial[0], kp_ulnar[1] - kp_radial[1]))
+                        raw_ang = float(math.degrees(math.atan2(kp_ulnar[1] - kp_radial[1], kp_ulnar[0] - kp_radial[0])))
+                        conf_score = float(best_score * 100)
+                        detected_wrist = True
             except Exception:
                 pass
 
