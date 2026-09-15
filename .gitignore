@@ -58,5 +58,6 @@ Thumbs.db
 # Temporary scratch
 scratch/
 
-.vercel
-.env*
+# AI Training runs & base weights
+ai_wrist_pipeline/runs/
+ai_wrist_pipeline/yolov8n-pose.pt

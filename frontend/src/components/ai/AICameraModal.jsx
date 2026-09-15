@@ -27,6 +27,30 @@ const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', c
 
 const AR_BRACELETS = [
   {
+    id: 'ar-sakura-pearl',
+    name: 'Hoa Hồng Pha Lê & Ngọc Trai (Ảnh Mẫu)',
+    price: 195000,
+    beadColor: '#FDE2E4',
+    cordColor: '#FFF8F0',
+    charmName: 'Hoa Anh Đào 5 Cánh',
+    menh: 'Kim, Thủy, Hỏa',
+    isFloralModel: true,
+    floralBeads: [
+      { type: 'pearl', color: '#FFFDF9', name: 'Ngọc trai trắng' },
+      { type: 'flower', color: '#F8B4C4', name: 'Hoa hồng 5 cánh' },
+      { type: 'crystal', color: '#F0E6F6', name: 'Pha lê trong suốt' },
+      { type: 'pearl', color: '#FFFDF9', name: 'Ngọc trai trắng' },
+      { type: 'strawberry', color: '#F7C6D0', name: 'Thạch anh dâu' },
+      { type: 'pearl', color: '#FFFDF9', name: 'Ngọc trai trắng' },
+      { type: 'crystal', color: '#F0E6F6', name: 'Pha lê trong suốt' },
+      { type: 'pearl', color: '#FFFDF9', name: 'Ngọc trai trắng' },
+      { type: 'gold_spacer', color: '#F2D06B', name: 'Khoen vàng 18K' },
+      { type: 'strawberry', color: '#F7C6D0', name: 'Thạch anh dâu' },
+      { type: 'pearl', color: '#FFFDF9', name: 'Ngọc trai trắng' },
+      { type: 'crystal', color: '#F0E6F6', name: 'Pha lê trong suốt' }
+    ]
+  },
+  {
     id: 'ar-strawberry',
     name: 'Vòng Thạch Anh Dâu Hồng Pastel',
     price: 185000,
@@ -244,10 +268,11 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
               });
               setTrackingConfidence(conf);
               setTrackingFeedback(`Khóa cổ tay ${conf}% (YOLO Auto-Snap)`);
-
               if (isAutoTracking) {
-                const targetOffset = (normY - 0.5) * 110;
-                const targetAng = Math.max(-35, Math.min(35, angleDeg * 0.75));
+                // Điểm rơi tự nhiên của vòng: lùi nhẹ dọc theo cẳng tay khoảng 12px (~1.5cm)
+                const targetOffset = (normY - 0.5) * 110 + 12;
+                // Góc nghiêng tự nhiên hỗ trợ tư thế đưa tay chéo 35-50 độ như ảnh chụp thật
+                const targetAng = Math.max(-55, Math.min(55, angleDeg * 0.85));
                 const targetSize = Math.max(14, Math.min(19, Math.round(14 + normW * 14)));
 
                 setArOffsetY(prev => Math.round(prev + (targetOffset - prev) * 0.28));
@@ -1513,43 +1538,104 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   </div>
                 </div>
 
-                {/* REAL-TIME AR BRACELET OVERLAY */}
+                {/* REAL-TIME AR BRACELET OVERLAY (3D Cylindrical Wrapping & Occlusion Culling) */}
                 {(() => {
                   const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
                   const scale = arSizeCm / 16;
-                  const totalBeads = b.beadPositions && b.beadPositions.length > 0 ? b.beadPositions.length : 18;
-                  const rx = 88 * scale;
-                  const ry = 46 * scale;
+                  const rx = 86 * scale;
+                  const ry = 42 * scale;
                   const cx = 160;
                   const cy = 160 + arOffsetY;
 
-                  const beadItems = [];
-                  for (let i = 0; i < totalBeads; i++) {
-                    const angle = (i / totalBeads) * 2 * Math.PI;
-                    const x = cx + rx * Math.cos(angle);
-                    const y = cy + ry * Math.sin(angle);
-                    // Depth perspective: beads in front (bottom) are slightly larger and brighter
-                    const depthFactor = 0.8 + 0.35 * Math.sin(angle);
-                    const radius = 8.5 * scale * depthFactor;
-                    const beadCustom = b.beadPositions?.[i];
-                    const isCharm = Boolean(beadCustom?.isCharm || beadCustom?.item?.isCharm || beadCustom?.type === 'charm');
-                    const charmImage = beadCustom?.image || beadCustom?.item?.image || null;
-                    const color = beadCustom?.color || beadCustom?.item?.color || b.beadColor || '#F7C6D0';
-                    beadItems.push({ x, y, radius, depthFactor, angle, color, index: i, isCharm, charmImage });
+                  // 1. CHUẨN BỊ DANH SÁCH HẠT HIỂN THỊ TRÊN CUNG TRƯỚC (VISIBLE FRONT ARC)
+                  // Chỉ hiển thị các hạt ở mặt trước ôm lên da (mặt sau bị cổ tay che khuất)
+                  let displayBeads = [];
+                  if (b.floralBeads && b.floralBeads.length > 0) {
+                    displayBeads = b.floralBeads;
+                  } else if (b.beadPositions && b.beadPositions.length > 0) {
+                    // Lấy khoảng 11-13 hạt ở cung trước từ mẫu tự phối
+                    const halfCount = Math.min(12, Math.max(9, Math.round(b.beadPositions.length * 0.62)));
+                    displayBeads = b.beadPositions.slice(0, halfCount).map(p => ({
+                      color: p.color || p.item?.color || b.beadColor,
+                      isCharm: Boolean(p.isCharm || p.item?.isCharm || p.type === 'charm'),
+                      charmImage: p.image || p.item?.image || null,
+                      name: p.item?.name || 'Hạt đá phong thủy'
+                    }));
+                  } else {
+                    // Preset thông thường
+                    const totalFront = 11;
+                    for (let i = 0; i < totalFront; i++) {
+                      displayBeads.push({
+                        color: b.beadColor || '#F7C6D0',
+                        isCharm: i === Math.floor(totalFront / 2),
+                        name: b.name
+                      });
+                    }
                   }
-                  // Sort beads by depth so front beads overlap back beads realistically
-                  beadItems.sort((first, second) => first.y - second.y);
+
+                  const beadCount = displayBeads.length;
+                  const beadItems = [];
+
+                  // Tính toán vị trí các hạt trên cung trước (từ -80 độ sang +80 độ ôm sát da)
+                  for (let i = 0; i < beadCount; i++) {
+                    const t = beadCount > 1 ? i / (beadCount - 1) : 0.5;
+                    const angle = (-Math.PI * 0.44) + t * (Math.PI * 0.88);
+                    const bx = cx + rx * Math.sin(angle);
+                    const by = cy + ry * Math.cos(angle) * 0.78;
+
+                    // Phối cảnh 3D: hạt ở gần to hơn, hạt ra 2 bên mép sườn cổ tay thu nhỏ & xoay nghiêng
+                    const depthFactor = 0.84 + 0.32 * Math.cos(angle);
+                    const baseRadius = displayBeads[i].type === 'flower' ? 12.5 : (displayBeads[i].type === 'gold_spacer' ? 4.8 : 7.6);
+                    const radius = baseRadius * scale * depthFactor;
+
+                    const item = displayBeads[i];
+                    const isFlower = item.type === 'flower' || b.isFloralModel && i === 1;
+                    const isPearl = item.type === 'pearl' || (!item.type && i % 2 === 0);
+                    const isCrystal = item.type === 'crystal';
+                    const isSpacer = item.type === 'gold_spacer';
+                    const color = item.color || b.beadColor || '#FFFDF9';
+
+                    beadItems.push({
+                      x: bx,
+                      y: by,
+                      radius,
+                      depthFactor,
+                      angle,
+                      color,
+                      index: i,
+                      isFlower,
+                      isPearl,
+                      isCrystal,
+                      isSpacer,
+                      isCharm: item.isCharm,
+                      charmImage: item.charmImage,
+                      item
+                    });
+                  }
+
+                  // Đường cung ôm trước cổ tay (Front arc path)
+                  const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.65} ${cy + ry * 1.08}, ${cx + rx * 0.65} ${cy + ry * 1.08}, ${cx + rx} ${cy}`;
+
+                  // Đường cuộn nhẹ ra sau cẳng tay ở 2 mép biên
+                  const leftWrapBack = `M ${cx - rx} ${cy} C ${cx - rx - 2} ${cy - ry * 0.22}, ${cx - rx + 14} ${cy - ry * 0.38}, ${cx - rx + 24} ${cy - ry * 0.42}`;
+                  const rightWrapBack = `M ${cx + rx} ${cy} C ${cx + rx + 2} ${cy - ry * 0.22}, ${cx + rx - 14} ${cy - ry * 0.38}, ${cx + rx - 22} ${cy - ry * 0.42}`;
 
                   return (
                     <div 
                       className="absolute inset-0 pointer-events-none flex items-center justify-center transition-transform duration-75"
                       style={{ transform: `rotate(${arAngle}deg)` }}
                     >
-                      <svg viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-2xl">
+                      <svg viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-xl">
                         <defs>
-                          <filter id="wristShadow">
-                            <feGaussianBlur in="SourceAlpha" stdDeviation="4" />
-                            <feOffset dx="0" dy="6" result="offsetblur" />
+                          {/* Bóng đổ tiếp xúc trực tiếp lên da (Ambient Contact Shadow) */}
+                          <filter id="skinContactBlur" x="-30%" y="-30%" width="160%" height="160%">
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="5.5" />
+                          </filter>
+
+                          {/* Bóng đổ từng viên hạt */}
+                          <filter id="beadDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feGaussianBlur in="SourceAlpha" stdDeviation="3.0" />
+                            <feOffset dx="0" dy="3.5" result="offsetblur" />
                             <feComponentTransfer>
                               <feFuncA type="linear" slope="0.45" />
                             </feComponentTransfer>
@@ -1558,130 +1644,262 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                               <feMergeNode in="SourceGraphic" />
                             </feMerge>
                           </filter>
-                          <clipPath id="charmClip">
-                            <circle cx="0" cy="11" r="10" />
-                          </clipPath>
-                          <clipPath id="slotCharmClip">
-                            <circle cx="0" cy="0" r="8" />
-                          </clipPath>
+
+                          {/* Gradient Ngọc Trai Trắng Bóng (Lustrous Pearl) */}
+                          <radialGradient id="pearlLusterGrad" cx="30%" cy="28%" r="72%">
+                            <stop offset="0%" stopColor="#FFFFFF" />
+                            <stop offset="28%" stopColor="#FFFDF8" />
+                            <stop offset="68%" stopColor="#EDE1D1" />
+                            <stop offset="100%" stopColor="#BAA591" />
+                          </radialGradient>
+
+                          {/* Gradient Cánh Hoa Hồng Phấn (5-Petal Blossom) */}
+                          <radialGradient id="sakuraPetalGrad" cx="35%" cy="30%" r="70%">
+                            <stop offset="0%" stopColor="#FFF2F5" />
+                            <stop offset="42%" stopColor="#FBB6C7" />
+                            <stop offset="85%" stopColor="#E67B98" />
+                            <stop offset="100%" stopColor="#B34B68" />
+                          </radialGradient>
+
+                          {/* Gradient Nhụy Hoa Vàng Ánh Kim */}
+                          <radialGradient id="sakuraCenterGrad" cx="32%" cy="30%" r="68%">
+                            <stop offset="0%" stopColor="#FFFDE6" />
+                            <stop offset="45%" stopColor="#F5D061" />
+                            <stop offset="90%" stopColor="#C48E1D" />
+                            <stop offset="100%" stopColor="#7A5308" />
+                          </radialGradient>
+
+                          {/* Gradient Pha Lê Trong Suốt (Crystal Quartz) */}
+                          <radialGradient id="crystalGrad" cx="28%" cy="26%" r="74%">
+                            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.98" />
+                            <stop offset="40%" stopColor="#EFE8F8" stopOpacity="0.85" />
+                            <stop offset="80%" stopColor="#C8B5E3" stopOpacity="0.9" />
+                            <stop offset="100%" stopColor="#876DA8" stopOpacity="0.95" />
+                          </radialGradient>
+
+                          {/* Gradient Thạch Anh Dâu Hồng */}
+                          <radialGradient id="strawberryGrad" cx="30%" cy="28%" r="70%">
+                            <stop offset="0%" stopColor="#FFF0F3" />
+                            <stop offset="45%" stopColor="#F7B2C4" />
+                            <stop offset="88%" stopColor="#D45E7E" />
+                            <stop offset="100%" stopColor="#8C2B45" />
+                          </radialGradient>
+
+                          {/* Gradient Khoen Vàng 18K */}
+                          <radialGradient id="goldSpacerGrad" cx="32%" cy="30%" r="68%">
+                            <stop offset="0%" stopColor="#FFFDF0" />
+                            <stop offset="50%" stopColor="#EAC150" />
+                            <stop offset="100%" stopColor="#8A6517" />
+                          </radialGradient>
                         </defs>
 
-                        {/* Cord Ring */}
-                        <ellipse
-                          cx={cx}
-                          cy={cy}
-                          rx={rx}
-                          ry={ry}
+                        {/* 1. LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA TAY (Contact Shadow on Skin) */}
+                        <path
+                          d={frontArcPath}
                           fill="none"
-                          stroke={b.cordColor || '#E8DFD3'}
-                          strokeWidth="3.5"
-                          opacity="0.9"
-                          filter="url(#wristShadow)"
+                          stroke="#1A0D06"
+                          strokeWidth={14 * scale}
+                          strokeLinecap="round"
+                          opacity="0.42"
+                          filter="url(#skinContactBlur)"
                         />
 
-                        {/* Beads & Slot Charms along ellipse */}
+                        {/* 2. DÂY LUỒN SAU Ở 2 BÊN MÉP (Subtle Back Cord Wrap) */}
+                        <path
+                          d={leftWrapBack}
+                          fill="none"
+                          stroke={b.cordColor || '#FFF8F0'}
+                          strokeWidth={2.4 * scale}
+                          opacity="0.32"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d={rightWrapBack}
+                          fill="none"
+                          stroke={b.cordColor || '#FFF8F0'}
+                          strokeWidth={2.4 * scale}
+                          opacity="0.32"
+                          strokeLinecap="round"
+                        />
+
+                        {/* 3. DÂY NỐI CUNG TRƯỚC (Front Silk Cord) */}
+                        <path
+                          d={frontArcPath}
+                          fill="none"
+                          stroke={b.cordColor || '#FFF8F0'}
+                          strokeWidth={2.8 * scale}
+                          strokeLinecap="round"
+                          opacity="0.95"
+                          filter="url(#beadDropShadow)"
+                        />
+
+                        {/* 4. TỪNG VIÊN HẠT & CHARM TRÊN CUNG TRƯỚC */}
                         {beadItems.map((bead) => (
                           <g key={bead.index}>
-                            <defs>
-                              <radialGradient id={`arBeadGrad-${bead.index}`} cx="30%" cy="30%" r="70%">
-                                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
-                                <stop offset="40%" stopColor={bead.color} />
-                                <stop offset="100%" stopColor="#1E130D" stopOpacity="0.88" />
-                              </radialGradient>
-                              <radialGradient id={`arCharmGrad-${bead.index}`} cx="30%" cy="30%" r="70%">
-                                <stop offset="0%" stopColor="#FFF4D0" />
-                                <stop offset="50%" stopColor="#E5C158" />
-                                <stop offset="100%" stopColor="#8A641A" />
-                              </radialGradient>
-                            </defs>
-                            
-                            {bead.isCharm ? (
-                              /* 3D-styled Slot Charm Medallion on Wrist */
+                            {bead.isFlower ? (
+                              /* CHARM BÔNG HOA 5 CÁNH HỒNG PHẤN (NHƯ ẢNH MẪU) */
                               <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                {/* Outer gold/silver charm bezel */}
+                                {/* 5 Cánh hoa mềm mại */}
+                                {[0, 1, 2, 3, 4].map((petalIdx) => {
+                                  const pRad = (petalIdx * 72 - 18) * (Math.PI / 180);
+                                  const px = Math.cos(pRad) * (bead.radius * 0.82);
+                                  const py = Math.sin(pRad) * (bead.radius * 0.82);
+                                  const pDeg = petalIdx * 72 - 18;
+                                  return (
+                                    <g key={petalIdx} transform={`translate(${px}, ${py}) rotate(${pDeg})`}>
+                                      {/* Cánh hoa hồng phấn */}
+                                      <ellipse
+                                        cx="0"
+                                        cy="0"
+                                        rx={bead.radius * 0.65}
+                                        ry={bead.radius * 0.48}
+                                        fill="url(#sakuraPetalGrad)"
+                                        stroke="#FCA3B7"
+                                        strokeWidth="0.6"
+                                        filter="url(#beadDropShadow)"
+                                      />
+                                      {/* Lòng cánh hoa sáng */}
+                                      <ellipse
+                                        cx="0"
+                                        cy="0"
+                                        rx={bead.radius * 0.38}
+                                        ry={bead.radius * 0.26}
+                                        fill="#FFF5F8"
+                                        opacity="0.85"
+                                      />
+                                    </g>
+                                  );
+                                })}
+
+                                {/* Nhụy hoa vàng ánh kim ở trung tâm */}
                                 <circle
                                   cx="0"
                                   cy="0"
-                                  r={bead.radius * 1.15}
-                                  fill={`url(#arCharmGrad-${bead.index})`}
-                                  stroke="#FFFFFF"
-                                  strokeWidth="0.8"
-                                  filter="url(#wristShadow)"
+                                  r={bead.radius * 0.40}
+                                  fill="url(#sakuraCenterGrad)"
+                                  stroke="#B8860B"
+                                  strokeWidth="0.7"
                                 />
+                                {/* Điểm sáng phản quang trên nhụy */}
                                 <circle
-                                  cx="0"
-                                  cy="0"
-                                  r={bead.radius * 0.95}
-                                  fill="#FFFDF7"
-                                  stroke="#C59B6D"
-                                  strokeWidth="0.5"
+                                  cx={-bead.radius * 0.12}
+                                  cy={-bead.radius * 0.12}
+                                  r={bead.radius * 0.15}
+                                  fill="#FFFFFF"
+                                  opacity="0.95"
                                 />
-                                {bead.charmImage ? (
-                                  <image
-                                    href={bead.charmImage}
-                                    x={-bead.radius * 0.8}
-                                    y={-bead.radius * 0.8}
-                                    width={bead.radius * 1.6}
-                                    height={bead.radius * 1.6}
-                                  />
-                                ) : (
-                                  <text
-                                    x="0"
-                                    y="2.5"
-                                    textAnchor="middle"
-                                    fontSize={bead.radius * 0.9}
-                                    fill="#845339"
-                                    fontWeight="bold"
-                                  >
-                                    ✦
-                                  </text>
-                                )}
                               </g>
-                            ) : (
-                              /* Gemstone Bead */
-                              <>
+                            ) : bead.isSpacer ? (
+                              /* KHOEN VÀNG ĐỆM 18K */
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
                                 <circle
-                                  cx={bead.x}
-                                  cy={bead.y}
+                                  cx="0"
+                                  cy="0"
                                   r={bead.radius}
-                                  fill={`url(#arBeadGrad-${bead.index})`}
+                                  fill="url(#goldSpacerGrad)"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="0.6"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
+                              </g>
+                            ) : bead.isPearl ? (
+                              /* HẠT NGỌC TRAI TRẮNG BÓNG (LUSTROUS PEARL) */
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <circle
+                                  cx="0"
+                                  cy="0"
+                                  r={bead.radius}
+                                  fill="url(#pearlLusterGrad)"
                                   stroke="#FFFFFF"
                                   strokeWidth="0.8"
-                                  opacity={0.96}
+                                  filter="url(#beadDropShadow)"
                                 />
-                                {/* Specular shine */}
+                                {/* Ánh xà cừ ngọc trai */}
+                                <ellipse
+                                  cx={-bead.radius * 0.18}
+                                  cy={-bead.radius * 0.18}
+                                  rx={bead.radius * 0.52}
+                                  ry={bead.radius * 0.44}
+                                  fill="#FFFFFF"
+                                  opacity="0.55"
+                                />
+                                {/* Đốm sáng phản quang chính */}
                                 <circle
-                                  cx={bead.x - bead.radius * 0.3}
-                                  cy={bead.y - bead.radius * 0.3}
+                                  cx={-bead.radius * 0.32}
+                                  cy={-bead.radius * 0.32}
                                   r={bead.radius * 0.28}
                                   fill="#FFFFFF"
-                                  opacity={0.85}
+                                  opacity="0.95"
                                 />
-                              </>
+                              </g>
+                            ) : bead.isCrystal ? (
+                              /* HẠT PHA LÊ TRONG SUỐT */
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <circle
+                                  cx="0"
+                                  cy="0"
+                                  r={bead.radius}
+                                  fill="url(#crystalGrad)"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="0.8"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
+                                <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
+                              </g>
+                            ) : (
+                              /* HẠT THẠCH ANH / ĐÁ PHONG THỦY */
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <defs>
+                                  <radialGradient id={`dynBeadGrad-${bead.index}`} cx="30%" cy="30%" r="70%">
+                                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.95" />
+                                    <stop offset="45%" stopColor={bead.color} />
+                                    <stop offset="100%" stopColor="#2A1610" stopOpacity="0.88" />
+                                  </radialGradient>
+                                </defs>
+                                <circle
+                                  cx="0"
+                                  cy="0"
+                                  r={bead.radius}
+                                  fill={`url(#dynBeadGrad-${bead.index})`}
+                                  stroke="#FFFFFF"
+                                  strokeWidth="0.8"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <circle
+                                  cx={-bead.radius * 0.3}
+                                  cy={-bead.radius * 0.3}
+                                  r={bead.radius * 0.28}
+                                  fill="#FFFFFF"
+                                  opacity="0.88"
+                                />
+                              </g>
                             )}
                           </g>
                         ))}
 
-                        {/* Central Dangling Charm */}
-                        <g transform={`translate(${cx}, ${cy + ry + 4})`}>
-                          <circle cx="0" cy="0" r="3" fill="#D4AF37" stroke="#FFFFFF" strokeWidth="0.5" />
-                          <circle cx="0" cy="11" r="11" fill="#FFF8F0" stroke="#B86244" strokeWidth="1.2" filter="url(#wristShadow)" />
-                          {b.selectedCharm?.image ? (
-                            <image
-                              href={b.selectedCharm.image}
-                              x="-8"
-                              y="3"
-                              width="16"
-                              height="16"
-                              clipPath="url(#charmClip)"
-                            />
-                          ) : (
-                            <>
-                              <circle cx="0" cy="11" r="7.5" fill={b.beadColor || '#D4AF37'} opacity="0.85" />
-                              <text x="0" y="13.5" textAnchor="middle" fill="#26211C" fontSize="6.5" fontWeight="bold">925</text>
-                            </>
-                          )}
-                        </g>
+                        {/* 5. CHARM ĐÍNH LỦNG LẲNG (NẾU MẪU CÓ CHARM TRUNG TÂM VÀ KHÔNG PHẢI HOA) */}
+                        {!b.isFloralModel && (
+                          <g transform={`translate(${cx}, ${cy + ry * 0.78 + 2})`}>
+                            <circle cx="0" cy="0" r="2.8" fill="#E5C158" stroke="#FFFFFF" strokeWidth="0.5" />
+                            <circle cx="0" cy="10" r="10" fill="#FFF8F0" stroke="#B86244" strokeWidth="1.2" filter="url(#beadDropShadow)" />
+                            {b.selectedCharm?.image ? (
+                              <image
+                                href={b.selectedCharm.image}
+                                x="-7"
+                                y="3"
+                                width="14"
+                                height="14"
+                              />
+                            ) : (
+                              <>
+                                <circle cx="0" cy="10" r="7.0" fill={b.beadColor || '#D4AF37'} opacity="0.85" />
+                                <text x="0" y="12.5" textAnchor="middle" fill="#26211C" fontSize="6.0" fontWeight="bold">925</text>
+                              </>
+                            )}
+                          </g>
+                        )}
                       </svg>
                     </div>
                   );

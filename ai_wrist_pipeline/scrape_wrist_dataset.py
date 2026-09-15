@@ -4,14 +4,15 @@ BỘ CÀO DỮ LIỆU CỔ TAY TỰ ĐỘNG (WRIST DATASET SCRAPER)
 Dự án: Xưởng Vòng Tay - Ướm Vòng AR & YOLO Wrist Detection
 =============================================================================
 Tính năng:
-- Thu thập hàng trăm ảnh cổ tay người thật (nhiều màu da, góc chụp, đeo vòng/không đeo)
-- Nguồn thu thập: Nguồn mở miễn phí (Wikimedia Commons, Unsplash Open API, Pixabay, Pexels)
-- Kiểm tra tính toàn vẹn của ảnh, loại bỏ ảnh lỗi hoặc kích thước quá nhỏ.
+- Thu thập ảnh cổ tay người thật, đặc biệt các góc đeo vòng hạt phong thủy và charm hoa
+- Nguồn thu thập: Nguồn mở miễn phí (Wikimedia Commons, Unsplash Open API, Pixabay)
+- Tự động lọc ảnh hỏng, kiểm tra độ phân giải
 =============================================================================
 """
 
 import os
 import sys
+import io
 import time
 import json
 import hashlib
@@ -19,23 +20,32 @@ import requests
 from pathlib import Path
 from PIL import Image
 from io import BytesIO
-from tqdm import tqdm
+
+# Đảm bảo in UTF-8 không lỗi charmap trên Windows
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = lambda x, **kwargs: x
 
 RAW_IMAGE_DIR = Path(__file__).parent / "dataset" / "raw_images"
 RAW_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
-# Các từ khóa tìm kiếm ảnh cổ tay phong phú
+# Các từ khóa tìm kiếm ảnh cổ tay phong phú & vòng hạt hoa giống ảnh mẫu
 SEARCH_QUERIES = [
-    "human wrist",
-    "female wrist jewelry",
-    "male wrist watch",
-    "wearing bead bracelet",
-    "wrist pulse",
-    "hand and wrist",
-    "bracelet arm",
-    "holding bracelet",
-    "wrist close up",
-    "bare wrist"
+    "flower bead bracelet wrist",
+    "wearing beaded bracelet wrist",
+    "dainty bracelet wrist aesthetic",
+    "pastel bead bracelet hand",
+    "female wrist jewelry aesthetic",
+    "hand and wrist bracelet",
+    "pearl bead bracelet arm",
+    "holding bracelet wrist",
+    "wrist close up jewelry",
+    "bare wrist human"
 ]
 
 HEADERS = {
@@ -65,12 +75,12 @@ def save_image_bytes(image_bytes: bytes, prefix: str = "wrist") -> str:
         img.save(out_path, "JPEG", quality=92)
         return str(out_path)
     except Exception as e:
-        print(f"Lỗi khi lưu ảnh: {e}")
+        print(f"[WARN] Lỗi khi lưu ảnh: {e}")
         return ""
 
-def scrape_from_wikimedia(query: str, limit: int = 20):
+def scrape_from_wikimedia(query: str, limit: int = 15):
     """Cào ảnh bản quyền mở từ Wikimedia Commons API."""
-    print(f"🔍 Đang tìm kiếm trên Wikimedia: '{query}'...")
+    print(f"[SEARCH] Đang tìm kiếm trên Wikimedia: '{query}'...")
     api_url = "https://commons.wikimedia.org/w/api.php"
     params = {
         "action": "query",
@@ -98,44 +108,40 @@ def scrape_from_wikimedia(query: str, limit: int = 20):
             if not img_url:
                 continue
             
+            # Chỉ lấy jpg, png, jpeg
+            if not any(img_url.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png"]):
+                continue
+
             try:
-                img_res = requests.get(img_url, headers=HEADERS, timeout=15)
+                img_res = requests.get(img_url, headers=HEADERS, timeout=10)
                 if img_res.status_code == 200 and is_valid_image(img_res.content):
-                    path = save_image_bytes(img_res.content, prefix=f"wiki_{query.replace(' ', '_')}")
-                    if path:
+                    saved_path = save_image_bytes(img_res.content, prefix="wiki_wrist")
+                    if saved_path:
                         saved_count += 1
-                        time.sleep(0.3)
             except Exception:
                 continue
 
-        print(f"  ✓ Tải về {saved_count} ảnh từ Wikimedia cho từ khóa '{query}'.")
+        print(f"  ✓ Đã lưu {saved_count} ảnh từ '{query}'.")
         return saved_count
     except Exception as e:
-        print(f"  ⚠️ Lỗi Wikimedia ({query}): {e}")
+        print(f"[WARN] Lỗi khi kết nối Wikimedia: {e}")
         return 0
 
-def scrape_from_unsplash_source(query: str, count: int = 15):
-    """Tải ảnh cổ tay chất lượng cao từ nguồn mở Unsplash."""
-    print(f"🔍 Đang lấy ảnh nguồn mở: '{query}'...")
-    saved_count = 0
-    # Danh sách ID ảnh mẫu thực tế về cổ tay / tay đeo phụ kiện
-    curated_sample_ids = [
-        "1535223289827-42f1e9919769",
-        "1522337360788-8b13dee7a37e",
-        "1509631179647-0177331693ae",
-        "1611591475877-4f67645b46e3",
-        "1599643478518-a784e5dc4c8f",
-        "1515562141207-7a88fb7ce338",
-        "1600003014755-ba31aa59c4b6",
-        "1605100804763-247f67b3557e",
-        "1602173574767-37ac01994b2a",
-        "1584917865442-de89df76afd3"
+def scrape_from_unsplash_source(query: str, count: int = 10):
+    """Tải ảnh curated từ Unsplash Source mở chất lượng cao."""
+    print(f"[SEARCH] Đang tải ảnh chất lượng cao từ kho Unsplash Open: '{query}'...")
+    curated_urls = [
+        "https://images.unsplash.com/photo-1611591475152-4783113828af?w=700&q=80",
+        "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=700&q=80",
+        "https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=700&q=80",
+        "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=700&q=80",
+        "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=700&q=80"
     ]
 
-    for sample_id in curated_sample_ids:
-        url = f"https://images.unsplash.com/photo-{sample_id}?auto=format&fit=crop&w=800&q=80"
+    saved_count = 0
+    for u in curated_urls:
         try:
-            res = requests.get(url, headers=HEADERS, timeout=12)
+            res = requests.get(u, headers=HEADERS, timeout=10)
             if res.status_code == 200 and is_valid_image(res.content):
                 saved = save_image_bytes(res.content, prefix="curated_wrist")
                 if saved:
@@ -146,33 +152,31 @@ def scrape_from_unsplash_source(query: str, count: int = 15):
     print(f"  ✓ Đã nạp {saved_count} ảnh cổ tay chất lượng cao mẫu.")
     return saved_count
 
-def run_scraper(target_total: int = 50):
-    print("=" * 65)
-    print("🚀 BẮT ĐẦU CÀO DATASET ẢNH CỔ TAY CHO YOLO TRAINING")
-    print(f"📂 Thư mục lưu: {RAW_IMAGE_DIR.resolve()}")
-    print("=" * 65)
+def run_scraper(target_total: int = 40):
+    print("=" * 68)
+    print("[SCRAPER] BẮT ĐẦU CÀO DATASET ẢNH CỔ TAY CHO YOLO TRAINING")
+    print(f"[DIR] Thư mục lưu: {RAW_IMAGE_DIR.resolve()}")
+    print("=" * 68)
 
     total_downloaded = 0
-    # 1. Nạp ảnh mẫu curated chất lượng cao
-    total_downloaded += scrape_from_unsplash_source("wrist bracelet", count=10)
+    total_downloaded += scrape_from_unsplash_source("wrist bracelet", count=8)
 
-    # 2. Cào từ Wikimedia Commons theo các từ khóa
     for query in SEARCH_QUERIES:
         if total_downloaded >= target_total:
             break
         c = scrape_from_wikimedia(query, limit=12)
         total_downloaded += c
-        time.sleep(0.5)
+        time.sleep(0.4)
 
     existing_images = list(RAW_IMAGE_DIR.glob("*.jpg")) + list(RAW_IMAGE_DIR.glob("*.png"))
-    print("=" * 65)
-    print(f"🎉 HOÀN TẤT CÀO DỮ LIỆU!")
-    print(f"📸 Tổng số ảnh hiện có trong {RAW_IMAGE_DIR.name}: {len(existing_images)} ảnh.")
-    print("👉 Bước tiếp theo: Chạy `python auto_label_wrist.py` để tự động gán nhãn keypoint cổ tay!")
-    print("=" * 65)
+    print("=" * 68)
+    print("[DONE] HOÀN TẤT CÀO DỮ LIỆU!")
+    print(f"[INFO] Tổng số ảnh hiện có trong {RAW_IMAGE_DIR.name}: {len(existing_images)} ảnh.")
+    print("👉 Bước tiếp theo: Chạy `python auto_label_wrist.py` để tự động gán nhãn 5 keypoints!")
+    print("=" * 68)
 
 if __name__ == "__main__":
-    target = 30
+    target = 35
     if len(sys.argv) > 1:
         try:
             target = int(sys.argv[1])
