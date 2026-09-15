@@ -1754,24 +1754,38 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   </div>
                 </div>
 
-                {/* REAL-TIME AR BRACELET OVERLAY (3D Cylindrical Wrapping & Occlusion Culling) */}
+                {/* REAL-TIME AR BRACELET OVERLAY (3D Cylindrical Wrapping & Real Wrist Snug Fit) */}
                 {(() => {
                   const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
-                  const scale = arSizeCm / 16;
-                  const rx = 88 * scale;
-                  const ry = 42 * scale;
+
+                  // 1. TÍNH TOÁN BÁN KÍNH KHỚP CHÍNH XÁC VỚI CỔ TAY THỰC TẾ TRÊN VIEWPORT 320x320
+                  // Khung camera 320x320: Cổ tay người thật thường có bề ngang từ 60px - 85px
+                  const detectedWristPx = (detectedWrist && detectedWrist.width > 8)
+                    ? Math.min(100, Math.max(58, (detectedWrist.width / 100) * 320))
+                    : 74;
+
+                  // Tỷ lệ co giãn theo chu vi cổ tay (14cm - 19cm, mốc chuẩn 16cm)
+                  const sizeRatio = arSizeCm / 16;
+
+                  // Bán kính ngang elip: Bằng bán kính cổ tay + 3.5px để tâm hạt nằm tiếp xúc khít khao lên mép da tay
+                  const rx = (detectedWristPx * 0.51) * sizeRatio;
+
+                  // Độ dẹp elip cổ tay (anatomical wrist ratio ~ 0.35): Tạo độ cong nhẹ nhàng ôm sát mu cổ tay
+                  const ry = rx * 0.35;
+
                   const cx = 160 + arOffsetX;
                   const cy = 160 + arOffsetY;
 
-                  // 1. CHUẨN BỊ DANH SÁCH HẠT HIỂN THỊ TRÊN CUNG TRƯỚC (VISIBLE FRONT ARC)
+                  // 2. CHUẨN BỊ DANH SÁCH HẠT HIỂN THỊ TRÊN CUNG TRƯỚC (VISIBLE FRONT ARC)
+                  // Với rx ~ 38px - 44px, cung trước nhìn thấy vừa vặn khít khao 9 hạt (hạt số 4 ở chính giữa)
+                  const frontCount = 9;
                   let displayBeads = [];
+
                   if (b.isCustom && b.beadPositions && b.beadPositions.length > 0) {
                     const total = b.beadPositions.length;
-                    // Trong BraceletStudio, charm chính treo ở đáy (gần Math.floor(total / 2))
-                    // Lấy các hạt quanh tâm để charm nằm ngay chính diện cung trước
+                    // Trong BraceletStudio, charm chính nằm ở đáy (vị trí gần Math.floor(total / 2))
                     const centerIdx = Math.floor(total / 2);
-                    const frontCount = Math.min(13, Math.max(9, Math.round(total * 0.58)));
-                    const halfFront = Math.floor(frontCount / 2);
+                    const halfFront = Math.floor(frontCount / 2); // 4 hạt mỗi bên
 
                     for (let offset = -halfFront; offset <= halfFront; offset++) {
                       const rawIdx = (centerIdx + offset + total) % total;
@@ -1790,19 +1804,28 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                       });
                     }
                   } else if (b.floralBeads && b.floralBeads.length > 0) {
-                    displayBeads = b.floralBeads.map((fb, idx) => ({
-                      ...fb,
-                      id: `floral-${idx}`,
-                      isPearl: fb.type === 'pearl',
-                      isFlower: fb.type === 'flower',
-                      isCrystal: fb.type === 'crystal',
-                      isSpacer: fb.type === 'gold_spacer',
-                      isStrawberry: fb.type === 'strawberry'
-                    }));
+                    // Mẫu hoa hồng pha lê: Trích xuất 9 phần tử cân xứng với hoa hồng ở chính giữa
+                    const floralTotal = b.floralBeads.length;
+                    const centerIdx = b.floralBeads.findIndex(fb => fb.type === 'flower');
+                    const cIdx = centerIdx !== -1 ? centerIdx : Math.floor(floralTotal / 2);
+                    const halfFront = Math.floor(frontCount / 2);
+
+                    for (let offset = -halfFront; offset <= halfFront; offset++) {
+                      const rawIdx = (cIdx + offset + floralTotal) % floralTotal;
+                      const fb = b.floralBeads[rawIdx] || b.floralBeads[0];
+                      displayBeads.push({
+                        ...fb,
+                        id: `floral-${rawIdx}`,
+                        isPearl: fb.type === 'pearl',
+                        isFlower: fb.type === 'flower',
+                        isCrystal: fb.type === 'crystal',
+                        isSpacer: fb.type === 'gold_spacer',
+                        isStrawberry: fb.type === 'strawberry'
+                      });
+                    }
                   } else {
-                    // Preset thông thường
-                    const totalFront = 11;
-                    for (let i = 0; i < totalFront; i++) {
+                    // Preset thông thường: 9 hạt phân bổ đều
+                    for (let i = 0; i < frontCount; i++) {
                       displayBeads.push({
                         id: `preset-bead-${i}`,
                         color: b.beadColor || '#F7C6D0',
@@ -1819,22 +1842,32 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   const beadCount = displayBeads.length;
                   const beadItems = [];
 
-                  // Tính toán vị trí các hạt trên cung trước (từ -80 độ sang +80 độ ôm sát da)
+                  // 3. TÍNH TOÁN VỊ TRÍ, KÍCH THƯỚC VÀ HIỆU ỨNG PHỐI CẢNH 3D (CYLINDRICAL FORESHORTENING)
                   for (let i = 0; i < beadCount; i++) {
                     const t = beadCount > 1 ? i / (beadCount - 1) : 0.5;
-                    const angle = (-Math.PI * 0.44) + t * (Math.PI * 0.88);
+                    // Góc từ -82 độ đến +82 độ ôm sát hai bên sườn cổ tay
+                    const angle = (-Math.PI * 0.46) + t * (Math.PI * 0.92);
                     const bx = cx + rx * Math.sin(angle);
-                    const by = cy + ry * Math.cos(angle) * 0.78;
+                    const by = cy + ry * Math.cos(angle);
 
-                    const depthFactor = 0.84 + 0.32 * Math.cos(angle);
+                    // Chiều sâu Z: Hạt ở chính diện (angle = 0) nổi bật nhất, hạt ở mép thu nhỏ và đậm hơn
+                    const depthFactor = 0.85 + 0.25 * Math.cos(angle);
                     const item = displayBeads[i];
-                    const baseRadius = item.isFlower ? 12.5 : (item.isSpacer ? 4.8 : 7.6);
-                    const radius = baseRadius * scale * depthFactor;
+
+                    // Kích thước hạt tỉ lệ theo kích thước vòng ôm thật
+                    const baseRadius = (item.isFlower ? 9.8 : (item.isSpacer ? 3.4 : 5.8)) * (rx / 40);
+                    const radius = baseRadius * depthFactor;
+
+                    // Độ dẹp ngang theo góc nhìn (Foreshortening) khi hạt cuộn sang mép cổ tay
+                    const rxBead = radius * (0.80 + 0.20 * Math.cos(angle));
+                    const ryBead = radius;
 
                     beadItems.push({
                       x: bx,
                       y: by,
                       radius,
+                      rxBead,
+                      ryBead,
                       depthFactor,
                       angle,
                       color: item.color || b.beadColor || '#FFFDF9',
@@ -1849,28 +1882,28 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     });
                   }
 
-                  // Đường cung ôm trước cổ tay (Front arc path)
-                  const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.65} ${cy + ry * 1.08}, ${cx + rx * 0.65} ${cy + ry * 1.08}, ${cx + rx} ${cy}`;
+                  // Đường cung ôm trước cổ tay (Front arc path ôm khít mu tay)
+                  const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.62} ${cy + ry * 1.05}, ${cx + rx * 0.62} ${cy + ry * 1.05}, ${cx + rx} ${cy}`;
 
-                  // Đường cuộn nhẹ ra sau cẳng tay ở 2 mép biên
-                  const leftWrapBack = `M ${cx - rx} ${cy} C ${cx - rx - 2} ${cy - ry * 0.22}, ${cx - rx + 14} ${cy - ry * 0.38}, ${cx - rx + 24} ${cy - ry * 0.42}`;
-                  const rightWrapBack = `M ${cx + rx} ${cy} C ${cx + rx + 2} ${cy - ry * 0.22}, ${cx + rx - 14} ${cy - ry * 0.38}, ${cx + rx - 22} ${cy - ry * 0.42}`;
+                  // Đường dây luồn nhẹ ra sau cẳng tay ở 2 mép biên (tạo cảm giác vòng khép kín 360 độ quanh cổ tay)
+                  const leftWrapBack = `M ${cx - rx} ${cy} C ${cx - rx - 2} ${cy - ry * 0.3}, ${cx - rx + 10} ${cy - ry * 0.5}, ${cx - rx + 18} ${cy - ry * 0.55}`;
+                  const rightWrapBack = `M ${cx + rx} ${cy} C ${cx + rx + 2} ${cy - ry * 0.3}, ${cx + rx - 10} ${cy - ry * 0.5}, ${cx + rx - 18} ${cy - ry * 0.55}`;
 
                   return (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                       <svg viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-xl">
                         <defs>
-                          {/* Bóng đổ tiếp xúc trực tiếp lên da (Ambient Contact Shadow) */}
+                          {/* Bóng đổ tiếp xúc trực tiếp lên da (Ambient Contact Shadow ôm sát da tay) */}
                           <filter id="skinContactBlur" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur in="SourceGraphic" stdDeviation="5.5" />
+                            <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
                           </filter>
 
                           {/* Bóng đổ từng viên hạt */}
                           <filter id="beadDropShadow" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur in="SourceAlpha" stdDeviation="3.0" />
-                            <feOffset dx="0" dy="3.5" result="offsetblur" />
+                            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" />
+                            <feOffset dx="0" dy="2.2" result="offsetblur" />
                             <feComponentTransfer>
-                              <feFuncA type="linear" slope="0.45" />
+                              <feFuncA type="linear" slope="0.48" />
                             </feComponentTransfer>
                             <feMerge>
                               <feMergeNode />
@@ -1920,32 +1953,32 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                         {/* XOAY CHÍNH XÁC QUANH TRỌNG TÂM CỔ TAY (cx, cy) */}
                         <g transform={`rotate(${arAngle} ${cx} ${cy})`}>
-                          {/* 1. LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA TAY */}
+                          {/* 1. LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA TAY (Ambient Contact Shadow) */}
                           <path
                             d={frontArcPath}
                             fill="none"
-                            stroke="#1A0D06"
-                            strokeWidth={14 * scale}
+                            stroke="#180C05"
+                            strokeWidth={Math.max(6.5, rx * 0.22)}
                             strokeLinecap="round"
-                            opacity="0.42"
+                            opacity="0.52"
                             filter="url(#skinContactBlur)"
                           />
 
-                          {/* 2. DÂY LUỒN SAU Ở 2 BÊN MÉP */}
+                          {/* 2. DÂY LUỒN SAU Ở 2 BÊN MÉP (Wrap back) */}
                           <path
                             d={leftWrapBack}
                             fill="none"
                             stroke={b.cordColor || '#FFF8F0'}
-                            strokeWidth={2.4 * scale}
-                            opacity="0.32"
+                            strokeWidth={Math.max(1.5, rx * 0.045)}
+                            opacity="0.38"
                             strokeLinecap="round"
                           />
                           <path
                             d={rightWrapBack}
                             fill="none"
                             stroke={b.cordColor || '#FFF8F0'}
-                            strokeWidth={2.4 * scale}
-                            opacity="0.32"
+                            strokeWidth={Math.max(1.5, rx * 0.045)}
+                            opacity="0.38"
                             strokeLinecap="round"
                           />
 
@@ -1954,7 +1987,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                             d={frontArcPath}
                             fill="none"
                             stroke={b.cordColor || '#FFF8F0'}
-                            strokeWidth={2.8 * scale}
+                            strokeWidth={Math.max(1.8, rx * 0.055)}
                             strokeLinecap="round"
                             opacity="0.95"
                             filter="url(#beadDropShadow)"
@@ -1976,8 +2009,8 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                                         <ellipse
                                           cx="0"
                                           cy="0"
-                                          rx={bead.radius * 0.65}
-                                          ry={bead.radius * 0.48}
+                                          rx={bead.rxBead * 0.65}
+                                          ry={bead.ryBead * 0.48}
                                           fill="url(#sakuraPetalGrad)"
                                           stroke="#FCA3B7"
                                           strokeWidth="0.6"
@@ -1986,8 +2019,8 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                                         <ellipse
                                           cx="0"
                                           cy="0"
-                                          rx={bead.radius * 0.38}
-                                          ry={bead.radius * 0.26}
+                                          rx={bead.rxBead * 0.38}
+                                          ry={bead.ryBead * 0.26}
                                           fill="#FFF5F8"
                                           opacity="0.85"
                                         />
@@ -2000,20 +2033,20 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                               ) : bead.isSpacer ? (
                                 /* KHOEN VÀNG ĐỆM 18K */
                                 <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <circle cx="0" cy="0" r={bead.radius} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
+                                  <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
                                   <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
                                 </g>
                               ) : bead.isPearl ? (
                                 /* HẠT NGỌC TRAI TRẮNG BÓNG */
                                 <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <circle cx="0" cy="0" r={bead.radius} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                  <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.radius * 0.52} ry={bead.radius * 0.44} fill="#FFFFFF" opacity="0.55" />
+                                  <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
+                                  <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.rxBead * 0.52} ry={bead.ryBead * 0.44} fill="#FFFFFF" opacity="0.55" />
                                   <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.95" />
                                 </g>
                               ) : bead.isCrystal ? (
                                 /* HẠT PHA LÊ TRONG SUỐT */
                                 <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <circle cx="0" cy="0" r={bead.radius} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
+                                  <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
                                   <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
                                   <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
                                 </g>
@@ -2028,28 +2061,29 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                                       <stop offset="100%" stopColor="#1C0E0A" stopOpacity="0.92" />
                                     </radialGradient>
                                   </defs>
-                                  <circle
+                                  <ellipse
                                     cx="0"
                                     cy="0"
-                                    r={bead.radius}
+                                    rx={bead.rxBead}
+                                    ry={bead.ryBead}
                                     fill={`url(#dynBeadGrad-${bead.index})`}
                                     stroke="rgba(255,255,255,0.7)"
                                     strokeWidth="0.8"
                                     filter="url(#beadDropShadow)"
                                   />
-                                  <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.85" />
-                                  <circle cx={bead.radius * 0.25} cy={bead.radius * 0.25} r={bead.radius * 0.18} fill="#FFFFFF" opacity="0.25" />
+                                  <ellipse cx={-bead.rxBead * 0.32} cy={-bead.ryBead * 0.32} rx={bead.rxBead * 0.32} ry={bead.ryBead * 0.28} fill="#FFFFFF" opacity="0.85" />
+                                  <ellipse cx={bead.rxBead * 0.25} cy={bead.ryBead * 0.25} rx={bead.rxBead * 0.20} ry={bead.ryBead * 0.18} fill="#FFFFFF" opacity="0.25" />
                                 </g>
                               )}
                             </g>
                           ))}
 
-                          {/* 5. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NẾU MẪU CÓ CHARM) */}
+                          {/* 5. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NỐI DƯỚI ĐÁY HẠT SỐ 4) */}
                           {b.selectedCharm && !b.isFloralModel && (
-                            <g transform={`translate(${cx}, ${cy + ry * 0.78 + 2})`}>
+                            <g transform={`translate(${cx}, ${cy + ry + 2})`}>
                               {/* Jump ring connector */}
-                              <circle cx="0" cy="0" r="3" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
-                              <line x1="0" y1="2" x2="0" y2="7" stroke="#D4AF37" strokeWidth="1.5" />
+                              <circle cx="0" cy="0" r="2.8" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
+                              <line x1="0" y1="2" x2="0" y2="7" stroke="#D4AF37" strokeWidth="1.4" />
                               {renderArCharmSvg(b.selectedCharm)}
                             </g>
                           )}
@@ -2111,20 +2145,62 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 </div>
               </div>
 
-              {/* Interactive Fit Adjusters (Sliders) */}
+              {/* Interactive Fit Adjusters (Sliders & Quick Presets) */}
               <div className="p-4 bg-white rounded-2xl border border-[#E8DFD3] shadow-xs space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2">
                   <span className="flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5 text-[#B86244]" /> Căn chỉnh vừa vặn cổ tay
                   </span>
                   <span className="text-[11px] text-[#B86244] font-bold">
-                    Cỡ vòng: {arSizeCm} cm ({arSizeCm <= 15 ? 'Size S' : arSizeCm <= 17 ? 'Size M' : 'Size L'})
+                    Cỡ vòng: {arSizeCm} cm ({arSizeCm <= 15 ? 'Size S - Ôm Sát' : arSizeCm <= 17 ? 'Size M - Chuẩn' : 'Size L - Rộng'})
                   </span>
+                </div>
+
+                {/* Quick Fit Mode Buttons (Chế độ đeo vòng tay) */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setArSizeCm(14.5)}
+                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                      arSizeCm <= 15
+                        ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
+                        : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
+                    }`}
+                  >
+                    <span>🤏 Ôm Sát Da</span>
+                    <span className="text-[9px] opacity-80">14 - 15 cm</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setArSizeCm(16)}
+                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                      arSizeCm > 15 && arSizeCm <= 17
+                        ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
+                        : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
+                    }`}
+                  >
+                    <span>✨ Vừa Chuẩn</span>
+                    <span className="text-[9px] opacity-80">16 cm (Mặc định)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setArSizeCm(17.5)}
+                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
+                      arSizeCm > 17
+                        ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
+                        : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
+                    }`}
+                  >
+                    <span>🍃 Thả Lỏng Nhẹ</span>
+                    <span className="text-[9px] opacity-80">17.5 - 19 cm</span>
+                  </button>
                 </div>
 
                 {isAutoTracking && (
                   <p className="text-[11px] text-[#8C8276] italic bg-[#FAF7F2] p-2 rounded-lg border border-[#F3ECE1]">
-                    💡 AI YOLO đang tự động nhận diện góc nghiêng và chu vi cổ tay theo thời gian thực. Bạn vẫn có thể kéo trượt để tinh chỉnh thêm bên dưới!
+                    💡 AI YOLO đang tự động nhận diện góc nghiêng và chu vi cổ tay theo thời gian thực. Bạn có thể bấm chọn chế độ đeo ở trên hoặc kéo trượt thêm bên dưới!
                   </p>
                 )}
 
@@ -2137,7 +2213,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     </div>
                     <input
                       type="range"
-                      min="14"
+                      min="13"
                       max="19"
                       step="0.5"
                       value={arSizeCm}

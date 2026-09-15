@@ -1,8 +1,11 @@
+import os
 import cv2
 import numpy as np
 from test_wrist_inference import render_realistic_wrist_tryon, BRACELET_PRESETS
 
-img = cv2.imread('dataset/raw_images/synthetic_wrist_0000.jpg')
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+img_path = os.path.join(cur_dir, 'dataset', 'raw_images', 'synthetic_wrist_0000.jpg')
+img = cv2.imread(img_path)
 h, w, _ = img.shape
 preset = BRACELET_PRESETS[0] # Hoa Hồng Pha Lê & Ngọc Trai (Ảnh Mẫu)
 
@@ -14,5 +17,6 @@ angle_deg = 42.0
 
 render_realistic_wrist_tryon(img, wrist_cx, wrist_cy, wrist_w, angle_deg, 0, preset)
 
-cv2.imwrite('dataset/test_render_result.jpg', img)
-print('Saved test render to dataset/test_render_result.jpg')
+out_path = os.path.join(cur_dir, 'dataset', 'test_render_result.jpg')
+cv2.imwrite(out_path, img)
+print(f'Saved test render to {out_path}')

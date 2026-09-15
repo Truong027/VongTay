@@ -178,12 +178,12 @@ def render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, angle_deg, 
     """
     scale = max(0.5, min(1.8, wrist_w / 95.0))
     
-    # Bán kính elip thiết diện cổ tay
-    rx = wrist_w * 0.52
-    ry = rx * 0.42
+    # Bán kính elip thiết diện cổ tay người thật (ôm sát khít bề mặt da)
+    rx = wrist_w * 0.50
+    ry = rx * 0.35
 
     # Vị trí rơi tự nhiên của vòng tay:
-    # Lùi về phía cẳng tay một đoạn khoảng 0.25 * wrist_w
+    # Lùi nhẹ về phía cẳng tay khoảng 0.12 * wrist_w
     rad = math.radians(angle_deg)
     cos_a = math.cos(rad)
     sin_a = math.sin(rad)
@@ -193,56 +193,57 @@ def render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, angle_deg, 
     perp_y = cos_a
 
     # Tâm vòng tay rơi lùi nhẹ dọc theo cẳng tay
-    cx = wrist_cx - perp_x * (wrist_w * 0.15)
-    cy = wrist_cy - perp_y * (wrist_w * 0.15)
+    cx = wrist_cx - perp_x * (wrist_w * 0.12)
+    cy = wrist_cy - perp_y * (wrist_w * 0.12)
 
     bead_seq = preset["bead_sequence"]
+    # Chuẩn hóa 9 hạt nhìn thấy trên cung trước (hạt hoa/charm ở chính giữa)
+    if len(bead_seq) > 9:
+        center_idx = len(bead_seq) // 2
+        bead_seq = bead_seq[center_idx - 4 : center_idx + 5]
     total_beads = len(bead_seq)
 
     # 1. VẼ LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA CỔ TAY (Ambient Contact Shadow)
-    # Lớp shadow mô phỏng độ tỳ của chuỗi hạt lên da thịt
+    # Lớp shadow mô phỏng độ tỳ của chuỗi hạt ôm sát lên da thịt
     shadow_overlay = frame.copy()
     shadow_pts = []
-    # Chỉ lấy cung trước nhìn thấy (từ -90 độ sang +90 độ)
+    # Cung trước nhìn thấy (từ -85 độ sang +85 độ)
     for deg in range(-85, 90, 5):
         th = math.radians(deg)
         raw_x = rx * math.sin(th)
-        raw_y = ry * math.cos(th) * 0.7  # Cung cong phía trước
+        raw_y = ry * math.cos(th)
         rot_x = raw_x * cos_a - raw_y * sin_a
         rot_y = raw_x * sin_a + raw_y * cos_a
-        # Đổ bóng dịch nhẹ xuống theo hướng chiếu sáng
-        shadow_pts.append([int(cx + rot_x + 2), int(cy + rot_y + 4)])
+        shadow_pts.append([int(cx + rot_x + 1), int(cy + rot_y + 2)])
 
     if len(shadow_pts) > 2:
         shadow_arr = np.array(shadow_pts, dtype=np.int32)
-        cv2.polylines(shadow_overlay, [shadow_arr], isClosed=False, color=(20, 20, 20), thickness=int(12 * scale), lineType=cv2.LINE_AA)
-        cv2.addWeighted(shadow_overlay, 0.35, frame, 0.65, 0, frame)
+        cv2.polylines(shadow_overlay, [shadow_arr], isClosed=False, color=(15, 15, 15), thickness=max(4, int(7.5 * scale)), lineType=cv2.LINE_AA)
+        cv2.addWeighted(shadow_overlay, 0.45, frame, 0.55, 0, frame)
 
     # 2. VẼ DÂY NỐI CUNG TRƯỚC (Front Arc Cord)
     cord_pts = []
     for deg in range(-90, 95, 4):
         th = math.radians(deg)
         raw_x = rx * math.sin(th)
-        raw_y = ry * math.cos(th) * 0.7
+        raw_y = ry * math.cos(th)
         rot_x = raw_x * cos_a - raw_y * sin_a
         rot_y = raw_x * sin_a + raw_y * cos_a
         cord_pts.append([int(cx + rot_x), int(cy + rot_y)])
 
     if len(cord_pts) > 2:
         cord_arr = np.array(cord_pts, dtype=np.int32)
-        cv2.polylines(frame, [cord_arr], isClosed=False, color=preset["cord_color"], thickness=max(2, int(2.5 * scale)), lineType=cv2.LINE_AA)
+        cv2.polylines(frame, [cord_arr], isClosed=False, color=preset["cord_color"], thickness=max(2, int(2.0 * scale)), lineType=cv2.LINE_AA)
 
     # 3. PHÂN BỔ & VẼ CÁC VIÊN HẠT TRÊN CUNG NHÌN THẤY (Front Arc Beads)
-    # Góc nhìn thấy từ mép sườn quay sang mép sườn trụ: -pi/2 đến +pi/2
     front_items = []
     for i in range(total_beads):
-        # Tỷ lệ vị trí trên cung trước
-        t = (i / (total_beads - 1)) # 0.0 đến 1.0
-        # Góc từ -85 độ đến +85 độ
+        t = (i / (total_beads - 1)) if total_beads > 1 else 0.5
+        # Góc từ -82 độ đến +82 độ ôm sát hai bên sườn cổ tay
         theta = (-math.pi * 0.46) + t * (math.pi * 0.92)
 
         raw_x = rx * math.sin(theta)
-        raw_y = ry * math.cos(theta) * 0.72
+        raw_y = ry * math.cos(theta)
 
         rot_x = raw_x * cos_a - raw_y * sin_a
         rot_y = raw_x * sin_a + raw_y * cos_a
@@ -251,11 +252,11 @@ def render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, angle_deg, 
         by = cy + rot_y
 
         # Chiều sâu 3D (hạt ở giữa cổ tay gần camera hơn hạt ở 2 mép sườn)
-        depth = 0.82 + 0.32 * math.cos(theta)
+        depth = 0.85 + 0.25 * math.cos(theta)
         bead_info = bead_seq[i]
         front_items.append((bx, by, depth, bead_info, raw_y))
 
-    # Sắp xếp hạt theo chiều sâu z (hạt ở sau vẽ trước, hạt nổi ở giữa vẽ sau cùng)
+    # Sắp xếp hạt theo chiều sâu z (hạt ở mép vẽ trước, hạt nổi ở giữa vẽ sau cùng)
     front_items.sort(key=lambda item: item[4])
 
     for bx, by, depth, bead_info, _ in front_items:
