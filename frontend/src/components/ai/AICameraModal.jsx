@@ -353,9 +353,11 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
   // Auto AI YOLO / Vision Wrist Tracking State
   const [isAutoTracking, setIsAutoTracking] = useState(true);
+  const [isWristLocked, setIsWristLocked] = useState(false); // Trạng thái Gắn Cứng Cổ Tay 100%
   const [trackingConfidence, setTrackingConfidence] = useState(0);
   const [trackingFeedback, setTrackingFeedback] = useState('Đang tìm cổ tay...');
   const [detectedWrist, setDetectedWrist] = useState(null);
+  const lockStreakRef = useRef(0);
 
   // Smooth Snap-On Wear Animation State (Hiệu ứng trượt vòng và ôm vừa vặn cổ tay)
   const [isWearingAnim, setIsWearingAnim] = useState(true);
@@ -518,10 +520,20 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
               confidence: conf
             });
             setTrackingConfidence(conf);
-            setTrackingFeedback(`Khóa cổ tay ${conf}% (YOLO Auto-Snap)`);
 
-            // Tự động kích hoạt animation đeo trượt vào tay khi khóa cổ tay thành công
-            if (prevConfRef.current < 55 && conf >= 70) {
+            // Khi nhận diện cổ tay ổn định, TỰ ĐỘNG GẮN CỨNG VÀO CỔ TAY LUÔN
+            lockStreakRef.current += 1;
+            if (conf >= 68 && lockStreakRef.current >= 2) {
+              if (!isWristLocked) {
+                setIsWristLocked(true);
+              }
+              setTrackingFeedback(`🔒 Đã Gắn Cứng Cổ Tay (${conf}%)`);
+            } else {
+              setTrackingFeedback(`🎯 Đang dò cổ tay ${conf}%...`);
+            }
+
+            // Tự động kích hoạt animation đeo trượt vào tay khi khóa cổ tay thành công lần đầu
+            if (prevConfRef.current < 55 && conf >= 68) {
               triggerWearAnimation();
             }
             prevConfRef.current = conf;
@@ -530,14 +542,37 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
               const targetOffsetX = (normX - 0.5) * 220;
               const targetOffsetY = (normY - 0.5) * 190 + 5;
 
-              // Lọc mượt EMA với float precision, không bị giật từng pixel
-              setArOffsetX(prev => Number((prev + (targetOffsetX - prev) * 0.20).toFixed(1)));
-              setArOffsetY(prev => Number((prev + (targetOffsetY - prev) * 0.20).toFixed(1)));
-              setArAngle(prev => Number((prev + (clampedAngle - prev) * 0.18).toFixed(1)));
+              // Thuật toán GẮN CỨNG CỔ TAY (Deadband Sticky Filter):
+              // Khi cổ tay giữ yên hoặc chỉ rung lắc nhẹ (< 4.5px), vòng tay được GHIM CỨNG 100% không trôi, không giật.
+              // Khi người dùng di chuyển cổ tay rõ ràng (> 4.5px), vòng tay đi theo mượt mà và ngay lập tức bám cứng lại vị trí mới!
+              setArOffsetX(prev => {
+                const delta = targetOffsetX - prev;
+                if (Math.abs(delta) < 4.5) return prev; // Gắn cứng hoàn toàn
+                return Number((prev + delta * 0.25).toFixed(1));
+              });
+
+              setArOffsetY(prev => {
+                const delta = targetOffsetY - prev;
+                if (Math.abs(delta) < 4.5) return prev; // Gắn cứng hoàn toàn
+                return Number((prev + delta * 0.25).toFixed(1));
+              });
+
+              setArAngle(prev => {
+                const delta = clampedAngle - prev;
+                if (Math.abs(delta) < 3.0) return prev; // Gắn cứng góc xoay
+                return Number((prev + delta * 0.20).toFixed(1));
+              });
             }
           } else {
-            setTrackingConfidence(prev => Math.max(0, prev - 4));
-            setTrackingFeedback('Đưa cổ tay vào giữa khung camera...');
+            lockStreakRef.current = 0;
+            // Nếu đã gắn cứng rồi thì GIỮ NGUYÊN vị trí, không để vòng tay bị trôi mất
+            if (isWristLocked) {
+              setTrackingFeedback('🔒 Đang Giữ Cố Định Vòng Trên Cổ Tay');
+              setTrackingConfidence(prev => Math.max(50, prev - 2));
+            } else {
+              setTrackingConfidence(prev => Math.max(0, prev - 4));
+              setTrackingFeedback('Đưa cổ tay vào giữa khung camera...');
+            }
           }
         } catch (e) {
           // Ignore transient read errors
@@ -1746,25 +1781,44 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 {/* Hidden canvas for snapshot capture */}
                 <canvas ref={canvasRef} className="hidden" />
 
-                {/* Top Controls: Flip camera & Auto-Tracking Toggle */}
+                {/* Top Controls: Flip camera & Firm Wrist Lock Toggle */}
                 <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-auto">
-                  {/* YOLO Auto-Tracking Toggle */}
+                  {/* Firm Wrist Lock Toggle */}
                   <button
                     type="button"
                     onClick={() => {
-                      setIsAutoTracking(prev => !prev);
-                      if (!isAutoTracking) {
-                        setTrackingFeedback('Đang tìm và khóa cổ tay tự động...');
-                      }
+                      setIsWristLocked(prev => {
+                        const next = !prev;
+                        if (next) {
+                          setIsAutoTracking(true);
+                          setTrackingFeedback('🔒 Đã BẬT Gắn Cứng Cổ Tay!');
+                        } else {
+                          setTrackingFeedback('🔓 Đã mở khóa - Có thể di chuyển / kéo tay');
+                        }
+                        return next;
+                      });
                     }}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-md border transition-all flex items-center gap-1.5 shadow-md ${
-                      isAutoTracking
-                        ? 'bg-emerald-600/90 text-white border-emerald-400/50 shadow-emerald-500/30'
+                      isWristLocked
+                        ? 'bg-emerald-600/95 text-white border-emerald-300/80 shadow-emerald-500/40 ring-2 ring-emerald-400/40'
+                        : isAutoTracking
+                        ? 'bg-amber-600/90 text-white border-amber-400/50 shadow-amber-500/30'
                         : 'bg-black/60 text-stone-300 border-white/20 hover:bg-black/80'
                     }`}
                   >
-                    <Sparkles className={`w-3.5 h-3.5 ${isAutoTracking ? 'animate-spin' : ''}`} />
-                    <span>{isAutoTracking ? '🤖 YOLO Khóa Cổ Tay' : '✋ Chỉnh Thủ Công / Kéo Tay'}</span>
+                    {isWristLocked ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping mr-0.5" />
+                        <span>🔒 Đã Gắn Cứng Cổ Tay</span>
+                      </>
+                    ) : isAutoTracking ? (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                        <span>🎯 Bấm Để Gắn Cứng</span>
+                      </>
+                    ) : (
+                      <span>✋ Chỉnh Thủ Công / Kéo Tay</span>
+                    )}
                   </button>
 
                   {/* Controls right: Ướm lại vòng & Đổi camera */}
@@ -1792,22 +1846,28 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                 {/* AR Alignment Reticle (Khung định vị cổ tay) */}
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className={`w-48 h-64 border-2 border-dashed rounded-full flex flex-col items-center justify-between py-4 transition-all duration-300 ${
-                    isAutoTracking && detectedWrist && trackingConfidence > 65
-                      ? 'border-emerald-400/70 shadow-[0_0_20px_rgba(52,211,153,0.3)]'
-                      : 'border-amber-300/50 shadow-inner'
+                  <div className={`w-48 h-64 border-2 rounded-full flex flex-col items-center justify-between py-4 transition-all duration-300 ${
+                    isWristLocked
+                      ? 'border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/30'
+                      : isAutoTracking && detectedWrist && trackingConfidence > 65
+                      ? 'border-emerald-400/70 border-dashed shadow-[0_0_20px_rgba(52,211,153,0.3)]'
+                      : 'border-amber-300/50 border-dashed shadow-inner'
                   }`}>
                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-xs transition-colors ${
-                      isAutoTracking && detectedWrist && trackingConfidence > 65
+                      isWristLocked
+                        ? 'text-emerald-100 bg-emerald-950/80 border border-emerald-400/60 shadow-sm'
+                        : isAutoTracking && detectedWrist && trackingConfidence > 65
                         ? 'text-emerald-200 bg-emerald-950/70 border border-emerald-500/30'
                         : 'text-amber-200 bg-black/50'
                     }`}>
-                      {isAutoTracking && detectedWrist && trackingConfidence > 65
+                      {isWristLocked
+                        ? '🔒 ĐÃ GẮN CỨNG VÀO CỔ TAY'
+                        : isAutoTracking && detectedWrist && trackingConfidence > 65
                         ? `🎯 Khóa Cổ Tay: ${trackingConfidence}%`
                         : 'Đặt Cổ Tay Vào Khung'}
                     </span>
                     <span className="text-[9px] text-white/80 bg-black/40 px-2 py-0.5 rounded-full">
-                      Bàn tay hướng lên trên
+                      {isWristLocked ? '✨ Vòng ôm khít cổ tay cố định' : 'Bàn tay hướng lên trên'}
                     </span>
                   </div>
                 </div>
@@ -2430,14 +2490,31 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   <p className="text-[11px] text-[#8C8276]">
                     💡 <strong>Mẹo:</strong> Bạn có thể chạm và kéo trực tiếp trên khung camera để di chuyển vòng tay!
                   </p>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsWristLocked(prev => !prev);
+                        if (!isWristLocked) {
+                          setIsAutoTracking(true);
+                          setTrackingFeedback('🔒 Đã Gắn Cứng Cổ Tay!');
+                        }
+                      }}
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1 ${
+                        isWristLocked
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs'
+                          : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
+                      }`}
+                    >
+                      <span>{isWristLocked ? '🔒 Đã Gắn Cứng' : '🔓 Ghim Cổ Tay'}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={triggerWearAnimation}
                       className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline px-2 py-1 shrink-0 flex items-center gap-1"
                     >
                       <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>✨ Thử Đeo Lại Vòng</span>
+                      <span>✨ Ướm Lại Vòng</span>
                     </button>
                     <button
                       type="button"
@@ -2446,12 +2523,13 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                         setArOffsetY(0);
                         setArAngle(0);
                         setIsAutoTracking(true);
+                        setIsWristLocked(false);
                         setTrackingFeedback('Đang tự động căn lại vị trí...');
                         triggerWearAnimation();
                       }}
                       className="text-[11px] font-semibold text-[#B86244] hover:underline px-2 py-1 shrink-0"
                     >
-                      🔄 Đặt Lại Trung Tâm
+                      🔄 Đặt Lại
                     </button>
                   </div>
                 </div>

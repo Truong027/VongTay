@@ -49,7 +49,7 @@ SEARCH_QUERIES = [
 ]
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": "VIBANVONGTAY_AI_Research/1.0 (https://github.com/Truong027/VongTay; contact: ai@vibanvongtay.vn)",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
 }
 
@@ -86,7 +86,8 @@ def scrape_from_wikimedia(query: str, limit: int = 15):
         "action": "query",
         "format": "json",
         "generator": "search",
-        "gsrsearch": f"{query} filetype:bitmap",
+        "gsrsearch": query,
+        "gsrnamespace": 6,
         "gsrlimit": limit,
         "prop": "imageinfo",
         "iiprop": "url|size|mime"

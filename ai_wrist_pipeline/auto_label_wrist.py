@@ -52,6 +52,17 @@ LABELS_VAL = DATASET_DIR / "labels" / "val"
 for p in [PREVIEW_DIR, IMAGES_TRAIN, IMAGES_VAL, LABELS_TRAIN, LABELS_VAL, RAW_DIR]:
     p.mkdir(parents=True, exist_ok=True)
 
+# Khởi tạo YOLOv8-pose Pretrained để trích xuất điểm giải phẫu người thật
+HAS_YOLO_POSE = False
+pose_detector = None
+try:
+    from ultralytics import YOLO
+    pose_detector = YOLO(str(PIPELINE_DIR / "yolov8n-pose.pt"))
+    HAS_YOLO_POSE = True
+    print("[AI] Đã kích hoạt YOLOv8-Pose Human Keypoint Extractor cho ảnh người thật!")
+except Exception as e:
+    print(f"[WARN] Không thể nạp YOLOv8-pose: {e}")
+
 # Khởi tạo MediaPipe Hands nếu có
 HAS_MEDIAPIPE = False
 hands_detector = None
@@ -67,6 +78,58 @@ try:
     print("[AI] Đã kích hoạt MediaPipe AI Landmark Detector!")
 except Exception as e:
     print("[AI] Sử dụng Computer Vision Contour Analysis làm bộ nhận diện giải phẫu cổ tay!")
+
+def detect_wrist_yolo_pose(img_bgr):
+    """
+    Nhận diện khớp cổ tay và cẳng tay người thật bằng mạng YOLOv8-Pose:
+    - KP 9: Left wrist
+    - KP 10: Right wrist
+    - KP 7: Left elbow
+    - KP 8: Right elbow
+    """
+    if not HAS_YOLO_POSE or pose_detector is None:
+        return None
+    h, w, _ = img_bgr.shape
+    results = pose_detector(img_bgr, verbose=False)
+    annotations = []
+    for r in results:
+        if r.keypoints is None or len(r.keypoints.data) == 0:
+            continue
+        kpts_all = r.keypoints.data.cpu().numpy()
+        for kpts in kpts_all:
+            # Tìm khớp cổ tay có confidence cao nhất
+            for (w_idx, e_idx) in [(9, 7), (10, 8)]:
+                wx, wy, w_conf = kpts[w_idx]
+                ex, ey, e_conf = kpts[e_idx]
+                if w_conf > 0.30 and 15 < wx < w - 15 and 15 < wy < h - 15:
+                    if e_conf > 0.20:
+                        dx = float(wx - ex)
+                        dy = float(wy - ey)
+                        arm_len = max(25.0, float(np.hypot(dx, dy)))
+                        dir_x = dx / arm_len
+                        dir_y = dy / arm_len
+                        wrist_w = max(40.0, min(140.0, arm_len * 0.28))
+                    else:
+                        dir_x, dir_y = 0.0, -1.0
+                        wrist_w = max(45.0, min(130.0, min(w, h) * 0.16))
+                    
+                    perp_x = -dir_y
+                    perp_y = dir_x
+                    half_w = wrist_w * 0.5
+
+                    kp0 = (float(wx), float(wy))
+                    kp1 = (float(wx - perp_x * half_w), float(wy - perp_y * half_w))
+                    kp2 = (float(wx + perp_x * half_w), float(wy + perp_y * half_w))
+                    kp3 = (float(wx - dir_x * (wrist_w * 1.4)), float(wy - dir_y * (wrist_w * 1.4)))
+                    kp4 = (float(wx + dir_x * (wrist_w * 0.9)), float(wy + dir_y * (wrist_w * 0.9)))
+
+                    box_w = wrist_w * 2.8
+                    box_h = wrist_w * 3.2
+                    annotations.append({
+                        "bbox": (float(wx), float(wy), float(box_w), float(box_h)),
+                        "keypoints": [kp0, kp1, kp2, kp3, kp4]
+                    })
+    return annotations if annotations else None
 
 def detect_wrist_mediapipe(img_bgr):
     """
@@ -309,21 +372,24 @@ SYNTHETIC_GROUND_TRUTH = {}
 
 def process_and_label_dataset(train_ratio: float = 0.8):
     print("=" * 68)
-    print("[LABEL] BẮT ĐẦU TỰ ĐỘNG GÁN NHÃN CỔ TAY 5 KEYPOINTS CHO YOLOV8-POSE")
-    print(f"[DIR] Thư mục ảnh: {RAW_DIR.resolve()}")
+    print("[LABEL] BẮT ĐẦU GÁN NHÃN 5 KEYPOINTS CHO DATASET CỔ TAY NGƯỜI THẬT 100%")
+    print(f"[DIR] Thư mục ảnh người thật: {RAW_DIR.resolve()}")
     print("=" * 68)
 
-    # Tự động khởi chạy bộ sinh ảnh cổ tay mô phỏng chính xác
-    generate_synthetic_wrist_samples(count=40)
-    image_files = list(RAW_DIR.glob("*.jpg")) + list(RAW_DIR.glob("*.png")) + list(RAW_DIR.glob("*.jpeg"))
+    # Chỉ lấy ảnh người thật (bỏ ảnh synthetic)
+    image_files = [
+        p for p in (list(RAW_DIR.glob("*.jpg")) + list(RAW_DIR.glob("*.png")) + list(RAW_DIR.glob("*.jpeg")))
+        if not p.name.startswith("synthetic")
+    ]
 
     random.seed(42)
     random.shuffle(image_files)
+    print(f"[INFO] Tìm thấy {len(image_files)} ảnh cổ tay người thật để gán nhãn.")
 
     labeled_count = 0
-    preview_limit = 12
+    preview_limit = 20
 
-    for idx, img_path in enumerate(tqdm(image_files, desc="Gán nhãn 5 keypoints")):
+    for idx, img_path in enumerate(tqdm(image_files, desc="Gán nhãn 5 keypoints cổ tay thật")):
         img = cv2.imread(str(img_path))
         if img is None:
             continue
@@ -331,12 +397,13 @@ def process_and_label_dataset(train_ratio: float = 0.8):
         h, w, _ = img.shape
         annotations = None
 
-        # 1. Nếu có ground truth mô phỏng chính xác
-        if img_path.name in SYNTHETIC_GROUND_TRUTH:
-            annotations = SYNTHETIC_GROUND_TRUTH[img_path.name]
-        # 2. Hoặc nhận diện bằng MediaPipe / CV
-        elif HAS_MEDIAPIPE:
+        # 1. Trích xuất khớp cổ tay người thật bằng mạng YOLOv8-pose
+        if HAS_YOLO_POSE:
+            annotations = detect_wrist_yolo_pose(img)
+        # 2. Hoặc MediaPipe Hands nếu có
+        if not annotations and HAS_MEDIAPIPE:
             annotations = detect_wrist_mediapipe(img)
+        # 3. Hoặc phân tích đường cong giải phẫu cẳng tay (PCA Contour Inflection)
         if not annotations:
             annotations = detect_wrist_cv_contour(img)
 
