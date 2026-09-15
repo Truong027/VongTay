@@ -1,14 +1,7 @@
-flip_idx:
-- 0
-- 2
-- 1
-- 3
-- 4
-kpt_shape:
-- 5
-- 3
-names:
-  0: wrist
 path: E:/VIBANVONGTAY/ai_wrist_pipeline/dataset
 train: images/train
 val: images/val
+names:
+  0: wrist
+kpt_shape: [5, 3]
+flip_idx: [0, 2, 1, 3, 4]
