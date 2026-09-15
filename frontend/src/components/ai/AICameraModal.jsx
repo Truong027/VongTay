@@ -18,7 +18,13 @@ import {
   Compass,
   ShoppingBag,
   Sliders,
-  RotateCw
+  RotateCw,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Share2,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useCart } from '../../context/CartContext';
@@ -351,6 +357,11 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [arCapturedSnapshot, setArCapturedSnapshot] = useState(null);
   const [arAddedSuccess, setArAddedSuccess] = useState(false);
 
+  // iPhone Camera UI Specific States
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState(false);
+  const [shutterFlash, setShutterFlash] = useState(false);
+  const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
+
   // Auto AI YOLO / Vision Wrist Tracking State
   const [isAutoTracking, setIsAutoTracking] = useState(true);
   const [isWristLocked, setIsWristLocked] = useState(false); // Trạng thái Gắn Cứng Cổ Tay 100%
@@ -359,7 +370,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [detectedWrist, setDetectedWrist] = useState(null);
   const lockStreakRef = useRef(0);
 
-  // Smooth Snap-On Wear Animation State (Hiệu ứng trượt vòng và ôm vừa vặn cổ tay)
+  // Smooth Snap-On Wear Animation State (Mở ra từ mu bàn tay -> Trượt xuống cổ tay -> Co ôm khít)
   const [isWearingAnim, setIsWearingAnim] = useState(true);
   const [wearAnimKey, setWearAnimKey] = useState(0);
   const prevConfRef = useRef(0);
@@ -369,7 +380,74 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
     setIsWearingAnim(true);
     setTimeout(() => {
       setIsWearingAnim(false);
-    }, 900);
+    }, 1150);
+  };
+
+  // Hàm chụp ảnh Shutter phong cách iPhone Camera
+  const handleShutterClick = async () => {
+    // 1. Hiệu ứng chớp sáng màn hình như iOS Camera
+    setShutterFlash(true);
+    setTimeout(() => setShutterFlash(false), 220);
+
+    // Nếu ở chế độ 1 (Quét cổ tay đo size) thì chụp ảnh để AI Gemini Vision phân tích
+    if (modalMode === 'wrist') {
+      await handleCaptureWrist();
+      return;
+    }
+
+    // Nếu ở chế độ 3 (Ướm vòng 3D AR) thì chụp ảnh lồng ghép vòng tay 3D vào cổ tay người dùng
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = vw;
+    snapCanvas.height = vh;
+    const ctx = snapCanvas.getContext('2d');
+
+    // Vẽ luồng video (lật gương nếu dùng camera trước)
+    if (facingMode === 'user') {
+      ctx.translate(vw, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0, vw, vh);
+    if (facingMode === 'user') {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    // Ghép lớp vòng tay 3D SVG lên ảnh chụp
+    const svgEl = document.getElementById('ar-bracelet-svg');
+    if (svgEl) {
+      try {
+        const svgXml = new XMLSerializer().serializeToString(svgEl);
+        const svgBlob = new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' });
+        const DOMURL = window.URL || window.webkitURL || window;
+        const url = DOMURL.createObjectURL(svgBlob);
+        const svgImg = new Image();
+        svgImg.onload = () => {
+          ctx.drawImage(svgImg, 0, 0, vw, vh);
+          DOMURL.revokeObjectURL(url);
+          const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+          setArCapturedSnapshot(dataUrl);
+          setSnapshotModalOpen(true);
+        };
+        svgImg.onerror = () => {
+          const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+          setArCapturedSnapshot(dataUrl);
+          setSnapshotModalOpen(true);
+        };
+        svgImg.src = url;
+      } catch {
+        const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+        setArCapturedSnapshot(dataUrl);
+        setSnapshotModalOpen(true);
+      }
+    } else {
+      const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.92);
+      setArCapturedSnapshot(dataUrl);
+      setSnapshotModalOpen(true);
+    }
   };
 
   const handlePointerDown = (e) => {
@@ -831,1798 +909,1086 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
   return (
     <div 
-      className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-black/75 backdrop-blur-md overflow-y-auto animate-fadeIn"
-      onClick={onClose}
+      className="fixed inset-0 z-[100] w-screen h-screen bg-black text-white flex flex-col justify-between overflow-hidden select-none touch-none animate-fadeIn"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
-      <div 
-        className="relative w-full max-w-4xl bg-[#FAF7F2] rounded-3xl shadow-2xl border border-[#E8DFD3] overflow-hidden my-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-[#26211C] text-white px-5 sm:px-7 py-4 flex items-center justify-between border-b border-[#3D352E]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#B86244] to-amber-500 flex items-center justify-center text-white shadow-md">
-              <Sparkles className="w-5 h-5 text-amber-200 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-serif-boutique text-lg sm:text-xl font-bold tracking-wide">
-                  AI STYLIST VÒNG TAY NHÀ ZY
-                </h3>
-                <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider hidden sm:inline-block">
-                  Gemini Flash Vision
-                </span>
-              </div>
-              <p className="text-[11px] text-[#CFC1B0]">
-                Cố vấn thị giác đo chu vi cổ tay & gợi ý phối vòng từ kho hạt, charm thủ công có sẵn
-              </p>
-            </div>
-          </div>
+      {/* 1. Shutter Flash Effect */}
+      {shutterFlash && (
+        <div className="absolute inset-0 bg-white z-[90] pointer-events-none transition-opacity duration-200" />
+      )}
 
-          <button
-            onClick={() => { stopCamera(); onClose(); }}
-            className="p-1.5 rounded-full hover:bg-white/10 text-[#CFC1B0] hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      {/* 2. Fullscreen Live Video Stream */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        style={{ transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+      />
+      <canvas ref={canvasRef} className="hidden" />
 
-        {/* Tab Switcher */}
-        <div className="bg-[#EFE7DC] px-4 sm:px-6 py-2.5 flex items-center gap-2 border-b border-[#E0D4C5]">
-          <button
-            onClick={() => {
-              setModalMode('wrist');
-              if (!capturedImage) startCamera();
-            }}
-            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              modalMode === 'wrist'
-                ? 'bg-[#26211C] text-white shadow-sm'
-                : 'bg-white/60 text-[#6B6258] hover:bg-white hover:text-[#26211C]'
-            }`}
-          >
-            <Camera className="w-3.5 h-3.5 text-amber-300" />
-            <span>1. Quét Cổ Tay / Cánh Tay Đo Size</span>
-          </button>
+      {/* 3. Top Header Bar (iPhone Dynamic Island / Minimalist Frosted Glass) */}
+      <div className="relative z-30 w-full px-4 pt-4 pb-2 flex items-center justify-between pointer-events-auto bg-gradient-to-b from-black/85 via-black/40 to-transparent">
+        {/* Nút đóng góc trái */}
+        <button
+          type="button"
+          onClick={() => { stopCamera(); onClose(); }}
+          className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/75 text-white/90 hover:text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-md cursor-pointer"
+          title="Đóng camera"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
-          <button
-            onClick={() => {
-              setModalMode('catalog_match');
-              stopCamera();
-            }}
-            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              modalMode === 'catalog_match'
-                ? 'bg-[#B86244] text-white shadow-sm'
-                : 'bg-white/60 text-[#6B6258] hover:bg-white hover:text-[#26211C]'
-            }`}
-          >
-            <Palette className="w-3.5 h-3.5 text-amber-200" />
-            <span>2. Tải Ảnh Gợi Ý Phối</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setModalMode('ar_tryon');
-              startCamera();
-            }}
-            className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              modalMode === 'ar_tryon'
-                ? 'bg-gradient-to-r from-[#B86244] to-amber-600 text-white shadow-sm'
-                : 'bg-white/60 text-[#6B6258] hover:bg-white hover:text-[#26211C]'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
-            <span>3. AR Thử Vòng Ảo Cổ Tay</span>
-            <span className="text-[9px] bg-emerald-400 text-emerald-950 font-extrabold px-1.5 py-0.2 rounded-full uppercase">
-              3D AR
-            </span>
-          </button>
-        </div>
-
-        {/* Content Body */}
-        <div className="p-5 sm:p-7 max-h-[78vh] overflow-y-auto space-y-6">
-
-          {/* ========================================================================= */}
-          {/* TAB 1: QUÉT CỔ TAY ĐO SIZE                                                */}
-          {/* ========================================================================= */}
-          {modalMode === 'wrist' && (
-            <div>
-              {wristError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{wristError}</span>
-                </div>
-              )}
-
-              {/* Result View for Wrist */}
-              {wristResult ? (
-                <div className="space-y-6 animate-fadeIn">
-                  {/* Trường hợp 1: Không phải cổ tay */}
-                  {wristResult.isValidWrist === false ? (
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-300">
-                        <div className="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
-                          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                          <span>Hình ảnh chưa phát hiện cổ tay hoặc vòng tay!</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setWristResult(null);
-                            setCapturedImage(null);
-                            startCamera();
-                          }}
-                          className="text-xs text-amber-900 hover:text-amber-700 font-semibold underline"
-                        >
-                          Chụp / Tải ảnh khác
-                        </button>
-                      </div>
-
-                      {/* Nút Pivot nhanh sang gợi ý phối hạt/charm từ ảnh này */}
-                      <div className="p-4 bg-gradient-to-r from-amber-100 via-rose-50 to-amber-100 rounded-2xl border border-amber-300 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <div className="space-y-0.5 text-left">
-                          <p className="text-xs font-bold text-[#845339] flex items-center gap-1.5">
-                            <Sparkles className="w-4 h-4 text-amber-600" />
-                            <span>Bạn muốn lấy cảm hứng phối vòng từ bức ảnh này?</span>
-                          </p>
-                          <p className="text-[11px] text-[#A05237]">
-                            AI có thể bóc tách màu sắc, hoa văn từ ảnh này để chọn hạt đá và charm đang có sẵn tại xưởng!
-                          </p>
-                        </div>
-                        <button
-                          onClick={handlePivotToMatchFromWrist}
-                          className="w-full sm:w-auto px-4 py-2.5 bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 shrink-0"
-                        >
-                          <Palette className="w-3.5 h-3.5 text-amber-200" />
-                          <span>Phối Hạt/Charm Từ Ảnh Này</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                        <div className="md:col-span-4 space-y-3">
-                          <div className="aspect-square rounded-2xl overflow-hidden border-2 border-amber-300 shadow-md bg-[#26211C] relative">
-                            <img 
-                              src={capturedImage} 
-                              alt="Ảnh người dùng gửi" 
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/35 flex items-center justify-center p-3">
-                              <span className="bg-amber-600 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
-                                ⚠️ Không phải cổ tay
-                              </span>
-                            </div>
-                          </div>
-                          <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200 text-[11px] text-amber-950 space-y-1">
-                            <p>🔍 AI nhận diện: <strong className="text-[#26211C]">{wristResult.detectedObject || 'Hình ảnh khác'}</strong></p>
-                            <p>⚠️ Trạng thái: <span className="text-amber-700 font-semibold">Chưa phát hiện cổ tay</span></p>
-                          </div>
-                        </div>
-
-                        <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-4">
-                          <h4 className="font-serif-boutique text-lg font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2 flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-amber-500" />
-                            Lời Nhắn Từ Nghệ Nhân Vòng Tay Nhà Zy
-                          </h4>
-
-                          <div className="text-xs sm:text-sm text-[#26211C] leading-relaxed whitespace-pre-line bg-[#FAF7F2] p-4 rounded-xl border border-[#E8DFD3]">
-                            {wristResult.analysis}
-                          </div>
-
-                          <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900 space-y-1.5">
-                            <p className="font-bold text-amber-950">💡 Để AI nhận diện chính xác size tay & tone da của bạn:</p>
-                            <p>1. Hướng camera trực diện vào <strong>cổ tay</strong> hoặc <strong>bàn tay</strong>.</p>
-                            <p>2. Đặt tay nơi có ánh sáng rõ ràng, nền đơn sắc.</p>
-                          </div>
-
-                          <div className="pt-2 flex justify-end">
-                            <button
-                              onClick={() => {
-                                setWristResult(null);
-                                setCapturedImage(null);
-                                startCamera();
-                              }}
-                              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#26211C] hover:bg-[#3D352E] text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
-                            >
-                              <Camera className="w-4 h-4" />
-                              <span>Chụp Lại Ảnh Cổ Tay</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Trường hợp 2: Cổ tay chuẩn xác */
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between p-4 bg-[#EDF3EF] rounded-2xl border border-[#D0E2D7]">
-                        <div className="flex items-center gap-2 text-[#4E6857] font-bold text-sm">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                          <span>AI Gemini Vision đã nhận diện chính xác cổ tay của bạn!</span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setWristResult(null);
-                            setCapturedImage(null);
-                            startCamera();
-                          }}
-                          className="text-xs text-[#6B6258] hover:text-[#26211C] font-semibold underline"
-                        >
-                          Chụp lại ảnh khác
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                        <div className="md:col-span-4 space-y-3">
-                          <div className="aspect-square rounded-2xl overflow-hidden border-2 border-[#E8DFD3] shadow-md bg-[#26211C]">
-                            <img 
-                              src={capturedImage} 
-                              alt="Ảnh cổ tay chụp từ camera" 
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="p-3 bg-white rounded-xl border border-[#E8DFD3] text-[11px] text-[#6B6258] space-y-1">
-                            <p>✓ Đối tượng: <strong className="text-[#26211C]">{wristResult.detectedObject || 'Cổ tay chuẩn xác'}</strong></p>
-                            <p>✓ Mô hình: <strong>{wristResult.model || 'Gemini Flash AI'}</strong></p>
-                          </div>
-                        </div>
-
-                        <div className="md:col-span-8 bg-white p-6 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-4">
-                          <h4 className="font-serif-boutique text-xl font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2 flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-amber-500" />
-                            Lời Khuyên Chuyên Gia Stylist & Nghệ Nhân Phong Thủy
-                          </h4>
-
-                          {(wristResult.skinTone || wristResult.wristType || wristResult.existingBracelet) && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] text-xs">
-                              {wristResult.skinTone && (
-                                <div>
-                                  <span className="text-[#8C8276] text-[10px] block">🎨 Tone da thực tế:</span>
-                                  <strong className="text-[#26211C] text-[11px]">{wristResult.skinTone}</strong>
-                                </div>
-                              )}
-                              {wristResult.wristType && (
-                                <div>
-                                  <span className="text-[#8C8276] text-[10px] block">📏 Dáng & size ước tính:</span>
-                                  <strong className="text-[#26211C] text-[11px]">{wristResult.wristType}</strong>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="text-xs sm:text-sm text-[#26211C] leading-relaxed whitespace-pre-line space-y-2">
-                            {wristResult.analysis}
-                          </div>
-
-                          <div className="pt-4 border-t border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <button
-                              onClick={() => {
-                                setWristResult(null);
-                                setCapturedImage(null);
-                                startCamera();
-                              }}
-                              className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2]"
-                            >
-                              ← Chụp Lại Cổ Tay
-                            </button>
-
-                            <button
-                              onClick={() => handleApplyPreset(wristResult.presetConfig)}
-                              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs sm:text-sm shadow-artisan-hover transition-all flex items-center justify-center gap-2"
-                            >
-                              <Flower2 className="w-4 h-4 text-amber-200" />
-                              <span>Áp Dụng Thiết Kế Vào Xưởng Tự Phối</span>
-                              <ArrowRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* Camera & Input Form for Wrist */
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  <div className="md:col-span-7 flex flex-col items-center justify-center">
-                    <div className="relative w-full aspect-square max-w-[380px] rounded-2xl overflow-hidden bg-[#26211C] border-2 border-[#E8DFD3] shadow-lg flex items-center justify-center">
-                      {capturedImage ? (
-                        <img 
-                          src={capturedImage} 
-                          alt="Ảnh đã chụp" 
-                          className="w-full h-full object-cover" 
-                        />
-                      ) : cameraActive ? (
-                        <>
-                          <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="w-full h-full object-cover"
-                          />
-                          {/* Flip Camera Button */}
-                          <button
-                            onClick={toggleFacingMode}
-                            className="absolute top-3 right-3 z-20 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-medium flex items-center gap-1.5 hover:bg-black/80 transition-all border border-white/20 shadow-md cursor-pointer"
-                            title="Đổi camera trước hoặc sau"
-                          >
-                            <RefreshCw className="w-3 h-3 text-amber-300" />
-                            <span>{facingMode === 'environment' ? 'Cam Sau' : 'Cam Trước'}</span>
-                          </button>
-
-                          <div className="absolute inset-6 border-2 border-dashed border-white/70 rounded-3xl pointer-events-none flex items-center justify-center">
-                            <div className="text-center bg-black/55 backdrop-blur-md p-3 rounded-2xl border border-white/20 shadow-lg">
-                              <p className="text-white text-xs font-bold tracking-wide">
-                                ĐẶT CỔ TAY HOẶC CẢ CÁNH TAY VÀO KHUNG
-                              </p>
-                              <p className="text-[10px] text-amber-200 mt-0.5">
-                                AI tự động định vị cổ tay & quét sắc tố da để gợi ý vòng
-                              </p>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center p-5 space-y-3">
-                          <div className="w-12 h-12 rounded-full bg-white/10 text-amber-300 flex items-center justify-center mx-auto">
-                            <Camera className="w-6 h-6" />
-                          </div>
-                          <p className="text-xs text-[#E8DFD3] max-w-xs mx-auto leading-relaxed">
-                            {cameraError || 'Camera trực tiếp chưa được bật hoặc bị chặn quyền truy cập.'}
-                          </p>
-                          <div className="flex flex-col gap-2 max-w-xs mx-auto pt-1">
-                            <button
-                              onClick={() => nativeCameraWristRef.current?.click()}
-                              className="w-full py-2.5 px-4 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                              <Camera className="w-4 h-4 text-amber-200" />
-                              <span>📸 Mở Camera Điện Thoại Chụp Ngay</span>
-                            </button>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => startCamera(facingMode)}
-                                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium border border-white/20 cursor-pointer"
-                              >
-                                Bật Lại Live Cam
-                              </button>
-                              <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium border border-white/20 flex items-center justify-center gap-1 cursor-pointer"
-                              >
-                                <Upload className="w-3 h-3" />
-                                <span>Thư Viện Ảnh</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <canvas ref={canvasRef} className="hidden" />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 mt-4 w-full max-w-[380px]">
-                      {capturedImage ? (
-                        <button
-                          onClick={() => {
-                            setCapturedImage(null);
-                            startCamera(facingMode);
-                          }}
-                          className="flex-1 py-2.5 rounded-xl border border-[#E8DFD3] bg-white text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 text-[#B86244]" />
-                          Chụp Lại Ảnh Khác
-                        </button>
-                      ) : cameraActive ? (
-                        <>
-                          <button
-                            onClick={handleCaptureWrist}
-                            className="flex-1 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-artisan-hover flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <Camera className="w-4 h-4" />
-                            Chụp Khung Hình Này
-                          </button>
-                          <button
-                            onClick={() => nativeCameraWristRef.current?.click()}
-                            className="py-3 px-3.5 rounded-xl bg-[#26211C] hover:bg-[#3D352E] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                            title="Mở ứng dụng chụp ảnh gốc của thiết bị"
-                          >
-                            <Camera className="w-3.5 h-3.5 text-amber-300" />
-                            <span className="hidden sm:inline">Camera Máy</span>
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => nativeCameraWristRef.current?.click()}
-                          className="flex-1 py-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                          <Camera className="w-4 h-4 text-amber-200" />
-                          <span>📸 Chụp Bằng Camera Máy</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="py-2.5 px-3.5 rounded-xl border border-[#E8DFD3] bg-white text-[#6B6258] hover:text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                        title="Tải ảnh từ điện thoại / máy tính"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Thư Viện Ảnh</span>
-                      </button>
-
-                      {/* Native camera input - always supported on iOS Safari and Android */}
-                      <input
-                        ref={nativeCameraWristRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileUploadWrist}
-                        className="hidden"
-                      />
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUploadWrist}
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Form input */}
-                  <div className="md:col-span-5 bg-white p-5 rounded-2xl border border-[#E8DFD3] space-y-4 flex flex-col justify-between shadow-sm">
-                    <div className="space-y-3">
-                      <h4 className="font-serif-boutique text-lg font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2">
-                        Thông Tin Bổ Sung
-                      </h4>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#26211C] block mb-1">
-                          Năm sinh của bạn (tính ngũ hành bản mệnh):
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Ví dụ: 2000, 1998, 1995..."
-                          value={birthYear}
-                          onChange={(e) => setBirthYear(e.target.value)}
-                          className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#26211C] block mb-1">
-                          Bạn mong muốn cầu điều gì nhất?
-                        </label>
-                        <textarea
-                          rows={3}
-                          placeholder="Ví dụ: Cầu tình duyên ngọt ngào, may mắn thi cử, hoặc hợp phong cách hoa cúc pastel..."
-                          value={userNotes}
-                          onChange={(e) => setUserNotes(e.target.value)}
-                          className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                        />
-                      </div>
-
-                      <div className="p-3 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-[11px] text-[#845339] space-y-1">
-                        <p className="font-bold flex items-center gap-1 text-[#B86244]">
-                          <Zap className="w-3.5 h-3.5" /> Nhận Diện Cổ Tay & Cả Cánh Tay:
-                        </p>
-                        <p>
-                          Bạn có thể chụp cận cảnh cổ tay hoặc chụp cả cánh tay/bàn tay. AI sẽ tự động định vị vị trí cổ tay và sắc độ da để gợi ý mẫu vòng freesize cùng loại đá phong thủy tương hợp nhất.
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleAnalyzeWrist}
-                      disabled={isAnalyzingWrist || (!capturedImage && !userNotes)}
-                      className={`w-full py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
-                        isAnalyzingWrist
-                          ? 'bg-amber-600 text-white cursor-wait'
-                          : !capturedImage && !userNotes
-                          ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-[#B86244] to-[#C09A58] hover:opacity-95 text-white shadow-artisan-hover'
-                      }`}
-                    >
-                      {isAnalyzingWrist ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>AI Gemini Đang Phân Tích Cổ Tay...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 text-amber-200" />
-                          <span>Bắt Đầu Nhận Diện & Tư Vấn Bằng AI</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+        {/* Center: Dynamic Island / Trạng thái ghim cổ tay */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsWristLocked(prev => {
+              const next = !prev;
+              if (next) {
+                setIsAutoTracking(true);
+                setTrackingFeedback('🔒 Đã BẬT Gắn Cứng Cổ Tay!');
+              } else {
+                setTrackingFeedback('🔓 Đã mở khóa di chuyển');
+              }
+              return next;
+            });
+          }}
+          className={`px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold backdrop-blur-md border transition-all flex items-center gap-2 shadow-lg cursor-pointer ${
+            isWristLocked
+              ? 'bg-emerald-950/85 text-emerald-200 border-emerald-500/60 ring-2 ring-emerald-500/30'
+              : isAutoTracking && trackingConfidence > 65
+              ? 'bg-amber-950/85 text-amber-200 border-amber-500/60 ring-2 ring-amber-500/30'
+              : 'bg-black/60 text-stone-300 border-white/20'
+          }`}
+        >
+          {isWristLocked ? (
+            <>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
+              <span className="tracking-wide">🔒 ĐÃ GHIM CỔ TAY (100%)</span>
+            </>
+          ) : isAutoTracking && trackingConfidence > 65 ? (
+            <>
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" />
+              <span>🎯 Đang Bám Cổ Tay: {trackingConfidence}%</span>
+            </>
+          ) : (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span>Đưa cổ tay trần vào giữa camera...</span>
+            </>
           )}
+        </button>
 
-          {/* ========================================================================= */}
-          {/* TAB 2: TẢI ẢNH GỢI Ý PHỐI TỪ HẠT & CHARM CÓ SẴN (NEW FEATURE)              */}
-          {/* ========================================================================= */}
-          {modalMode === 'catalog_match' && (
-            <div>
-              {matchError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{matchError}</span>
-                </div>
-              )}
-
-              {/* Result View for Bead Matching */}
-              {matchResult ? (
-                <div className="space-y-6 animate-fadeIn">
-                  {/* Status Banner */}
-                  <div className="p-4 bg-[#EDF3EF] rounded-2xl border border-[#D0E2D7] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-[#4E6857] font-bold text-sm">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                      <span>AI đã phối thành công mẫu vòng từ hạt & charm có sẵn trong kho!</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setMatchResult(null);
-                        setMatchImage(null);
-                      }}
-                      className="text-xs text-[#6B6258] hover:text-[#26211C] font-semibold underline text-left sm:text-right"
-                    >
-                      ← Tải / Phối ảnh khác
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Image & Extracted Color Palette */}
-                    <div className="lg:col-span-4 space-y-4">
-                      <div className="aspect-square rounded-2xl overflow-hidden border-2 border-[#E8DFD3] shadow-md bg-[#26211C] relative">
-                        {matchImage && (
-                          <img 
-                            src={matchImage} 
-                            alt="Ảnh cảm hứng người dùng tải lên" 
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                        <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white text-[11px] truncate">
-                          🌸 <strong>Cảm hứng:</strong> {matchResult.detectedTheme || 'Ảnh duy mỹ'}
-                        </div>
-                      </div>
-
-                      {/* Color Palette extracted */}
-                      {matchResult.colorPalette && matchResult.colorPalette.length > 0 && (
-                        <div className="p-3.5 bg-white rounded-2xl border border-[#E8DFD3] shadow-2xs space-y-2">
-                          <span className="text-[11px] uppercase tracking-wider text-[#8C8276] font-bold block">
-                            Bảng Màu Trích Xuất Từ Ảnh:
-                          </span>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {matchResult.colorPalette.map((hex, idx) => (
-                              <div key={idx} className="flex items-center gap-1 bg-[#FAF7F2] px-2 py-1 rounded-lg border border-[#E8DFD3]">
-                                <div 
-                                  className="w-4 h-4 rounded-full border border-black/10 shadow-inner"
-                                  style={{ backgroundColor: hex }}
-                                />
-                                <span className="text-[10px] font-mono text-[#6B6258]">{hex}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Price summary badge */}
-                      <div className="p-4 bg-gradient-to-br from-[#FAF4ED] to-[#F3ECE1] rounded-2xl border border-[#EADBCC] text-center space-y-1">
-                        <span className="text-[11px] text-[#8C8276] block">Tổng Giá Trị Dự Kiến (Chuẩn 21 hạt):</span>
-                        <div className="font-serif-boutique text-2xl font-bold text-[#B86244]">
-                          {formatPrice(matchResult.estimatedPrice)}
-                        </div>
-                        <span className="text-[10px] text-[#6B6258] block">
-                          Đã gồm: Dây dệt + Hạt đá + Charm + Công thắt thủ công
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Matched in-stock Components & Story */}
-                    <div className="lg:col-span-8 space-y-4">
-                      {/* Design Title & Vibe */}
-                      <div className="bg-white p-5 rounded-2xl border border-[#E8DFD3] shadow-sm space-y-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F3ECE1] pb-2">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold tracking-widest text-[#B86244] bg-[#FAF4ED] px-2.5 py-0.5 rounded-full border border-[#EADBCC]">
-                              Bản Phối Độc Quyền Xưởng Vòng Tay Nhà Zy
-                            </span>
-                            <h4 className="font-serif-boutique text-2xl font-bold text-[#26211C] mt-1">
-                              {matchResult.designName}
-                            </h4>
-                          </div>
-                          <span className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full font-semibold flex items-center gap-1">
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            100% Có Sẵn Trong Kho
-                          </span>
-                        </div>
-
-                        {/* 4 Cards: Primary Bead, Secondary Bead, Charm, Cord */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                          {/* 1. Hạt Đá Chính */}
-                          <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] flex items-start gap-3 hover:border-amber-300 transition-colors">
-                            <div 
-                              className="w-9 h-9 rounded-full shrink-0 shadow-md border-2 border-white mt-0.5"
-                              style={{ backgroundColor: matchResult.primaryBead?.color || '#EAA9A9' }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[10px] font-bold text-[#B86244] uppercase tracking-wider block">
-                                Hạt Đá Chủ Đạo (15 hạt)
-                              </span>
-                              <h5 className="font-bold text-xs text-[#26211C] truncate">
-                                {matchResult.primaryBead?.name}
-                              </h5>
-                              <p className="text-[11px] text-[#6B6258] line-clamp-1">
-                                {matchResult.primaryBead?.desc}
-                              </p>
-                              <span className="text-[10px] font-semibold text-[#8C8276]">
-                                {formatPrice(matchResult.primaryBead?.pricePerBead)}/hạt
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* 2. Hạt Đá Phụ */}
-                          <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] flex items-start gap-3 hover:border-amber-300 transition-colors">
-                            <div 
-                              className="w-9 h-9 rounded-full shrink-0 shadow-md border-2 border-white mt-0.5"
-                              style={{ backgroundColor: matchResult.secondaryBead?.color || '#73B4C8' }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[10px] font-bold text-[#4E6857] uppercase tracking-wider block">
-                                Hạt Phối Xen Kẽ (6 hạt)
-                              </span>
-                              <h5 className="font-bold text-xs text-[#26211C] truncate">
-                                {matchResult.secondaryBead?.name}
-                              </h5>
-                              <p className="text-[11px] text-[#6B6258] line-clamp-1">
-                                {matchResult.secondaryBead?.desc}
-                              </p>
-                              <span className="text-[10px] font-semibold text-[#8C8276]">
-                                {formatPrice(matchResult.secondaryBead?.pricePerBead)}/hạt
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* 3. Charm Điểm Nhấn */}
-                          <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] flex items-start gap-3 hover:border-amber-300 transition-colors">
-                            <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 border-2 border-white shadow-md mt-0.5">
-                              <Sparkle className="w-4 h-4 text-[#B86244]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                                Charm Điểm Nhấn
-                              </span>
-                              <h5 className="font-bold text-xs text-[#26211C] truncate">
-                                {matchResult.charm?.name}
-                              </h5>
-                              <p className="text-[11px] text-[#6B6258] line-clamp-1">
-                                {matchResult.charm?.desc}
-                              </p>
-                              <span className="text-[10px] font-semibold text-[#8C8276]">
-                                {formatPrice(matchResult.charm?.price)}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* 4. Dây Dệt Đan Tay */}
-                          <div className="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#E8DFD3] flex items-start gap-3 hover:border-amber-300 transition-colors">
-                            <div 
-                              className="w-9 h-9 rounded-full shrink-0 shadow-md border-2 border-white mt-0.5"
-                              style={{ backgroundColor: matchResult.cord?.color || '#F7F3EB' }}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className="text-[10px] font-bold text-[#6B6258] uppercase tracking-wider block">
-                                Dây Dệt Thủ Công
-                              </span>
-                              <h5 className="font-bold text-xs text-[#26211C] truncate">
-                                {matchResult.cord?.name}
-                              </h5>
-                              <p className="text-[11px] text-[#6B6258] line-clamp-1">
-                                {matchResult.cord?.description}
-                              </p>
-                              <span className="text-[10px] font-semibold text-[#8C8276]">
-                                {formatPrice(matchResult.cord?.price)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Thuyết minh nghệ nhân */}
-                        <div className="pt-3 border-t border-[#F3ECE1] space-y-2">
-                          <h6 className="text-xs font-bold text-[#26211C] flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Lời Bình Nghệ Nhân Stylist:</span>
-                          </h6>
-                          <p className="text-xs sm:text-sm text-[#5A5147] leading-relaxed bg-[#FAF7F2] p-3.5 rounded-xl border border-[#E8DFD3]">
-                            {matchResult.explanation}
-                          </p>
-                        </div>
-
-                        {/* Vibe phong thủy */}
-                        {matchResult.fengShuiVibe && (
-                          <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-                            <Compass className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                            <div>
-                              <strong className="text-amber-950 block">Ý nghĩa năng lượng & phong thủy:</strong>
-                              <span>{matchResult.fengShuiVibe}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action buttons */}
-                        <div className="pt-4 border-t border-[#E8DFD3] flex flex-col sm:flex-row items-center justify-between gap-3">
-                          <button
-                            onClick={() => {
-                              setMatchResult(null);
-                              setMatchImage(null);
-                            }}
-                            className="px-4 py-2.5 rounded-xl border border-[#E8DFD3] text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2] w-full sm:w-auto"
-                          >
-                            ← Thử Ảnh Khác
-                          </button>
-
-                          <button
-                            onClick={() => handleApplyPreset(matchResult.presetConfig)}
-                            className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-gradient-to-r from-[#B86244] to-[#C09A58] hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-artisan-hover transition-all flex items-center justify-center gap-2"
-                          >
-                            <Flower2 className="w-4 h-4 text-amber-200" />
-                            <span>Áp Dụng Bản Phối Vào Xưởng Tự Phối Ngay</span>
-                            <ArrowRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Uploader & Input Form for Bead/Charm Matching */
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  {/* Image Upload Area */}
-                  <div className="md:col-span-7 flex flex-col items-center justify-center">
-                    <div 
-                      onClick={() => matchFileInputRef.current?.click()}
-                      className="relative w-full aspect-square max-w-[380px] rounded-2xl overflow-hidden bg-[#FAF7F2] border-2 border-dashed border-[#B86244]/40 hover:border-[#B86244] shadow-sm flex flex-col items-center justify-center cursor-pointer group transition-all p-6 text-center"
-                    >
-                      {matchImage ? (
-                        <>
-                          <img 
-                            src={matchImage} 
-                            alt="Ảnh bạn vừa tải lên" 
-                            className="w-full h-full object-cover" 
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <span className="bg-white/90 text-[#26211C] text-xs font-bold px-3 py-1.5 rounded-xl shadow">
-                              Bấm để thay ảnh khác
-                            </span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="w-16 h-16 rounded-full bg-[#B86244]/10 text-[#B86244] flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                            <Upload className="w-8 h-8" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-[#26211C]">
-                              Bấm vào đây để tải ảnh hoặc chụp ảnh mẫu
-                            </p>
-                            <p className="text-xs text-[#8C8276] mt-1">
-                              Hỗ trợ chụp trực tiếp từ camera hoặc tải ảnh từ máy
-                            </p>
-                          </div>
-                          <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                nativeCameraMatchRef.current?.click();
-                              }}
-                              className="px-3 py-1.5 rounded-full bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
-                            >
-                              <Camera className="w-3.5 h-3.5" />
-                              <span>📸 Mở Camera Chụp Ngay</span>
-                            </button>
-                            <span className="text-[11px] bg-white px-3 py-1 rounded-full border border-[#E8DFD3] text-[#B86244] font-semibold">
-                              🌸 Ảnh hoa, váy, charm
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      <input
-                        ref={matchFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUploadMatch}
-                        className="hidden"
-                      />
-                      <input
-                        ref={nativeCameraMatchRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleFileUploadMatch}
-                        className="hidden"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-3 w-full max-w-[380px]">
-                      {matchImage ? (
-                        <button
-                          onClick={() => setMatchImage(null)}
-                          className="flex-1 py-2 rounded-xl border border-[#E8DFD3] bg-white text-xs font-semibold text-[#6B6258] hover:bg-[#FAF7F2] flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 text-[#B86244]" />
-                          Xóa & Chọn Ảnh Khác
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => nativeCameraMatchRef.current?.click()}
-                            className="flex-1 py-2.5 rounded-xl bg-[#26211C] hover:bg-[#3D352E] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
-                          >
-                            <Camera className="w-3.5 h-3.5 text-amber-200" />
-                            <span>📸 Camera Máy</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => matchFileInputRef.current?.click()}
-                            className="flex-1 py-2.5 rounded-xl border border-[#E8DFD3] bg-white text-[#26211C] text-xs font-semibold hover:bg-[#F3ECE1] flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                          >
-                            <Upload className="w-3.5 h-3.5 text-[#B86244]" />
-                            <span>Thư Viện Ảnh</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Form input */}
-                  <div className="md:col-span-5 bg-white p-5 rounded-2xl border border-[#E8DFD3] space-y-4 flex flex-col justify-between shadow-sm">
-                    <div className="space-y-3">
-                      <div className="border-b border-[#F3ECE1] pb-2">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-[#B86244]">
-                          Kho Hàng Thực Tế
-                        </span>
-                        <h4 className="font-serif-boutique text-lg font-bold text-[#26211C]">
-                          Ý Tưởng & Phong Cách Phối
-                        </h4>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-[#26211C] block mb-1">
-                          Bạn thích vòng tay theo phong cách nào? (Tùy chọn)
-                        </label>
-                        <textarea
-                          rows={3}
-                          placeholder="Ví dụ: Phối tone pastel dịu dàng đi biển, phong cách vintage thanh lịch đi làm, hợp màu hoa trong ảnh..."
-                          value={matchNotes}
-                          onChange={(e) => setMatchNotes(e.target.value)}
-                          className="w-full text-xs p-2.5 rounded-xl border border-[#E8DFD3] bg-[#FAF7F2] focus:outline-none focus:ring-1 focus:ring-[#B86244]"
-                        />
-                      </div>
-
-                      <div className="p-3.5 bg-[#FAF4ED] rounded-xl border border-[#EADBCC] text-[11px] text-[#845339] space-y-1.5">
-                        <p className="font-bold flex items-center gap-1.5 text-[#B86244]">
-                          <Sparkles className="w-3.5 h-3.5" /> Chỉ chọn từ hàng có sẵn:
-                        </p>
-                        <p className="text-[#6B6258] leading-relaxed">
-                          AI sẽ đối chiếu các loại hạt (Thạch Anh Dâu, Moonstone, Lam Ngọc, Ngọc Bích...) và charm (Cá Voi Pastel, Hoa Cúc, Bướm Hologram...) đang có tại xưởng để đưa ra bản phối <strong>chắc chắn đặt làm được ngay</strong>.
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleMatchBeadsAndCharms()}
-                      disabled={isMatchingBeads || (!matchImage && !matchNotes)}
-                      className={`w-full py-3.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
-                        isMatchingBeads
-                          ? 'bg-amber-600 text-white cursor-wait'
-                          : !matchImage && !matchNotes
-                          ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-[#B86244] to-[#C09A58] hover:opacity-95 text-white shadow-artisan-hover'
-                      }`}
-                    >
-                      {isMatchingBeads ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>AI Gemini Đang Phân Tích & Đối Soát Kho...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Palette className="w-4 h-4 text-amber-200" />
-                          <span>Gợi Ý Phối Từ Hạt & Charm Có Sẵn</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 3: AR THỬ VÒNG ẢO TRỰC TIẾP TRÊN CỔ TAY (WEB CAMERA AR TRY-ON)        */}
-          {/* ========================================================================= */}
+        {/* Cụm nút bên phải: Ướm lại, Đổi camera, Tinh chỉnh */}
+        <div className="flex items-center gap-2">
           {modalMode === 'ar_tryon' && (
-            <div className="space-y-6 animate-fadeIn">
-              {/* Intro Banner */}
-              <div className="bg-gradient-to-r from-amber-500/10 via-[#B86244]/15 to-amber-500/10 p-4 rounded-2xl border border-amber-300/40 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#B86244] text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                  <Sparkles className="w-4 h-4 text-amber-200 animate-pulse" />
-                </div>
-                <div className="space-y-1">
-                  <h4 className="font-serif-boutique text-sm sm:text-base font-bold text-[#26211C]">
-                    Gương Thử Vòng Ảo Tương Tác 3D (AR Live Try-On)
-                  </h4>
-                  <p className="text-xs text-[#6B6258] leading-relaxed">
-                    Giơ cổ tay của bạn vào camera để ngắm nhìn chiếc vòng ôm vừa vặn theo thời gian thực. Bạn có thể kéo trượt để điều chỉnh cỡ vòng (cm) và xoay góc để vừa khít cổ tay trước khi quyết định đặt mua!
-                  </p>
-                </div>
-              </div>
+            <button
+              type="button"
+              onClick={triggerWearAnimation}
+              className="px-3 py-1.5 rounded-full bg-black/50 hover:bg-black/75 text-amber-300 border border-amber-400/40 backdrop-blur-md text-xs font-semibold flex items-center gap-1.5 active:scale-95 shadow-md cursor-pointer"
+              title="Xem lại animation mở ra và mang vào tay"
+            >
+              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+              <span className="hidden sm:inline">Ướm Lại</span>
+            </button>
+          )}
 
-              {/* AR Camera & Overlay Viewport */}
-              <div 
-                className={`relative w-full max-w-lg mx-auto aspect-[4/3] bg-stone-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-[#E8DFD3] select-none touch-none ${
-                  isDraggingOverlay ? 'cursor-grabbing ring-2 ring-[#B86244]' : 'cursor-grab'
-                }`}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-              >
-                {/* Live Video Stream */}
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
+          <button
+            type="button"
+            onClick={toggleFacingMode}
+            className="w-10 h-10 rounded-full bg-black/50 hover:bg-black/75 text-white backdrop-blur-md border border-white/20 flex items-center justify-center transition-all active:scale-95 shadow-md cursor-pointer"
+            title="Đổi camera trước / sau"
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
 
-                {/* Hidden canvas for snapshot capture */}
-                <canvas ref={canvasRef} className="hidden" />
+          {modalMode === 'ar_tryon' && (
+            <button
+              type="button"
+              onClick={() => setShowSettingsDrawer(prev => !prev)}
+              className={`w-10 h-10 rounded-full backdrop-blur-md border flex items-center justify-center transition-all active:scale-95 shadow-md cursor-pointer ${
+                showSettingsDrawer
+                  ? 'bg-[#B86244] text-white border-[#B86244]'
+                  : 'bg-black/50 hover:bg-black/75 text-white border-white/20'
+              }`}
+              title="Căn chỉnh chi tiết vị trí & kích cỡ"
+            >
+              <Sliders className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
-                {/* Top Controls: Flip camera & Firm Wrist Lock Toggle */}
-                <div className="absolute top-3 left-3 right-3 z-30 flex items-center justify-between pointer-events-auto">
-                  {/* Firm Wrist Lock Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsWristLocked(prev => {
-                        const next = !prev;
-                        if (next) {
-                          setIsAutoTracking(true);
-                          setTrackingFeedback('🔒 Đã BẬT Gắn Cứng Cổ Tay!');
-                        } else {
-                          setTrackingFeedback('🔓 Đã mở khóa - Có thể di chuyển / kéo tay');
-                        }
-                        return next;
-                      });
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-semibold backdrop-blur-md border transition-all flex items-center gap-1.5 shadow-md ${
-                      isWristLocked
-                        ? 'bg-emerald-600/95 text-white border-emerald-300/80 shadow-emerald-500/40 ring-2 ring-emerald-400/40'
-                        : isAutoTracking
-                        ? 'bg-amber-600/90 text-white border-amber-400/50 shadow-amber-500/30'
-                        : 'bg-black/60 text-stone-300 border-white/20 hover:bg-black/80'
-                    }`}
-                  >
-                    {isWristLocked ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping mr-0.5" />
-                        <span>🔒 Đã Gắn Cứng Cổ Tay</span>
-                      </>
-                    ) : isAutoTracking ? (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-                        <span>🎯 Bấm Để Gắn Cứng</span>
-                      </>
-                    ) : (
-                      <span>✋ Chỉnh Thủ Công / Kéo Tay</span>
-                    )}
-                  </button>
+      {/* 4. Center Viewport Area */}
+      <div className="relative flex-1 flex items-center justify-center pointer-events-none">
+        {/* ========================================================================= */}
+        {/* MODE 3: 3D AR TRY-ON                                                      */}
+        {/* ========================================================================= */}
+        {modalMode === 'ar_tryon' && (
+          <>
+            {/* Khung định vị 4 góc phong cách iPhone Camera */}
+            <div className="relative w-64 h-80 pointer-events-none flex flex-col items-center justify-between py-6 transition-all duration-300">
+              <div className={`absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 rounded-tl-xl transition-colors duration-300 ${isWristLocked ? 'border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]' : 'border-amber-300/60'}`} />
+              <div className={`absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 rounded-tr-xl transition-colors duration-300 ${isWristLocked ? 'border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]' : 'border-amber-300/60'}`} />
+              <div className={`absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 rounded-bl-xl transition-colors duration-300 ${isWristLocked ? 'border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]' : 'border-amber-300/60'}`} />
+              <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 rounded-br-xl transition-colors duration-300 ${isWristLocked ? 'border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]' : 'border-amber-300/60'}`} />
 
-                  {/* Controls right: Ướm lại vòng & Đổi camera */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={triggerWearAnimation}
-                      className="px-2.5 py-1.5 rounded-full bg-black/65 hover:bg-black/85 text-amber-200 border border-amber-300/40 backdrop-blur-sm transition-all shadow-md flex items-center gap-1 text-[11px] font-semibold active:scale-95"
-                      title="Xem lại hiệu ứng trượt vòng và ôm vừa vặn cổ tay"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                      <span>Ướm Lại</span>
-                    </button>
+              <div className={`w-44 h-60 rounded-full border border-dashed transition-all duration-300 flex items-center justify-center ${
+                isWristLocked ? 'border-emerald-400/40 bg-emerald-500/5' : 'border-white/20'
+              }`} />
 
-                    <button
-                      type="button"
-                      onClick={toggleFacingMode}
-                      className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm border border-white/20 transition-all shadow-md active:scale-95"
-                      title="Đổi camera trước / sau"
-                    >
-                      <RotateCw className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+              <span className="text-[10px] tracking-wider uppercase text-white/80 bg-black/55 backdrop-blur-xs px-3 py-1 rounded-full border border-white/10 shadow-sm">
+                {isWristLocked ? '✨ Vòng tay đã ôm khít cố định' : 'Bàn tay hướng lên trên'}
+              </span>
+            </div>
 
-                {/* AR Alignment Reticle (Khung định vị cổ tay) */}
+            {/* REAL-TIME 3D BRACELET SVG OVERLAY */}
+            {(() => {
+              const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
+              const armWidthPx = (detectedWrist && detectedWrist.width > 12)
+                ? Math.min(210, Math.max(90, (detectedWrist.width / 100) * 320))
+                : 140;
+
+              const armBaseRadius = armWidthPx * 0.50;
+              const fitScale = arSizeCm / 15.5;
+              const rx = armBaseRadius * fitScale;
+              const sagFactor = Math.max(0, Math.min(1, (arSizeCm - 14) / 5));
+              const ry = rx * (0.30 + sagFactor * 0.08);
+
+              const cx = 160 + arOffsetX;
+              const cy = 160 + arOffsetY;
+
+              const frontCount = 11;
+              let displayBeads = [];
+
+              if (b.isCustom && b.beadPositions && b.beadPositions.length > 0) {
+                const total = b.beadPositions.length;
+                const centerIdx = Math.floor(total / 2);
+                const halfFront = Math.floor(frontCount / 2);
+
+                for (let offset = -halfFront; offset <= halfFront; offset++) {
+                  const rawIdx = (centerIdx + offset + total) % total;
+                  const p = b.beadPositions[rawIdx] || b.beadPositions[0];
+                  displayBeads.push({
+                    id: p.id || `bead-${rawIdx}`,
+                    color: p.color || b.beadColor || '#EAA9A9',
+                    name: p.name || 'Hạt đá phong thủy',
+                    isPearl: Boolean(p.isPearl || p.name?.toLowerCase().includes('ngọc trai')),
+                    isCrystal: Boolean(p.isCrystal || p.name?.toLowerCase().includes('pha lê')),
+                    isSpacer: Boolean(p.isSpacer || p.name?.toLowerCase().includes('ngăn cách') || p.name?.toLowerCase().includes('khoen') || p.name?.toLowerCase().includes('bi kim loại')),
+                    isFlower: false,
+                    isCharm: Boolean(p.isCharm),
+                    charmImage: p.image || null,
+                    index: rawIdx
+                  });
+                }
+              } else if (b.floralBeads && b.floralBeads.length > 0) {
+                const floralTotal = b.floralBeads.length;
+                const centerIdx = b.floralBeads.findIndex(fb => fb.type === 'flower');
+                const cIdx = centerIdx !== -1 ? centerIdx : Math.floor(floralTotal / 2);
+                const halfFront = Math.floor(frontCount / 2);
+
+                for (let offset = -halfFront; offset <= halfFront; offset++) {
+                  const rawIdx = (cIdx + offset + floralTotal) % floralTotal;
+                  const fb = b.floralBeads[rawIdx] || b.floralBeads[0];
+                  displayBeads.push({
+                    ...fb,
+                    id: `floral-${rawIdx}`,
+                    isPearl: fb.type === 'pearl',
+                    isFlower: fb.type === 'flower',
+                    isCrystal: fb.type === 'crystal',
+                    isSpacer: fb.type === 'gold_spacer',
+                    isStrawberry: fb.type === 'strawberry'
+                  });
+                }
+              } else {
+                for (let i = 0; i < frontCount; i++) {
+                  displayBeads.push({
+                    id: `preset-bead-${i}`,
+                    color: b.beadColor || '#F7C6D0',
+                    name: b.name,
+                    isPearl: false,
+                    isFlower: false,
+                    isCrystal: false,
+                    isSpacer: false,
+                    isCharm: false
+                  });
+                }
+              }
+
+              const beadCount = displayBeads.length;
+              const beadItems = [];
+
+              for (let i = 0; i < beadCount; i++) {
+                const t = beadCount > 1 ? i / (beadCount - 1) : 0.5;
+                const angle = (-Math.PI * 0.47) + t * (Math.PI * 0.94);
+                const bx = cx + rx * Math.sin(angle);
+                const by = cy + ry * Math.cos(angle);
+                const depthFactor = 0.85 + 0.25 * Math.cos(angle);
+                const item = displayBeads[i];
+                const baseRadius = (item.isFlower ? 8.5 : (item.isSpacer ? 3.0 : 5.4)) * (rx / 65);
+                const radius = baseRadius * depthFactor;
+                const rxBead = radius * (0.55 + 0.45 * Math.cos(angle));
+                const ryBead = radius;
+
+                beadItems.push({
+                  x: bx,
+                  y: by,
+                  radius,
+                  rxBead,
+                  ryBead,
+                  depthFactor,
+                  angle,
+                  color: item.color || b.beadColor || '#FFFDF9',
+                  index: i,
+                  isEdge: i === 0 || i === beadCount - 1,
+                  isFlower: item.isFlower,
+                  isPearl: item.isPearl,
+                  isCrystal: item.isCrystal,
+                  isSpacer: item.isSpacer,
+                  isCharm: item.isCharm,
+                  charmImage: item.charmImage,
+                  item
+                });
+              }
+
+              const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.60} ${cy + ry * 1.06}, ${cx + rx * 0.60} ${cy + ry * 1.06}, ${cx + rx} ${cy}`;
+              const beadCordPath = beadItems.length > 1
+                ? `M ${beadItems[0].x.toFixed(1)} ${beadItems[0].y.toFixed(1)} ` + beadItems.slice(1).map(bead => `L ${bead.x.toFixed(1)} ${bead.y.toFixed(1)}`).join(' ')
+                : frontArcPath;
+              const contactShadowPath = beadCordPath;
+
+              return (
                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className={`w-48 h-64 border-2 rounded-full flex flex-col items-center justify-between py-4 transition-all duration-300 ${
-                    isWristLocked
-                      ? 'border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.45)] ring-2 ring-emerald-400/30'
-                      : isAutoTracking && detectedWrist && trackingConfidence > 65
-                      ? 'border-emerald-400/70 border-dashed shadow-[0_0_20px_rgba(52,211,153,0.3)]'
-                      : 'border-amber-300/50 border-dashed shadow-inner'
-                  }`}>
-                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full backdrop-blur-xs transition-colors ${
-                      isWristLocked
-                        ? 'text-emerald-100 bg-emerald-950/80 border border-emerald-400/60 shadow-sm'
-                        : isAutoTracking && detectedWrist && trackingConfidence > 65
-                        ? 'text-emerald-200 bg-emerald-950/70 border border-emerald-500/30'
-                        : 'text-amber-200 bg-black/50'
-                    }`}>
-                      {isWristLocked
-                        ? '🔒 ĐÃ GẮN CỨNG VÀO CỔ TAY'
-                        : isAutoTracking && detectedWrist && trackingConfidence > 65
-                        ? `🎯 Khóa Cổ Tay: ${trackingConfidence}%`
-                        : 'Đặt Cổ Tay Vào Khung'}
-                    </span>
-                    <span className="text-[9px] text-white/80 bg-black/40 px-2 py-0.5 rounded-full">
-                      {isWristLocked ? '✨ Vòng ôm khít cổ tay cố định' : 'Bàn tay hướng lên trên'}
-                    </span>
-                  </div>
-                </div>
+                  <svg id="ar-bracelet-svg" viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-xl">
+                    <defs>
+                      <style>{`
+                        @keyframes smoothWearSlide {
+                          0% {
+                            transform: translateY(-80px) scale(1.36);
+                            opacity: 0.15;
+                          }
+                          32% {
+                            transform: translateY(-35px) scale(1.22);
+                            opacity: 0.90;
+                          }
+                          65% {
+                            transform: translateY(6px) scale(0.96);
+                            opacity: 1;
+                          }
+                          82% {
+                            transform: translateY(-3px) scale(1.025);
+                            opacity: 1;
+                          }
+                          100% {
+                            transform: translateY(0px) scale(1.00);
+                            opacity: 1;
+                          }
+                        }
 
-                {/* REAL-TIME AR BRACELET OVERLAY (3D Cylindrical Wrapping & Snug Real-Wrist Fit) */}
-                {(() => {
-                  const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
+                        @keyframes charmWearSway {
+                          0% { transform: rotate(0deg); }
+                          22% { transform: rotate(-22deg); }
+                          45% { transform: rotate(16deg); }
+                          68% { transform: rotate(-8deg); }
+                          85% { transform: rotate(3deg); }
+                          100% { transform: rotate(0deg); }
+                        }
 
-                  // 1. TÍNH TOÁN BÁN KÍNH KHỚP CHÍNH XÁC VỚI BỀ NGANG CÁNH TAY TRÊN VIEWPORT 320x320
-                  // Cánh tay người dùng trong khung camera thực tế thường có bề ngang từ 110px - 180px
-                  const armWidthPx = (detectedWrist && detectedWrist.width > 12)
-                    ? Math.min(210, Math.max(90, (detectedWrist.width / 100) * 320))
-                    : 140;
+                        @keyframes snapRippleGlow {
+                          0% { transform: scale(0.90); opacity: 0; }
+                          35% { opacity: 0.85; }
+                          100% { transform: scale(1.22); opacity: 0; }
+                        }
+                      `}</style>
+                      <filter id="skinContactBlur" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
+                      </filter>
+                      <filter id="beadDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" />
+                        <feOffset dx="0" dy="2.2" result="offsetblur" />
+                        <feComponentTransfer>
+                          <feFuncA type="linear" slope="0.48" />
+                        </feComponentTransfer>
+                        <feMerge>
+                          <feMergeNode />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
 
-                  // Bán kính cơ sở của cánh tay:
-                  const armBaseRadius = armWidthPx * 0.50;
+                      <radialGradient id="pearlLusterGrad" cx="30%" cy="28%" r="72%">
+                        <stop offset="0%" stopColor="#FFFFFF" />
+                        <stop offset="28%" stopColor="#FFFDF8" />
+                        <stop offset="68%" stopColor="#EDE1D1" />
+                        <stop offset="100%" stopColor="#BAA591" />
+                      </radialGradient>
 
-                  // Hệ số tỷ lệ theo chu vi vòng tay đã chọn trong Tự Phối (mốc chuẩn 15.5cm):
-                  // Size 14cm -> ôm sát khít da (fitScale ~ 0.94)
-                  // Size 15.5cm -> vừa vặn chuẩn chạm 2 mép tay (fitScale = 1.00)
-                  // Size 17.5cm -> buông lơi tự nhiên (fitScale ~ 1.13)
-                  const fitScale = arSizeCm / 15.5;
+                      <radialGradient id="sakuraPetalGrad" cx="35%" cy="30%" r="70%">
+                        <stop offset="0%" stopColor="#FFF2F5" />
+                        <stop offset="42%" stopColor="#FBB6C7" />
+                        <stop offset="85%" stopColor="#E67B98" />
+                        <stop offset="100%" stopColor="#B34B68" />
+                      </radialGradient>
 
-                  // Bán kính ngang elip: Đúng bằng bề ngang cánh tay nhân hệ số vừa vặn
-                  const rx = armBaseRadius * fitScale;
+                      <radialGradient id="sakuraCenterGrad" cx="32%" cy="30%" r="68%">
+                        <stop offset="0%" stopColor="#FFFDE6" />
+                        <stop offset="45%" stopColor="#F5D061" />
+                        <stop offset="90%" stopColor="#C48E1D" />
+                        <stop offset="100%" stopColor="#7A5308" />
+                      </radialGradient>
 
-                  // Độ dẹp elip mu tay và độ võng rơi tự nhiên theo trọng lực (anatomical sagging):
-                  const sagFactor = Math.max(0, Math.min(1, (arSizeCm - 14) / 5));
-                  const ry = rx * (0.30 + sagFactor * 0.08);
+                      <radialGradient id="crystalGrad" cx="28%" cy="26%" r="74%">
+                        <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.98" />
+                        <stop offset="40%" stopColor="#EFE8F8" stopOpacity="0.85" />
+                        <stop offset="80%" stopColor="#C8B5E3" stopOpacity="0.9" />
+                        <stop offset="100%" stopColor="#876DA8" stopOpacity="0.95" />
+                      </radialGradient>
 
-                  const cx = 160 + arOffsetX;
-                  const cy = 160 + arOffsetY;
+                      <radialGradient id="goldSpacerGrad" cx="32%" cy="30%" r="68%">
+                        <stop offset="0%" stopColor="#FFFDF0" />
+                        <stop offset="50%" stopColor="#EAC150" />
+                        <stop offset="100%" stopColor="#8A6517" />
+                      </radialGradient>
+                    </defs>
 
-                  // 2. CHUẨN BỊ DANH SÁCH HẠT HIỂN THỊ TRÊN CUNG TRƯỚC (VISIBLE FRONT ARC)
-                  // Với rx ~ 65px - 85px, cung trước nhìn thấy hiển thị 11 hạt ôm mượt mà (hạt số 5 ở chính giữa treo charm)
-                  const frontCount = 11;
-                  let displayBeads = [];
-
-                  if (b.isCustom && b.beadPositions && b.beadPositions.length > 0) {
-                    const total = b.beadPositions.length;
-                    // Trong BraceletStudio, charm chính nằm ở đáy (vị trí gần Math.floor(total / 2))
-                    const centerIdx = Math.floor(total / 2);
-                    const halfFront = Math.floor(frontCount / 2); // 5 hạt mỗi bên quanh tâm
-
-                    for (let offset = -halfFront; offset <= halfFront; offset++) {
-                      const rawIdx = (centerIdx + offset + total) % total;
-                      const p = b.beadPositions[rawIdx] || b.beadPositions[0];
-                      displayBeads.push({
-                        id: p.id || `bead-${rawIdx}`,
-                        color: p.color || b.beadColor || '#EAA9A9',
-                        name: p.name || 'Hạt đá phong thủy',
-                        isPearl: Boolean(p.isPearl || p.name?.toLowerCase().includes('ngọc trai')),
-                        isCrystal: Boolean(p.isCrystal || p.name?.toLowerCase().includes('pha lê')),
-                        isSpacer: Boolean(p.isSpacer || p.name?.toLowerCase().includes('ngăn cách') || p.name?.toLowerCase().includes('khoen') || p.name?.toLowerCase().includes('bi kim loại')),
-                        isFlower: false,
-                        isCharm: Boolean(p.isCharm),
-                        charmImage: p.image || null,
-                        index: rawIdx
-                      });
-                    }
-                  } else if (b.floralBeads && b.floralBeads.length > 0) {
-                    // Mẫu hoa hồng pha lê: Trích xuất 11 phần tử cân xứng với hoa hồng ở chính giữa
-                    const floralTotal = b.floralBeads.length;
-                    const centerIdx = b.floralBeads.findIndex(fb => fb.type === 'flower');
-                    const cIdx = centerIdx !== -1 ? centerIdx : Math.floor(floralTotal / 2);
-                    const halfFront = Math.floor(frontCount / 2);
-
-                    for (let offset = -halfFront; offset <= halfFront; offset++) {
-                      const rawIdx = (cIdx + offset + floralTotal) % floralTotal;
-                      const fb = b.floralBeads[rawIdx] || b.floralBeads[0];
-                      displayBeads.push({
-                        ...fb,
-                        id: `floral-${rawIdx}`,
-                        isPearl: fb.type === 'pearl',
-                        isFlower: fb.type === 'flower',
-                        isCrystal: fb.type === 'crystal',
-                        isSpacer: fb.type === 'gold_spacer',
-                        isStrawberry: fb.type === 'strawberry'
-                      });
-                    }
-                  } else {
-                    // Preset thông thường: 11 hạt phân bổ đều
-                    for (let i = 0; i < frontCount; i++) {
-                      displayBeads.push({
-                        id: `preset-bead-${i}`,
-                        color: b.beadColor || '#F7C6D0',
-                        name: b.name,
-                        isPearl: false,
-                        isFlower: false,
-                        isCrystal: false,
-                        isSpacer: false,
-                        isCharm: false
-                      });
-                    }
-                  }
-
-                  const beadCount = displayBeads.length;
-                  const beadItems = [];
-
-                  // 3. TÍNH TOÁN VỊ TRÍ, KÍCH THƯỚC VÀ HIỆU ỨNG PHỐI CẢNH 3D (CYLINDRICAL FORESHORTENING)
-                  for (let i = 0; i < beadCount; i++) {
-                    const t = beadCount > 1 ? i / (beadCount - 1) : 0.5;
-                    // Góc từ -84 độ đến +84 độ ôm trọn hai bên sườn cổ tay
-                    const angle = (-Math.PI * 0.47) + t * (Math.PI * 0.94);
-                    const bx = cx + rx * Math.sin(angle);
-                    const by = cy + ry * Math.cos(angle);
-
-                    // Chiều sâu Z: Hạt ở chính diện (angle = 0) nổi bật nhất, hạt ở mép thu nhỏ và chuyển sắc
-                    const depthFactor = 0.85 + 0.25 * Math.cos(angle);
-                    const item = displayBeads[i];
-
-                    // Kích thước hạt tỉ lệ theo kích thước vòng ôm thật
-                    const baseRadius = (item.isFlower ? 8.5 : (item.isSpacer ? 3.0 : 5.4)) * (rx / 65);
-                    const radius = baseRadius * depthFactor;
-
-                    // Độ dẹp ngang theo góc nhìn phối cảnh (Foreshortening) khi hạt cuộn sang mép cổ tay
-                    const rxBead = radius * (0.55 + 0.45 * Math.cos(angle));
-                    const ryBead = radius;
-
-                    beadItems.push({
-                      x: bx,
-                      y: by,
-                      radius,
-                      rxBead,
-                      ryBead,
-                      depthFactor,
-                      angle,
-                      color: item.color || b.beadColor || '#FFFDF9',
-                      index: i,
-                      isEdge: i === 0 || i === beadCount - 1,
-                      isFlower: item.isFlower,
-                      isPearl: item.isPearl,
-                      isCrystal: item.isCrystal,
-                      isSpacer: item.isSpacer,
-                      isCharm: item.isCharm,
-                      charmImage: item.charmImage,
-                      item
-                    });
-                  }
-
-                  // Đường cung ôm trước cổ tay (Front arc path ôm khít mu tay)
-                  const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.60} ${cy + ry * 1.06}, ${cx + rx * 0.60} ${cy + ry * 1.06}, ${cx + rx} ${cy}`;
-
-                  // Đường dây cước luồn bên trong các viên hạt (Nối chính xác qua tâm các hạt, ẩn khéo léo, TUYỆT ĐỐI KHÔNG CÒN 2 DẢI TRẮNG)
-                  const beadCordPath = beadItems.length > 1
-                    ? `M ${beadItems[0].x.toFixed(1)} ${beadItems[0].y.toFixed(1)} ` + beadItems.slice(1).map(bead => `L ${bead.x.toFixed(1)} ${bead.y.toFixed(1)}`).join(' ')
-                    : frontArcPath;
-
-                  // Bóng đổ tiếp xúc trực tiếp dưới hàng hạt lên da tay
-                  const contactShadowPath = beadCordPath;
-
-                  return (
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <svg viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-xl">
-                        <defs>
-                          {/* CSS Keyframes cho animation đeo trượt vào tay và charm đong đưa */}
-                          <style>{`
-                            @keyframes smoothWearSlide {
-                              0% {
-                                transform: translateY(-50px) scale(1.18);
-                                opacity: 0.15;
-                              }
-                              45% {
-                                transform: translateY(5px) scale(0.97);
-                                opacity: 0.95;
-                              }
-                              72% {
-                                transform: translateY(-2px) scale(1.02);
-                                opacity: 1;
-                              }
-                              100% {
-                                transform: translateY(0px) scale(1.0);
-                                opacity: 1;
-                              }
-                            }
-
-                            @keyframes charmWearSway {
-                              0% { transform: rotate(0deg); }
-                              30% { transform: rotate(-16deg); }
-                              60% { transform: rotate(10deg); }
-                              85% { transform: rotate(-4deg); }
-                              100% { transform: rotate(0deg); }
-                            }
-
-                            @keyframes snapRippleGlow {
-                              0% { transform: scale(0.92); opacity: 0; }
-                              35% { opacity: 0.75; }
-                              100% { transform: scale(1.15); opacity: 0; }
-                            }
-                          `}</style>
-                          {/* Bóng đổ tiếp xúc trực tiếp lên da (Ambient Contact Shadow ôm sát da tay) */}
-                          <filter id="skinContactBlur" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
-                          </filter>
-
-                          {/* Bóng đổ từng viên hạt */}
-                          <filter id="beadDropShadow" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" />
-                            <feOffset dx="0" dy="2.2" result="offsetblur" />
-                            <feComponentTransfer>
-                              <feFuncA type="linear" slope="0.48" />
-                            </feComponentTransfer>
-                            <feMerge>
-                              <feMergeNode />
-                              <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                          </filter>
-
-                          {/* Gradient Ngọc Trai Trắng Bóng */}
-                          <radialGradient id="pearlLusterGrad" cx="30%" cy="28%" r="72%">
-                            <stop offset="0%" stopColor="#FFFFFF" />
-                            <stop offset="28%" stopColor="#FFFDF8" />
-                            <stop offset="68%" stopColor="#EDE1D1" />
-                            <stop offset="100%" stopColor="#BAA591" />
-                          </radialGradient>
-
-                          {/* Gradient Cánh Hoa Hồng Phấn */}
-                          <radialGradient id="sakuraPetalGrad" cx="35%" cy="30%" r="70%">
-                            <stop offset="0%" stopColor="#FFF2F5" />
-                            <stop offset="42%" stopColor="#FBB6C7" />
-                            <stop offset="85%" stopColor="#E67B98" />
-                            <stop offset="100%" stopColor="#B34B68" />
-                          </radialGradient>
-
-                          {/* Gradient Nhụy Hoa Vàng Ánh Kim */}
-                          <radialGradient id="sakuraCenterGrad" cx="32%" cy="30%" r="68%">
-                            <stop offset="0%" stopColor="#FFFDE6" />
-                            <stop offset="45%" stopColor="#F5D061" />
-                            <stop offset="90%" stopColor="#C48E1D" />
-                            <stop offset="100%" stopColor="#7A5308" />
-                          </radialGradient>
-
-                          {/* Gradient Pha Lê Trong Suốt */}
-                          <radialGradient id="crystalGrad" cx="28%" cy="26%" r="74%">
-                            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.98" />
-                            <stop offset="40%" stopColor="#EFE8F8" stopOpacity="0.85" />
-                            <stop offset="80%" stopColor="#C8B5E3" stopOpacity="0.9" />
-                            <stop offset="100%" stopColor="#876DA8" stopOpacity="0.95" />
-                          </radialGradient>
-
-                          {/* Gradient Khoen Vàng 18K */}
-                          <radialGradient id="goldSpacerGrad" cx="32%" cy="30%" r="68%">
-                            <stop offset="0%" stopColor="#FFFDF0" />
-                            <stop offset="50%" stopColor="#EAC150" />
-                            <stop offset="100%" stopColor="#8A6517" />
-                          </radialGradient>
-                        </defs>
-
-                        {/* XOAY VÀ THEO DÕI CỔ TAY VỚI TRANSITION MƯỢT NHƯ LỤA */}
-                        <g 
-                          transform={`rotate(${arAngle} ${cx} ${cy})`}
-                          style={{
-                            transformOrigin: `${cx}px ${cy}px`,
-                            transition: isDraggingOverlay ? 'none' : 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-                          }}
-                        >
-                          {/* NHÓM ANIMATION ĐEO VÀO TAY (SLIDE TỪ BÀN TAY XUỐNG VÀ CO ÔM KHÍT CỔ TAY) */}
-                          <g
-                            key={wearAnimKey}
+                    {/* VÒNG XOAY VÀ THEO DÕI CỔ TAY */}
+                    <g 
+                      transform={`rotate(${arAngle} ${cx} ${cy})`}
+                      style={{
+                        transformOrigin: `${cx}px ${cy}px`,
+                        transition: isDraggingOverlay ? 'none' : 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                    >
+                      {/* NHÓM ANIMATION MỞ RA VÀ TRƯỢT ÔM VÀO TAY */}
+                      <g
+                        key={wearAnimKey}
+                        style={{
+                          transformOrigin: `${cx}px ${cy + ry * 0.4}px`,
+                          animation: isWearingAnim ? 'smoothWearSlide 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards' : 'none'
+                        }}
+                      >
+                        {isWearingAnim && (
+                          <ellipse
+                            cx={cx}
+                            cy={cy + ry * 0.45}
+                            rx={rx * 1.12}
+                            ry={ry * 1.25}
+                            fill="none"
+                            stroke="#FDE2E4"
+                            strokeWidth="2.5"
+                            opacity="0.75"
                             style={{
-                              transformOrigin: `${cx}px ${cy + ry * 0.4}px`,
-                              animation: isWearingAnim ? 'smoothWearSlide 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards' : 'none'
+                              transformOrigin: `${cx}px ${cy + ry * 0.45}px`,
+                              animation: 'snapRippleGlow 0.95s ease-out forwards'
                             }}
-                          >
-                            {/* Vòng ánh sáng lan tỏa nhẹ nhàng khi vòng chạm và ôm vào da tay */}
-                            {isWearingAnim && (
-                              <ellipse
-                                cx={cx}
-                                cy={cy + ry * 0.45}
-                                rx={rx * 1.12}
-                                ry={ry * 1.25}
-                                fill="none"
-                                stroke="#FDE2E4"
-                                strokeWidth="2"
-                                opacity="0.65"
-                                style={{
-                                  transformOrigin: `${cx}px ${cy + ry * 0.45}px`,
-                                  animation: 'snapRippleGlow 0.85s ease-out forwards'
-                                }}
-                              />
-                            )}
+                          />
+                        )}
 
-                            {/* 1. LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA TAY (Ambient Contact Shadow ôm sát da tay) */}
-                            <path
-                              d={contactShadowPath}
-                              fill="none"
-                              stroke="#160905"
-                              strokeWidth={Math.max(5.5, rx * 0.20)}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              opacity="0.45"
-                              filter="url(#skinContactBlur)"
-                            />
+                        {/* 1. Bóng đổ tiếp xúc */}
+                        <path
+                          d={contactShadowPath}
+                          fill="none"
+                          stroke="#160905"
+                          strokeWidth={Math.max(5.5, rx * 0.20)}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.45"
+                          filter="url(#skinContactBlur)"
+                        />
 
-                            {/* 2. DÂY CƯỚC LUỒN BÊN TRONG CÁC HẠT (Nối tâm hạt, ẩn kín, TUYỆT ĐỐI BỎ HOÀN TOÀN 2 DẢI TRẮNG) */}
-                            <path
-                              d={beadCordPath}
-                              fill="none"
-                              stroke={b.cordColor ? darkenColor(b.cordColor, 0.3) : '#756252'}
-                              strokeWidth={Math.max(1.2, rx * 0.032)}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              opacity="0.55"
-                            />
+                        {/* 2. Dây cước luồn trong hạt */}
+                        <path
+                          d={beadCordPath}
+                          fill="none"
+                          stroke={b.cordColor ? darkenColor(b.cordColor, 0.3) : '#756252'}
+                          strokeWidth={Math.max(1.2, rx * 0.032)}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          opacity="0.55"
+                        />
 
-                            {/* 3. TỪNG VIÊN HẠT & CHARM TRÊN CUNG TRƯỚC (ÔM SÁT CỔ TAY, 2 HẠT BIÊN UỐN KHUẤT RA SAU) */}
-                            {beadItems.map((bead) => (
-                              <g key={bead.index} opacity={bead.isEdge ? 0.86 : 1.0}>
-                                {bead.isFlower ? (
-                                  /* CHARM BÔNG HOA 5 CÁNH HỒNG PHẤN */
-                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                    {[0, 1, 2, 3, 4].map((petalIdx) => {
-                                      const pRad = (petalIdx * 72 - 18) * (Math.PI / 180);
-                                      const px = Math.cos(pRad) * (bead.radius * 0.82);
-                                      const py = Math.sin(pRad) * (bead.radius * 0.82);
-                                      const pDeg = petalIdx * 72 - 18;
-                                      return (
-                                        <g key={petalIdx} transform={`translate(${px}, ${py}) rotate(${pDeg})`}>
-                                          <ellipse
-                                            cx="0"
-                                            cy="0"
-                                            rx={bead.rxBead * 0.65}
-                                            ry={bead.ryBead * 0.48}
-                                            fill="url(#sakuraPetalGrad)"
-                                            stroke="#FCA3B7"
-                                            strokeWidth="0.6"
-                                            filter="url(#beadDropShadow)"
-                                          />
-                                          <ellipse
-                                            cx="0"
-                                            cy="0"
-                                            rx={bead.rxBead * 0.38}
-                                            ry={bead.ryBead * 0.26}
-                                            fill="#FFF5F8"
-                                            opacity="0.85"
-                                          />
-                                        </g>
-                                      );
-                                    })}
-                                    <circle cx="0" cy="0" r={bead.radius * 0.40} fill="url(#sakuraCenterGrad)" stroke="#B8860B" strokeWidth="0.7" />
-                                    <circle cx={-bead.radius * 0.12} cy={-bead.radius * 0.12} r={bead.radius * 0.15} fill="#FFFFFF" opacity="0.95" />
-                                  </g>
-                                ) : bead.isSpacer ? (
-                                  /* KHOEN VÀNG ĐỆM 18K */
-                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                    <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
-                                    <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
-                                  </g>
-                                ) : bead.isPearl ? (
-                                  /* HẠT NGỌC TRAI TRẮNG BÓNG */
-                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                    <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                    <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.rxBead * 0.52} ry={bead.ryBead * 0.44} fill="#FFFFFF" opacity="0.55" />
-                                    <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.95" />
-                                  </g>
-                                ) : bead.isCrystal ? (
-                                  /* HẠT PHA LÊ TRONG SUỐT */
-                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                    <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                    <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
-                                    <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
-                                  </g>
-                                ) : (
-                                  /* HẠT ĐÁ TỰ CHỌN (THẠCH ANH DÂU, NGỌC BÍCH, V.V...) */
-                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                    <defs>
-                                      <radialGradient id={`dynBeadGrad-${bead.index}`} cx="32%" cy="28%" r="72%">
-                                        <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.88" />
-                                        <stop offset="38%" stopColor={bead.color} />
-                                        <stop offset="85%" stopColor={darkenColor(bead.color, 0.42)} />
-                                        <stop offset="100%" stopColor="#1C0E0A" stopOpacity="0.92" />
-                                      </radialGradient>
-                                    </defs>
-                                    <ellipse
-                                      cx="0"
-                                      cy="0"
-                                      rx={bead.rxBead}
-                                      ry={bead.ryBead}
-                                      fill={`url(#dynBeadGrad-${bead.index})`}
-                                      stroke="rgba(255,255,255,0.7)"
-                                      strokeWidth="0.8"
-                                      filter="url(#beadDropShadow)"
-                                    />
-                                    <ellipse cx={-bead.rxBead * 0.32} cy={-bead.ryBead * 0.32} rx={bead.rxBead * 0.32} ry={bead.ryBead * 0.28} fill="#FFFFFF" opacity="0.85" />
-                                    <ellipse cx={bead.rxBead * 0.25} cy={bead.ryBead * 0.25} rx={bead.rxBead * 0.20} ry={bead.ryBead * 0.18} fill="#FFFFFF" opacity="0.25" />
-                                  </g>
-                                )}
+                        {/* 3. Chuỗi hạt 3D */}
+                        {beadItems.map((bead) => (
+                          <g key={bead.index} opacity={bead.isEdge ? 0.86 : 1.0}>
+                            {bead.isFlower ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                {[0, 1, 2, 3, 4].map((petalIdx) => {
+                                  const pRad = (petalIdx * 72 - 18) * (Math.PI / 180);
+                                  const px = Math.cos(pRad) * (bead.radius * 0.82);
+                                  const py = Math.sin(pRad) * (bead.radius * 0.82);
+                                  const pDeg = petalIdx * 72 - 18;
+                                  return (
+                                    <g key={petalIdx} transform={`translate(${px}, ${py}) rotate(${pDeg})`}>
+                                      <ellipse
+                                        cx="0"
+                                        cy="0"
+                                        rx={bead.rxBead * 0.65}
+                                        ry={bead.ryBead * 0.48}
+                                        fill="url(#sakuraPetalGrad)"
+                                        stroke="#FCA3B7"
+                                        strokeWidth="0.6"
+                                        filter="url(#beadDropShadow)"
+                                      />
+                                      <ellipse
+                                        cx="0"
+                                        cy="0"
+                                        rx={bead.rxBead * 0.38}
+                                        ry={bead.ryBead * 0.26}
+                                        fill="#FFF5F8"
+                                        opacity="0.85"
+                                      />
+                                    </g>
+                                  );
+                                })}
+                                <circle cx="0" cy="0" r={bead.radius * 0.40} fill="url(#sakuraCenterGrad)" stroke="#B8860B" strokeWidth="0.7" />
+                                <circle cx={-bead.radius * 0.12} cy={-bead.radius * 0.12} r={bead.radius * 0.15} fill="#FFFFFF" opacity="0.95" />
                               </g>
-                            ))}
-
-                            {/* 4. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NỐI DƯỚI ĐÁY HẠT SỐ 5, ĐONG ĐƯA KHI ĐEO VÀO TAY) */}
-                            {b.selectedCharm && !b.isFloralModel && (
-                              <g 
-                                transform={`translate(${cx}, ${cy + ry + 1}) rotate(${-arAngle * 0.75})`}
-                                style={{
-                                  transformOrigin: '0px 0px',
-                                  animation: isWearingAnim ? 'charmWearSway 1.05s cubic-bezier(0.25, 1, 0.5, 1)' : 'none'
-                                }}
-                              >
-                                {/* Jump ring connector nhỏ nhắn tinh xảo */}
-                                <circle cx="0" cy="0" r="2.2" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
-                                <line x1="0" y1="1.5" x2="0" y2="5" stroke="#D4AF37" strokeWidth="1.3" />
-                                {renderArCharmSvg(b.selectedCharm, Math.max(0.55, Math.min(0.85, (rx / 65) * 0.70)))}
+                            ) : bead.isSpacer ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
+                                <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
+                              </g>
+                            ) : bead.isPearl ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
+                                <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.rxBead * 0.52} ry={bead.ryBead * 0.44} fill="#FFFFFF" opacity="0.55" />
+                                <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.95" />
+                              </g>
+                            ) : bead.isCrystal ? (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
+                                <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
+                                <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
+                              </g>
+                            ) : (
+                              <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                <defs>
+                                  <radialGradient id={`dynBeadGrad-${bead.index}`} cx="32%" cy="28%" r="72%">
+                                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.88" />
+                                    <stop offset="38%" stopColor={bead.color} />
+                                    <stop offset="85%" stopColor={darkenColor(bead.color, 0.42)} />
+                                    <stop offset="100%" stopColor="#1C0E0A" stopOpacity="0.92" />
+                                  </radialGradient>
+                                </defs>
+                                <ellipse
+                                  cx="0"
+                                  cy="0"
+                                  rx={bead.rxBead}
+                                  ry={bead.ryBead}
+                                  fill={`url(#dynBeadGrad-${bead.index})`}
+                                  stroke="rgba(255,255,255,0.7)"
+                                  strokeWidth="0.8"
+                                  filter="url(#beadDropShadow)"
+                                />
+                                <ellipse cx={-bead.rxBead * 0.32} cy={-bead.ryBead * 0.32} rx={bead.rxBead * 0.32} ry={bead.ryBead * 0.28} fill="#FFFFFF" opacity="0.85" />
+                                <ellipse cx={bead.rxBead * 0.25} cy={bead.ryBead * 0.25} rx={bead.rxBead * 0.20} ry={bead.ryBead * 0.18} fill="#FFFFFF" opacity="0.25" />
                               </g>
                             )}
                           </g>
-                        </g>
-                      </svg>
-                    </div>
-                  );
-                })()}
+                        ))}
 
-                {/* Bottom camera active indicator & YOLO status */}
-                <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 bg-black/65 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 shadow-md">
-                  <div className={`w-2 h-2 rounded-full ${
-                    isAutoTracking && trackingConfidence > 65
-                      ? 'bg-emerald-400 animate-ping'
-                      : 'bg-amber-400 animate-pulse'
-                  }`} />
-                  <span className="text-[10px] text-white font-medium">{trackingFeedback}</span>
-                </div>
-              </div>
-
-              {/* Bracelet Picker Carousel */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#26211C]">Chọn mẫu vòng để ướm thử:</span>
-                  <span className="text-[11px] text-[#B86244] font-semibold">
-                    {availableBracelets[arSelectedBracelet]?.name || 'Vòng Tự Phối'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                  {availableBracelets.map((item, idx) => {
-                    const isSelected = arSelectedBracelet === idx;
-                    return (
-                      <button
-                        key={item.id || idx}
-                        type="button"
-                        onClick={() => {
-                          setArSelectedBracelet(idx);
-                          triggerWearAnimation();
-                        }}
-                        className={`p-2.5 rounded-2xl border text-left transition-all relative ${
-                          isSelected
-                            ? 'border-[#B86244] bg-[#FBEFEA] ring-2 ring-[#B86244]/40 shadow-sm'
-                            : 'border-[#E8DFD3] bg-white hover:bg-[#FAF7F2]'
-                        }`}
-                      >
-                        {item.isCustom && (
-                          <span className="absolute -top-2 right-1 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-500 to-[#B86244] text-[8px] font-extrabold text-white shadow-xs">
-                            ✨ Tự Phối 3D
-                          </span>
+                        {/* 4. Charm trung tâm đong đưa vật lý */}
+                        {b.selectedCharm && !b.isFloralModel && (
+                          <g 
+                            transform={`translate(${cx}, ${cy + ry + 1}) rotate(${-arAngle * 0.75})`}
+                            style={{
+                              transformOrigin: '0px 0px',
+                              animation: isWearingAnim ? 'charmWearSway 1.15s cubic-bezier(0.25, 1, 0.5, 1)' : 'none'
+                            }}
+                          >
+                            <circle cx="0" cy="0" r="2.2" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
+                            <line x1="0" y1="1.5" x2="0" y2="5" stroke="#D4AF37" strokeWidth="1.3" />
+                            {renderArCharmSvg(b.selectedCharm, Math.max(0.55, Math.min(0.85, (rx / 65) * 0.70)))}
+                          </g>
                         )}
-                        <div className="flex items-center gap-1.5 mb-1 mt-0.5">
-                          <span className="w-3.5 h-3.5 rounded-full border border-black/10 shadow-inner shrink-0" style={{ backgroundColor: item.beadColor }} />
-                          <span className="text-[9px] text-[#8C8276] font-medium truncate">
-                            {item.charmName ? item.charmName.split(' ')[0] : 'Charm'}
-                          </span>
-                        </div>
-                        <p className="font-bold text-[11px] text-[#26211C] line-clamp-1">{(item.name || 'Vòng Tay').replace('Vòng ', '')}</p>
-                        <p className="text-[10px] text-[#B86244] font-bold mt-0.5">{formatPrice(item.price)}</p>
-                      </button>
-                    );
-                  })}
+                      </g>
+                    </g>
+                  </svg>
+                </div>
+              );
+            })()}
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* MODE 1: QUÉT CỔ TAY ĐO SIZE                                                */}
+        {/* ========================================================================= */}
+        {modalMode === 'wrist' && (
+          <div className="relative w-full max-w-md mx-auto p-4 flex flex-col items-center pointer-events-auto">
+            {!wristResult ? (
+              <div className="text-center p-4 rounded-3xl bg-black/55 backdrop-blur-md border border-white/20 shadow-xl space-y-2 max-w-sm">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center mx-auto">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <h4 className="font-serif-boutique text-sm sm:text-base font-bold text-white">
+                  Căn Chỉnh Cổ Tay Để AI Đo Size
+                </h4>
+                <p className="text-[11px] text-stone-300 leading-relaxed">
+                  Đưa cổ tay hoặc bàn tay vào trước ống kính. Nhấn nút chụp tròn bên dưới để AI quét chu vi và màu da của bạn!
+                </p>
+                <div className="pt-2 flex justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold flex items-center gap-1.5 border border-white/20 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Tải Ảnh Có Sẵn</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUploadWrist}
+                  />
                 </div>
               </div>
-
-              {/* Interactive Fit Adjusters (Sliders & Quick Presets) */}
-              <div className="p-4 bg-white rounded-2xl border border-[#E8DFD3] shadow-xs space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-[#26211C] border-b border-[#F3ECE1] pb-2">
-                  <span className="flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5 text-[#B86244]" /> Căn chỉnh vừa vặn cổ tay
-                  </span>
-                  <span className="text-[11px] text-[#B86244] font-bold">
-                    Cỡ vòng: {arSizeCm} cm ({arSizeCm <= 15 ? 'Size S - Ôm Sát' : arSizeCm <= 17 ? 'Size M - Chuẩn' : 'Size L - Rộng'})
-                  </span>
-                </div>
-
-                {/* Quick Fit Mode Buttons (Chế độ đeo vòng tay) */}
-                <div className="grid grid-cols-3 gap-2">
+            ) : (
+              <div className="w-full bg-[#FAF7F2] text-[#26211C] p-5 rounded-3xl shadow-2xl border border-[#E8DFD3] space-y-4 max-h-[70vh] overflow-y-auto animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-[#E8DFD3] pb-2">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs sm:text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Đã Phân Tích Cổ Tay Thành Công</span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      setArSizeCm(14.5);
-                      triggerWearAnimation();
-                    }}
-                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      arSizeCm <= 14.8
-                        ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
-                        : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
-                    }`}
+                    onClick={() => { setWristResult(null); setCapturedImage(null); startCamera(); }}
+                    className="text-xs text-[#B86244] hover:underline font-semibold cursor-pointer"
                   >
-                    <span>🤏 Ôm Khít Da</span>
-                    <span className="text-[9px] opacity-80">14 - 15 cm</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setArSizeCm(userCustomSize || 15.5);
-                      triggerWearAnimation();
-                    }}
-                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      Math.abs(arSizeCm - (userCustomSize || 15.5)) < 0.4
-                        ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
-                        : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
-                    }`}
-                  >
-                    <span>✨ Chuẩn Đã Phối</span>
-                    <span className="text-[9px] opacity-80">{customBracelet?.wristSize || `${userCustomSize || 15.5} cm`}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setArSizeCm(17.5);
-                      triggerWearAnimation();
-                    }}
-                    className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      arSizeCm >= 17.2
-                        ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
-                        : 'bg-[#FAF7F2] text-[#6B6258] border-[#E8DFD3] hover:bg-white'
-                    }`}
-                  >
-                    <span>🍃 Thả Lỏng Nhẹ</span>
-                    <span className="text-[9px] opacity-80">17.5 - 19 cm</span>
+                    Chụp lại
                   </button>
                 </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {wristResult.skinTone && (
+                    <div className="p-2.5 bg-white rounded-xl border border-[#E8DFD3]">
+                      <span className="text-[10px] text-[#8C8276] block">🎨 Tone da:</span>
+                      <strong className="text-[11px]">{wristResult.skinTone}</strong>
+                    </div>
+                  )}
+                  {wristResult.wristType && (
+                    <div className="p-2.5 bg-white rounded-xl border border-[#E8DFD3]">
+                      <span className="text-[10px] text-[#8C8276] block">📏 Kích thước gợi ý:</span>
+                      <strong className="text-[11px]">{wristResult.wristType}</strong>
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs text-[#26211C] leading-relaxed p-3 bg-white rounded-xl border border-[#E8DFD3] max-h-36 overflow-y-auto whitespace-pre-line">
+                  {wristResult.analysis}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (wristResult.presetConfig) handleApplyPreset(wristResult.presetConfig);
+                    }}
+                    className="flex-1 py-2.5 px-4 bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Flower2 className="w-3.5 h-3.5 text-amber-200" />
+                    <span>Áp Dụng Thiết Kế Vào Xưởng</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalMode('ar_tryon');
+                      startCamera();
+                    }}
+                    className="py-2.5 px-4 bg-[#26211C] hover:bg-[#3D352E] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Ướm Thử 3D Ngay</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-                {customBracelet?.wristSize && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-[#8C6828] bg-[#FAF4ED] px-3 py-1.5 rounded-xl border border-[#EADBCC]">
-                    <Sparkles className="w-3.5 h-3.5 text-[#B86244] shrink-0" />
-                    <span>Vòng đang ướm chuẩn theo kích cỡ cổ tay bạn đã chọn trong Xưởng 3D: <strong>{customBracelet.wristSize}</strong></span>
+        {/* ========================================================================= */}
+        {/* MODE 2: TẢI ẢNH GỢI Ý PHỐI HẠT & CHARM                                    */}
+        {/* ========================================================================= */}
+        {modalMode === 'catalog_match' && (
+          <div className="relative w-full max-w-md mx-auto p-4 flex flex-col items-center pointer-events-auto">
+            {!matchResult ? (
+              <div className="w-full bg-black/65 backdrop-blur-md border border-white/20 p-5 rounded-3xl shadow-xl space-y-3 text-center">
+                <div className="w-10 h-10 rounded-full bg-[#B86244]/30 text-amber-300 border border-amber-400/40 flex items-center justify-center mx-auto">
+                  <Palette className="w-5 h-5" />
+                </div>
+                <h4 className="font-serif-boutique text-sm sm:text-base font-bold text-white">
+                  Phối Hạt & Charm Từ Ảnh Cảm Hứng
+                </h4>
+                <p className="text-[11px] text-stone-300 leading-relaxed">
+                  Tải bức ảnh bạn yêu thích (trang phục, phong cảnh, ảnh mẫu) để AI bóc tách màu và gợi ý hạt đá có sẵn tại xưởng!
+                </p>
+
+                {matchImage && (
+                  <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-amber-300 mx-auto shadow-md">
+                    <img src={matchImage} alt="Match preview" className="w-full h-full object-cover" />
                   </div>
                 )}
 
-                {isAutoTracking && (
-                  <p className="text-[11px] text-[#8C8276] italic bg-[#FAF7F2] p-2 rounded-lg border border-[#F3ECE1]">
-                    💡 AI YOLO đang nhận diện góc nghiêng và bề ngang cánh tay để vòng tự động bám sát tự nhiên. Bạn có thể kéo trượt để tinh chỉnh thêm nếu muốn!
-                  </p>
-                )}
+                <div className="pt-2 flex justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => matchFileInputRef.current?.click()}
+                    className="px-4 py-2 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{matchImage ? 'Đổi Ảnh Khác' : 'Chọn Ảnh Tải Lên'}</span>
+                  </button>
+                  <input
+                    ref={matchFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUploadMatch}
+                  />
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  {/* Size slider */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-[#6B6258]">
-                      <span>Chu vi cổ tay:</span>
-                      <span className="font-bold text-[#26211C]">{arSizeCm} cm</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="13"
-                      max="19"
-                      step="0.5"
-                      value={arSizeCm}
-                      onChange={(e) => setArSizeCm(Number(e.target.value))}
-                      className="w-full accent-[#B86244] cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Angle slider */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-[#6B6258]">
-                      <span>Góc xoay:</span>
-                      <span className="font-bold text-[#26211C]">{arAngle}°</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-85"
-                      max="85"
-                      step="1"
-                      value={arAngle}
-                      onChange={(e) => setArAngle(Number(e.target.value))}
-                      className="w-full accent-[#B86244] cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Horizontal offset slider (X) */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-[#6B6258]">
-                      <span>Ngang (X):</span>
-                      <span className="font-bold text-[#26211C]">{arOffsetX > 0 ? `+${arOffsetX}` : arOffsetX}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-120"
-                      max="120"
-                      step="2"
-                      value={arOffsetX}
-                      onChange={(e) => {
-                        setArOffsetX(Number(e.target.value));
-                        setIsAutoTracking(false);
-                      }}
-                      className="w-full accent-[#B86244] cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Vertical offset slider (Y) */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px] text-[#6B6258]">
-                      <span>Dọc (Y):</span>
-                      <span className="font-bold text-[#26211C]">{arOffsetY > 0 ? `+${arOffsetY}` : arOffsetY}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="-120"
-                      max="120"
-                      step="2"
-                      value={arOffsetY}
-                      onChange={(e) => {
-                        setArOffsetY(Number(e.target.value));
-                        setIsAutoTracking(false);
-                      }}
-                      className="w-full accent-[#B86244] cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1 border-t border-[#F3ECE1]">
-                  <p className="text-[11px] text-[#8C8276]">
-                    💡 <strong>Mẹo:</strong> Bạn có thể chạm và kéo trực tiếp trên khung camera để di chuyển vòng tay!
-                  </p>
-                  <div className="flex items-center gap-2">
+                  {matchImage && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setIsWristLocked(prev => !prev);
-                        if (!isWristLocked) {
-                          setIsAutoTracking(true);
-                          setTrackingFeedback('🔒 Đã Gắn Cứng Cổ Tay!');
-                        }
-                      }}
-                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1 ${
-                        isWristLocked
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs'
-                          : 'bg-stone-50 text-stone-700 border-stone-300 hover:bg-stone-100'
-                      }`}
+                      onClick={() => handleMatchBeadsAndCharms(matchImage)}
+                      disabled={isMatchingBeads}
+                      className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span>{isWristLocked ? '🔒 Đã Gắn Cứng' : '🔓 Ghim Cổ Tay'}</span>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{isMatchingBeads ? 'Đang Phân Tích...' : 'Bắt Đầu Phối'}</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={triggerWearAnimation}
-                      className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline px-2 py-1 shrink-0 flex items-center gap-1"
-                    >
-                      <Sparkles className="w-3 h-3 text-amber-600" />
-                      <span>✨ Ướm Lại Vòng</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setArOffsetX(0);
-                        setArOffsetY(0);
-                        setArAngle(0);
-                        setIsAutoTracking(true);
-                        setIsWristLocked(false);
-                        setTrackingFeedback('Đang tự động căn lại vị trí...');
-                        triggerWearAnimation();
-                      }}
-                      className="text-[11px] font-semibold text-[#B86244] hover:underline px-2 py-1 shrink-0"
-                    >
-                      🔄 Đặt Lại
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
+            ) : (
+              <div className="w-full bg-[#FAF7F2] text-[#26211C] p-5 rounded-3xl shadow-2xl border border-[#E8DFD3] space-y-4 max-h-[70vh] overflow-y-auto animate-fadeIn">
+                <div className="flex items-center justify-between border-b border-[#E8DFD3] pb-2">
+                  <span className="font-bold text-xs sm:text-sm text-[#845339] flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-600" />
+                    <span>Bản Phối Hạt Gợi Ý Cho Bạn</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { setMatchResult(null); setMatchImage(null); }}
+                    className="text-xs text-[#B86244] hover:underline font-semibold cursor-pointer"
+                  >
+                    Chọn ảnh khác
+                  </button>
+                </div>
+                <div className="text-xs text-[#26211C] leading-relaxed p-3 bg-white rounded-xl border border-[#E8DFD3] whitespace-pre-line max-h-36 overflow-y-auto">
+                  {matchResult.stylingAdvice || matchResult.analysis}
+                </div>
+                <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
-                      if (b.isCustom) {
-                        addToCart({
-                          id: b.id || 'custom-designed-bracelet',
-                          name: b.name || 'Vòng Tự Phối Độc Bản (AR 3D)',
-                          price: b.price,
-                          isCustom: true,
-                          cordName: b.cordName,
-                          cordColor: b.cordColor,
-                          beadPositions: b.beadPositions,
-                          selectedCharm: b.selectedCharm,
-                          images: [b.selectedCharm?.image || '/images/products/bracelet-strawberry-quartz.webp']
-                        }, 1, {
-                          wristSize: `${arSizeCm} cm`,
-                          beadCount: b.beadPositions?.length || 18,
-                          note: `Đã thử ướm vừa vặn qua AR Camera 3D (Size ${arSizeCm}cm, Tự phối xưởng)`
-                        });
-                      } else {
-                        addToCart({
-                          id: b.id,
-                          name: b.name,
-                          price: b.price,
-                          images: ['/images/products/bracelet-strawberry-quartz.webp']
-                        }, 1, {
-                          wristSize: `${arSizeCm} cm`,
-                          note: `Đã thử ướm vừa vặn qua AR Camera (Size ${arSizeCm}cm, Mệnh ${b.menh})`
-                        });
-                      }
-                      setArAddedSuccess(true);
-                      setTimeout(() => setArAddedSuccess(false), 2500);
+                      if (matchResult.suggestedDesign) handleApplyPreset(matchResult.suggestedDesign);
                     }}
-                    className="flex-1 sm:flex-initial px-6 py-3.5 rounded-xl bg-[#26211C] hover:bg-[#3D352E] text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 px-4 bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    {arAddedSuccess ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span>Đã Thêm Vào Giỏ Hàng!</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingBag className="w-4 h-4 text-amber-300" />
-                        <span>Thêm Vòng Này Vào Giỏ ({formatPrice(availableBracelets[arSelectedBracelet]?.price)})</span>
-                      </>
-                    )}
+                    <Flower2 className="w-3.5 h-3.5 text-amber-200" />
+                    <span>Áp Dụng Vào Xưởng 3D</span>
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-                {availableBracelets[arSelectedBracelet]?.isCustom ? (
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[#B86244] text-[#B86244] hover:bg-[#FAF7F2] font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Quay Lại Tinh Chỉnh Trong Xưởng 3D</span>
-                  </button>
+      {/* 5. Bottom Controls (iPhone Camera Layout) */}
+      <div className="relative z-40 w-full bg-gradient-to-t from-black via-black/90 to-transparent pt-3 pb-6 px-4 flex flex-col items-center gap-2.5 pointer-events-auto">
+        {/* Tier 1: Fit Selector (Lens selector: 14.5cm, 15.5cm, 17.5cm) */}
+        {modalMode === 'ar_tryon' && (
+          <div className="flex items-center gap-2 pb-0.5">
+            <button
+              type="button"
+              onClick={() => { setArSizeCm(14.5); triggerWearAnimation(); }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border transition-all cursor-pointer ${
+                arSizeCm <= 14.8 ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm' : 'bg-black/50 text-white/80 border-white/20 hover:bg-black/70'
+              }`}
+            >
+              🤏 14.5cm Ôm Sát
+            </button>
+            <button
+              type="button"
+              onClick={() => { setArSizeCm(userCustomSize || 15.5); triggerWearAnimation(); }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border transition-all cursor-pointer ${
+                Math.abs(arSizeCm - (userCustomSize || 15.5)) < 0.4 ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm' : 'bg-black/50 text-white/80 border-white/20 hover:bg-black/70'
+              }`}
+            >
+              ✨ {customBracelet?.wristSize || `${userCustomSize || 15.5}cm Chuẩn`}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setArSizeCm(17.5); triggerWearAnimation(); }}
+              className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border transition-all cursor-pointer ${
+                arSizeCm >= 17.2 ? 'bg-[#B86244] text-white border-[#B86244] shadow-sm' : 'bg-black/50 text-white/80 border-white/20 hover:bg-black/70'
+              }`}
+            >
+              🍃 17.5cm Buông Lơi
+            </button>
+          </div>
+        )}
+
+        {/* Tier 2: Horizontal Carousel of Bracelets (iOS Filter / Photographic Styles) */}
+        {modalMode === 'ar_tryon' && (
+          <div className="w-full max-w-2xl overflow-x-auto no-scrollbar py-1 px-2 flex items-center gap-2 justify-start sm:justify-center">
+            {availableBracelets.map((item, idx) => {
+              const isSelected = arSelectedBracelet === idx;
+              return (
+                <button
+                  key={item.id || idx}
+                  type="button"
+                  onClick={() => {
+                    setArSelectedBracelet(idx);
+                    triggerWearAnimation();
+                  }}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border backdrop-blur-md transition-all shrink-0 cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#B86244]/90 border-amber-300 ring-2 ring-amber-400/40 text-white shadow-lg'
+                      : 'bg-black/50 border-white/15 text-stone-300 hover:bg-black/70'
+                  }`}
+                >
+                  <span 
+                    className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-inner shrink-0" 
+                    style={{ backgroundColor: item.beadColor }} 
+                  />
+                  <div className="text-left">
+                    <p className="text-[11px] font-bold leading-none line-clamp-1">{(item.name || 'Vòng Tay').replace('Vòng ', '')}</p>
+                    <p className="text-[10px] text-amber-200 font-semibold mt-0.5">{formatPrice(item.price)}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Tier 3: iPhone Camera Mode Text Selector Row */}
+        <div className="flex items-center justify-center gap-6 sm:gap-10 py-1 text-xs font-bold tracking-wider">
+          <button
+            type="button"
+            onClick={() => { setModalMode('wrist'); if (!capturedImage) startCamera(); }}
+            className={`transition-all flex flex-col items-center gap-1 cursor-pointer ${
+              modalMode === 'wrist' ? 'text-amber-300 font-extrabold scale-105' : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            <span>ĐO SIZE CỔ TAY</span>
+            {modalMode === 'wrist' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setModalMode('ar_tryon'); startCamera(); }}
+            className={`transition-all flex flex-col items-center gap-1 cursor-pointer ${
+              modalMode === 'ar_tryon' ? 'text-amber-300 font-extrabold scale-105' : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>ƯỚM VÒNG 3D AR</span>
+            </span>
+            {modalMode === 'ar_tryon' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setModalMode('catalog_match'); stopCamera(); }}
+            className={`transition-all flex flex-col items-center gap-1 cursor-pointer ${
+              modalMode === 'catalog_match' ? 'text-amber-300 font-extrabold scale-105' : 'text-stone-400 hover:text-white'
+            }`}
+          >
+            <span>PHỐI ẢNH AI</span>
+            {modalMode === 'catalog_match' && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />}
+          </button>
+        </div>
+
+        {/* Tier 4: Iconic iPhone Shutter Button Row */}
+        <div className="w-full max-w-lg px-4 flex items-center justify-between gap-4">
+          {/* Left: Thumbnail preview snapshot */}
+          <div className="w-16 flex justify-start">
+            {arCapturedSnapshot ? (
+              <button
+                type="button"
+                onClick={() => setSnapshotModalOpen(true)}
+                className="w-12 h-12 rounded-xl overflow-hidden border-2 border-white/60 shadow-lg active:scale-95 transition-transform cursor-pointer"
+                title="Xem lại ảnh vừa chụp"
+              >
+                <img src={arCapturedSnapshot} alt="Snapshot" className="w-full h-full object-cover" />
+              </button>
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-stone-400">
+                <ImageIcon className="w-5 h-5" />
+              </div>
+            )}
+          </div>
+
+          {/* Center: Iconic iPhone Camera Shutter Button */}
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleShutterClick}
+              className="w-[72px] h-[72px] rounded-full border-4 border-white flex items-center justify-center p-1 shadow-[0_0_20px_rgba(0,0,0,0.5)] active:scale-90 transition-transform cursor-pointer"
+              title="Chụp ảnh ướm vòng tay"
+            >
+              <div className="w-full h-full rounded-full bg-white transition-colors hover:bg-amber-100" />
+            </button>
+          </div>
+
+          {/* Right: Thêm vào giỏ hàng hoặc Chụp camera máy */}
+          <div className="w-28 sm:w-36 flex justify-end">
+            {modalMode === 'ar_tryon' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
+                  if (b.isCustom) {
+                    addToCart({
+                      id: b.id || 'custom-designed-bracelet',
+                      name: b.name || 'Vòng Tự Phối Độc Bản (AR 3D)',
+                      price: b.price,
+                      isCustom: true,
+                      cordName: b.cordName,
+                      cordColor: b.cordColor,
+                      beadPositions: b.beadPositions,
+                      selectedCharm: b.selectedCharm,
+                      images: [b.selectedCharm?.image || '/images/products/bracelet-strawberry-quartz.webp']
+                    }, 1, {
+                      wristSize: `${arSizeCm} cm`,
+                      beadCount: b.beadPositions?.length || 18,
+                      note: `Đã thử ướm vừa vặn qua AR Camera 3D (Size ${arSizeCm}cm, Tự phối xưởng)`
+                    });
+                  } else {
+                    addToCart({
+                      id: b.id,
+                      name: b.name,
+                      price: b.price,
+                      images: ['/images/products/bracelet-strawberry-quartz.webp']
+                    }, 1, {
+                      wristSize: `${arSizeCm} cm`,
+                      note: `Đã thử ướm vừa vặn qua AR Camera (Size ${arSizeCm}cm, Mệnh ${b.menh})`
+                    });
+                  }
+                  setArAddedSuccess(true);
+                  setTimeout(() => setArAddedSuccess(false), 2500);
+                }}
+                className="px-3 py-2.5 rounded-2xl bg-gradient-to-r from-[#B86244] to-amber-600 hover:from-[#A05237] hover:to-amber-700 text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                title="Thêm vòng đang thử vào giỏ hàng"
+              >
+                {arAddedSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+                    <span className="hidden sm:inline">Đã Thêm!</span>
+                  </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const b = availableBracelets[arSelectedBracelet];
-                      if (onApplyCustomPreset && b) {
-                        onApplyCustomPreset({
-                          mainBeadId: b.id === 'ar-strawberry' ? 'bead-strawberry-quartz' : 'bead-tiger-eye',
-                          charmId: 'charm-lotus',
-                          sizeId: 'size-m'
-                        });
-                      }
-                      onClose();
-                    }}
-                    className="w-full sm:w-auto px-5 py-3 rounded-xl border border-[#B86244] text-[#B86244] hover:bg-[#FAF7F2] font-bold text-xs transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Tự Phối Lại Mẫu Này Trong Xưởng</span>
-                  </button>
+                  <>
+                    <ShoppingBag className="w-4 h-4 text-amber-200 shrink-0" />
+                    <span className="hidden sm:inline">Thêm Giỏ</span>
+                  </>
                 )}
-              </div>
-            </div>
-          )}
-
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => nativeCameraWristRef.current?.click()}
+                className="p-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white border border-white/20 text-xs font-semibold flex items-center justify-center gap-1 cursor-pointer"
+                title="Chụp bằng camera gốc máy"
+              >
+                <Camera className="w-4 h-4 text-amber-200" />
+                <span className="hidden sm:inline">Camera Máy</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* 6. Slide-Up Drawer (Settings Sheet) for Fine-Tuning */}
+      {showSettingsDrawer && (
+        <div className="absolute inset-x-0 bottom-0 z-50 bg-[#26211C]/95 backdrop-blur-xl border-t border-white/20 p-5 rounded-t-3xl shadow-2xl text-white space-y-4 animate-fadeIn pointer-events-auto">
+          <div className="flex items-center justify-between border-b border-white/15 pb-2">
+            <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <Sliders className="w-4 h-4" />
+              <span>Tinh Chỉnh Thủ Công Vòng Tay Cổ Tay</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowSettingsDrawer(false)}
+              className="p-1 rounded-full hover:bg-white/10 text-stone-400 hover:text-white cursor-pointer"
+            >
+              <ChevronDown className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-stone-300">
+                <span>Chu vi:</span>
+                <span className="font-bold text-amber-300">{arSizeCm} cm</span>
+              </div>
+              <input
+                type="range"
+                min="13"
+                max="19"
+                step="0.5"
+                value={arSizeCm}
+                onChange={(e) => setArSizeCm(Number(e.target.value))}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-stone-300">
+                <span>Góc xoay:</span>
+                <span className="font-bold text-amber-300">{arAngle}°</span>
+              </div>
+              <input
+                type="range"
+                min="-85"
+                max="85"
+                step="1"
+                value={arAngle}
+                onChange={(e) => setArAngle(Number(e.target.value))}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-stone-300">
+                <span>Dịch ngang (X):</span>
+                <span className="font-bold text-amber-300">{arOffsetX}px</span>
+              </div>
+              <input
+                type="range"
+                min="-120"
+                max="120"
+                step="2"
+                value={arOffsetX}
+                onChange={(e) => { setArOffsetX(Number(e.target.value)); setIsAutoTracking(false); }}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-stone-300">
+                <span>Dịch dọc (Y):</span>
+                <span className="font-bold text-amber-300">{arOffsetY}px</span>
+              </div>
+              <input
+                type="range"
+                min="-120"
+                max="120"
+                step="2"
+                value={arOffsetY}
+                onChange={(e) => { setArOffsetY(Number(e.target.value)); setIsAutoTracking(false); }}
+                className="w-full accent-amber-500 cursor-pointer"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setIsWristLocked(prev => !prev);
+              }}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+                isWristLocked
+                  ? 'bg-emerald-600/90 text-white border-emerald-400'
+                  : 'bg-white/10 text-stone-300 border-white/20'
+              }`}
+            >
+              {isWristLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+              <span>{isWristLocked ? '🔒 Đã Ghim Cổ Tay' : '🔓 Ghim Vị Trí Cố Định'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setArOffsetX(0);
+                setArOffsetY(0);
+                setArAngle(0);
+                setIsAutoTracking(true);
+                setIsWristLocked(false);
+                triggerWearAnimation();
+              }}
+              className="text-xs text-amber-300 hover:underline cursor-pointer"
+            >
+              🔄 Đặt Lại Trung Tâm
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Snapshot Modal Preview */}
+      {snapshotModalOpen && arCapturedSnapshot && (
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fadeIn pointer-events-auto">
+          <div className="relative w-full max-w-sm rounded-3xl overflow-hidden border-2 border-amber-300/60 shadow-2xl bg-stone-900 flex flex-col">
+            <div className="relative aspect-[4/3] w-full overflow-hidden">
+              <img src={arCapturedSnapshot} alt="AR Snapshot" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setSnapshotModalOpen(false)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-3 bg-[#26211C] text-white">
+              <div className="text-center">
+                <h4 className="font-serif-boutique font-bold text-sm text-amber-200">
+                  {availableBracelets[arSelectedBracelet]?.name || 'Ảnh Ướm Vòng Tay 3D'}
+                </h4>
+                <p className="text-[11px] text-stone-300">Đã ướm vừa vặn trên cổ tay thật</p>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={arCapturedSnapshot}
+                  download={`uom_vong_${Date.now()}.jpg`}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center justify-center gap-1.5 border border-white/20 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Tải Về Máy</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const b = availableBracelets[arSelectedBracelet] || availableBracelets[0];
+                    addToCart({
+                      id: b.id,
+                      name: b.name,
+                      price: b.price,
+                      images: ['/images/products/bracelet-strawberry-quartz.webp']
+                    }, 1, {
+                      wristSize: `${arSizeCm} cm`,
+                      note: `Chụp từ AR Camera Snapshot (Size ${arSizeCm}cm)`
+                    });
+                    setSnapshotModalOpen(false);
+                    setArAddedSuccess(true);
+                    setTimeout(() => setArAddedSuccess(false), 2500);
+                  }}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[#B86244] hover:bg-[#A05237] text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-amber-200" />
+                  <span>Đặt Mua Vòng Này</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input for native camera */}
+      <input
+        ref={nativeCameraWristRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFileUploadWrist}
+      />
     </div>
   );
 }

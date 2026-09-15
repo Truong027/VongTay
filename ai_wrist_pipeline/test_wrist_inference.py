@@ -296,9 +296,20 @@ def run_live_inference():
     selected_preset_idx = 0
     print("[OK] Camera đã mở sẵn sàng!")
     print("👉 Hướng dẫn trải nghiệm:")
-    print("   - Đưa cổ tay vào trước ống kính (nghiêng tự nhiên như ảnh bạn gửi).")
-    print("   - Nhấn phím 'b' để chuyển đổi các mẫu vòng tay.")
+    print("   - Đưa cổ tay vào trước ống kính (nghiêng tự nhiên).")
+    print("   - Vòng tay sẽ mở rộng từ mu bàn tay, trượt xuống và co ôm khít vào cổ tay!")
+    print("   - Sau khi vừa: Vòng tự động khóa cứng 100% bám chặt không trôi lệch.")
+    print("   - Nhấn phím 'b' để đổi mẫu vòng tay.")
+    print("   - Nhấn phím 'r' để ướm lại animation mở-mang vào tay.")
     print("   - Nhấn phím 'q' để thoát.")
+
+    import time
+    is_wrist_locked = False
+    last_cx, last_cy = 0.0, 0.0
+    last_w, last_ang = 0.0, 0.0
+    wear_start_time = time.time()
+    wear_anim_duration = 0.95 # giây
+    lock_streak = 0
 
     while True:
         ret, frame = cap.read()
@@ -310,26 +321,26 @@ def run_live_inference():
         preset = BRACELET_PRESETS[selected_preset_idx]
 
         detected_wrist = False
-        wrist_cx = 0
-        wrist_cy = 0
-        wrist_w = 0
-        wrist_ang = 0
+        raw_cx, raw_cy = 0.0, 0.0
+        raw_w, raw_ang = 0.0, 0.0
+        conf_score = 0.0
 
         # 1. Thử nhận diện bằng YOLO nếu có
         if model is not None:
             try:
-                results = model(frame, verbose=False, conf=0.32)
+                results = model(frame, verbose=False, conf=0.30)
                 if results and len(results) > 0 and results[0].keypoints is not None:
                     kpts = results[0].keypoints.data[0].cpu().numpy()
                     if len(kpts) >= 3:
                         kp0 = kpts[0] # Center
                         kp1 = kpts[1] # Radial
                         kp2 = kpts[2] # Ulnar
-                        if kp0[2] > 0.3 and kp1[2] > 0.3 and kp2[2] > 0.3:
-                            wrist_cx = kp0[0]
-                            wrist_cy = kp0[1]
-                            wrist_w = np.hypot(kp2[0] - kp1[0], kp2[1] - kp1[1])
-                            wrist_ang = math.degrees(math.atan2(kp2[1] - kp1[1], kp2[0] - kp1[0]))
+                        if kp0[2] > 0.28 and kp1[2] > 0.28 and kp2[2] > 0.28:
+                            raw_cx = float(kp0[0])
+                            raw_cy = float(kp0[1])
+                            raw_w = float(np.hypot(kp2[0] - kp1[0], kp2[1] - kp1[1]))
+                            raw_ang = float(math.degrees(math.atan2(kp2[1] - kp1[1], kp2[0] - kp1[0])))
+                            conf_score = float(kp0[2] * 100)
                             detected_wrist = True
             except Exception:
                 pass
@@ -342,37 +353,109 @@ def run_live_inference():
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             if contours:
-                valid = [c for c in contours if cv2.contourArea(c) > (w * h * 0.05)]
+                valid = [c for c in contours if cv2.contourArea(c) > (w * h * 0.04)]
                 if valid:
                     largest = max(valid, key=cv2.contourArea)
                     if len(largest) >= 5:
                         ellipse = cv2.fitEllipse(largest)
                         (ecx, ecy), (ew, eh), e_ang = ellipse
-                        wrist_w = max(55.0, min(ew, eh) * 0.72)
-                        wrist_cx = ecx
-                        wrist_cy = ecy + max(ew, eh) * 0.08
-                        wrist_ang = e_ang - 90
+                        raw_w = float(max(55.0, min(ew, eh) * 0.72))
+                        raw_cx = float(ecx)
+                        raw_cy = float(ecy + max(ew, eh) * 0.08)
+                        raw_ang = float(e_ang - 90)
+                        conf_score = 78.0
                         detected_wrist = True
 
-        # Render vòng tay nếu phát hiện cổ tay
-        if detected_wrist and wrist_w > 40:
-            render_realistic_wrist_tryon(frame, wrist_cx, wrist_cy, wrist_w, wrist_ang, 0, preset)
+        # Thuật toán Sticky Lock Tracking & Deadband Hysteresis
+        if detected_wrist and raw_w > 40:
+            lock_streak += 1
+            if not is_wrist_locked:
+                if lock_streak >= 2:
+                    is_wrist_locked = True
+                    last_cx, last_cy = raw_cx, raw_cy
+                    last_w, last_ang = raw_w, raw_ang
+                    wear_start_time = time.time() # Kích hoạt animation mở và mang vào tay
+            else:
+                # Deadband Filter: Triệt tiêu 100% rung lắc vi mô (< 5.5px)
+                dist = math.hypot(raw_cx - last_cx, raw_cy - last_cy)
+                d_ang = abs(raw_ang - last_ang)
+                if dist > 5.5:
+                    last_cx += (raw_cx - last_cx) * 0.22
+                    last_cy += (raw_cy - last_cy) * 0.22
+                if d_ang > 3.5:
+                    last_ang += (raw_ang - last_ang) * 0.20
+                if abs(raw_w - last_w) > 4.0:
+                    last_w += (raw_w - last_w) * 0.20
+        else:
+            lock_streak = 0
+            # Khi mất frame tạm thời hoặc góc nghiêng khó, nếu đã khóa thì GIỮ NGUYÊN không để rơi vòng!
 
-            # Khung chỉ báo Auto-Snap
-            cv2.circle(frame, (int(wrist_cx), int(wrist_cy)), 4, (50, 220, 50), -1)
-            cv2.putText(frame, f"AI Wrist Snap: {preset['name']}",
-                        (int(wrist_cx - 100), int(wrist_cy - wrist_w * 0.65)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.48, (50, 220, 50), 2, cv2.LINE_AA)
+        # Tính toán Animation "Mở Ra -> Mang Vào -> Co Khít Cổ Tay"
+        render_cx, render_cy = last_cx, last_cy
+        render_w, render_ang = last_w, last_ang
+        charm_sway_angle = 0.0
 
-        # HUD Bảng điều khiển thời gian thực
-        cv2.rectangle(frame, (15, 15), (520, 95), (18, 18, 18), -1)
-        cv2.rectangle(frame, (15, 15), (520, 95), (212, 175, 55), 1)
-        cv2.putText(frame, "AR VIRTUAL TRY-ON - XUONG VONG TAY 3D", (25, 42),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 215, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame, f"Mau vong: {preset['name']} [Phim 'b' de doi]", (25, 68),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.48, (225, 225, 225), 1, cv2.LINE_AA)
-        st_text = "Trang thai: Da khoa co tay & Om sat 3D" if detected_wrist else "Trang thai: Dua co tay vao giua khung camera..."
-        st_col = (50, 220, 50) if detected_wrist else (0, 165, 255)
+        if is_wrist_locked and render_w > 35:
+            dt = time.time() - wear_start_time
+            if dt < wear_anim_duration:
+                prog = dt / wear_anim_duration
+                # Giai đoạn 1 (0 -> 0.35): Vòng mở bung to từ mu bàn tay
+                if prog < 0.35:
+                    sub_p = prog / 0.35
+                    scale_factor = 1.32 - 0.08 * sub_p
+                    offset_along_arm = -45.0 * (1.0 - sub_p)
+                # Giai đoạn 2 (0.35 -> 0.70): Trượt xuống nếp gấp và bắt đầu co lại
+                elif prog < 0.70:
+                    sub_p = (prog - 0.35) / 0.35
+                    scale_factor = 1.24 - 0.28 * sub_p
+                    offset_along_arm = -10.0 * (1.0 - sub_p)
+                # Giai đoạn 3 (0.70 -> 1.0): Co ôm sát và nảy đàn hồi (elastic settle)
+                else:
+                    sub_p = (prog - 0.70) / 0.30
+                    elastic = math.sin(sub_p * math.pi * 2.5) * math.exp(-sub_p * 3.5)
+                    scale_factor = 1.00 + 0.04 * elastic
+                    offset_along_arm = 0.0
+
+                # Dịch chuyển tâm vòng theo hướng trục cẳng tay
+                rad_ang = math.radians(render_ang + 90)
+                render_cx += offset_along_arm * math.cos(rad_ang)
+                render_cy += offset_along_arm * math.sin(rad_ang)
+                render_w *= scale_factor
+
+                # Đong đưa charm theo quán tính vật lý
+                charm_sway_angle = 18.0 * math.sin(prog * math.pi * 3.5) * math.exp(-prog * 2.8)
+
+                # Hiệu ứng sóng lan tỏa ánh sáng khi chạm vào cổ tay
+                if 0.65 <= prog <= 0.95:
+                    ripple_r = int((render_w * 0.55) * (1.0 + (prog - 0.65) * 1.2))
+                    cv2.ellipse(frame, (int(render_cx), int(render_cy)), (ripple_r, int(ripple_r * 0.38)),
+                                int(render_ang), 0, 360, (230, 245, 255), 2, cv2.LINE_AA)
+
+            # Vẽ vòng tay 3D ôm sát
+            render_realistic_wrist_tryon(frame, render_cx, render_cy, render_w, render_ang + charm_sway_angle * 0.3, 0, preset)
+
+            # HUD Thông báo khóa cứng
+            cv2.circle(frame, (int(render_cx), int(render_cy)), 4, (50, 220, 100), -1)
+            cv2.putText(frame, "LOCKED ON WRIST",
+                        (int(render_cx - 65), int(render_cy - render_w * 0.62)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.44, (50, 220, 100), 2, cv2.LINE_AA)
+
+        # HUD Bảng điều khiển thời gian thực phong cách iOS Camera
+        cv2.rectangle(frame, (15, 15), (550, 100), (18, 18, 18), -1)
+        cv2.rectangle(frame, (15, 15), (550, 100), (212, 175, 55), 1)
+        cv2.putText(frame, "AR VIRTUAL TRY-ON (IPHONE STYLE HUD)", (25, 42),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.60, (255, 215, 0), 2, cv2.LINE_AA)
+        cv2.putText(frame, f"Mau vong: {preset['name']}", (25, 66),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.46, (225, 225, 225), 1, cv2.LINE_AA)
+        if is_wrist_locked:
+            st_text = "Trang thai: [DA KHOA CUNG CO TAY] - Khong troi lech"
+            st_col = (50, 220, 100)
+        elif detected_wrist:
+            st_text = f"Trang thai: Dang bat nhip co tay ({conf_score:.0f}%) -> Tu dong khoa..."
+            st_col = (0, 215, 255)
+        else:
+            st_text = "Trang thai: Dua co tay tran vao giua khung camera..."
+            st_col = (0, 165, 255)
         cv2.putText(frame, st_text, (25, 88), cv2.FONT_HERSHEY_SIMPLEX, 0.42, st_col, 1, cv2.LINE_AA)
 
         cv2.imshow("AR Bracelet Try-On (Nhu Deo That) - Xuong Vong Tay", frame)
@@ -381,6 +464,11 @@ def run_live_inference():
             break
         elif key == ord('b'):
             selected_preset_idx = (selected_preset_idx + 1) % len(BRACELET_PRESETS)
+            wear_start_time = time.time()
+        elif key == ord('r'):
+            wear_start_time = time.time() # Xem lại animation đeo vào tay
+        elif key == ord('l'):
+            is_wrist_locked = not is_wrist_locked # Bật tắt khóa cứng thủ công
 
     cap.release()
     cv2.destroyAllWindows()

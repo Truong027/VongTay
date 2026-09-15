@@ -42,32 +42,21 @@ PREVIEW_DIR = DATASET_DIR / "pure_preview"
 for d in [IMAGES_TRAIN, IMAGES_VAL, LABELS_TRAIN, LABELS_VAL, PREVIEW_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-# Danh sách ảnh nguồn 100% cánh tay/cổ tay người thật đã kiểm duyệt kỹ lưỡng
+# Danh sách 100% cổ tay người thật trần (bare skin, không đeo phụ kiện, không đồng hồ/vòng tay, không sơ đồ)
 CORE_PRISTINE_SOURCES = [
-    # 1. Ảnh thật người dùng vừa gửi (tay nữ, cây thông hồng, đeo vòng hoa phấn)
-    {
-        "path": PIPELINE_DIR / "dataset" / "raw_images" / "clean_user_wrist_pink_tree.jpg",
-        "name": "user_pink_flower",
-        "custom_kpts": [
-            (310.0, 345.0), # Center
-            (270.0, 380.0), # Radial
-            (350.0, 310.0), # Ulnar
-            (390.0, 450.0), # Forearm
-            (280.0, 250.0), # Palm
-        ],
-        "custom_box": (190, 220, 240, 250) # x1, y1, x2, y2
-    },
-    # 2. Các ảnh thật từ Openverse/Flickr chụp người thật đeo vòng / đồng hồ
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_006.jpg", "name": "female_watch_denim"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_014.jpg", "name": "palm_up_silver_bangle"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_015.jpg", "name": "male_wrist_watch"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_016.jpg", "name": "silver_chain_bracelet"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_017.jpg", "name": "red_band_wrist"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_019.jpg", "name": "dark_bead_bracelet"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_020.jpg", "name": "teal_cuff_wrist_1"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_021.jpg", "name": "teal_cuff_wrist_2"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_023.jpg", "name": "vintage_lace_bracelet"},
-    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_024.jpg", "name": "holding_bird_cuff"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images" / "clean_user_wrist_pink_tree.jpg", "name": "user_wrist_pink"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images" / "real_hand_wrist_02cab2135e.jpg", "name": "real_bare_hand_01"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images" / "real_hand_wrist_e5c7cd3827.jpg", "name": "real_bare_hand_02"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images" / "curated_wrist_2bee7fa62297.jpg", "name": "real_bare_wrist_03"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images" / "user_real_wrist_9700388020.jpg", "name": "real_bare_wrist_04"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_002.jpg", "name": "bare_wrist_clean_02"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_004.jpg", "name": "bare_wrist_clean_04"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_014.jpg", "name": "bare_wrist_clean_14"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_016.jpg", "name": "bare_wrist_clean_16"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_018.jpg", "name": "bare_wrist_clean_18"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_022.jpg", "name": "bare_wrist_clean_22"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_023.jpg", "name": "bare_wrist_clean_23"},
+    {"path": PIPELINE_DIR / "dataset" / "raw_images_clean" / "clean_real_wrist_024.jpg", "name": "bare_wrist_clean_24"},
 ]
 
 def extract_5_keypoints_from_pose(img, kpts_17):
