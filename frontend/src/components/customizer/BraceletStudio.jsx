@@ -720,8 +720,13 @@ export default function BraceletStudio({ isOpen, onClose, onOpenSizeGuide, onOpe
       charmName: selectedCharm?.name || 'Không gắn charm chính',
       beadPositions: beadPositions.map(p => ({
         index: p.index,
+        id: p.bead?.id || 'bead-default',
         color: p.bead?.color || '#EAA9A9',
         name: p.bead?.name || 'Hạt đá',
+        shape: p.bead?.shape || 'round',
+        isPearl: Boolean(p.bead?.isPearl || p.bead?.shape === 'pearl' || p.bead?.name?.toLowerCase().includes('ngọc trai')),
+        isCrystal: Boolean(p.bead?.isCrystal || p.bead?.shape === 'bicone' || p.bead?.shape === 'cube' || p.bead?.name?.toLowerCase().includes('pha lê')),
+        isSpacer: Boolean(p.bead?.isMetal || p.bead?.shape === 'spacer' || p.bead?.name?.toLowerCase().includes('khoen') || p.bead?.name?.toLowerCase().includes('ngăn cách') || p.bead?.name?.toLowerCase().includes('bi kim loại')),
         isCharm: Boolean(p.bead?.isCharm || p.bead?.type === 'charm'),
         image: p.bead?.image || null
       })),
