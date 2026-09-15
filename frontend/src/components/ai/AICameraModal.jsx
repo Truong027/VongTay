@@ -357,6 +357,19 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
   const [trackingFeedback, setTrackingFeedback] = useState('Đang tìm cổ tay...');
   const [detectedWrist, setDetectedWrist] = useState(null);
 
+  // Smooth Snap-On Wear Animation State (Hiệu ứng trượt vòng và ôm vừa vặn cổ tay)
+  const [isWearingAnim, setIsWearingAnim] = useState(true);
+  const [wearAnimKey, setWearAnimKey] = useState(0);
+  const prevConfRef = useRef(0);
+
+  const triggerWearAnimation = () => {
+    setWearAnimKey(prev => prev + 1);
+    setIsWearingAnim(true);
+    setTimeout(() => {
+      setIsWearingAnim(false);
+    }, 900);
+  };
+
   const handlePointerDown = (e) => {
     if (e.button && e.button !== 0) return;
     setIsDraggingOverlay(true);
@@ -398,6 +411,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
       setArOffsetX(0);
       setArOffsetY(0);
       setArAngle(0);
+      triggerWearAnimation();
     }
   }, [customBracelet]);
 
@@ -506,14 +520,20 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
             setTrackingConfidence(conf);
             setTrackingFeedback(`Khóa cổ tay ${conf}% (YOLO Auto-Snap)`);
 
+            // Tự động kích hoạt animation đeo trượt vào tay khi khóa cổ tay thành công
+            if (prevConfRef.current < 55 && conf >= 70) {
+              triggerWearAnimation();
+            }
+            prevConfRef.current = conf;
+
             if (isAutoTracking) {
               const targetOffsetX = (normX - 0.5) * 220;
               const targetOffsetY = (normY - 0.5) * 190 + 5;
 
-              // Lọc êm ái EMA không bị giật, GIỮ NGUYÊN arSizeCm người dùng đã chọn
-              setArOffsetX(prev => Math.round(prev + (targetOffsetX - prev) * 0.22));
-              setArOffsetY(prev => Math.round(prev + (targetOffsetY - prev) * 0.22));
-              setArAngle(prev => Math.round(prev + (clampedAngle - prev) * 0.20));
+              // Lọc mượt EMA với float precision, không bị giật từng pixel
+              setArOffsetX(prev => Number((prev + (targetOffsetX - prev) * 0.20).toFixed(1)));
+              setArOffsetY(prev => Number((prev + (targetOffsetY - prev) * 0.20).toFixed(1)));
+              setArAngle(prev => Number((prev + (clampedAngle - prev) * 0.18).toFixed(1)));
             }
           } else {
             setTrackingConfidence(prev => Math.max(0, prev - 4));
@@ -1747,15 +1767,27 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     <span>{isAutoTracking ? '🤖 YOLO Khóa Cổ Tay' : '✋ Chỉnh Thủ Công / Kéo Tay'}</span>
                   </button>
 
-                  {/* Flip camera button */}
-                  <button
-                    type="button"
-                    onClick={toggleFacingMode}
-                    className="p-2.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm border border-white/20 transition-all shadow-md"
-                    title="Đổi camera trước / sau"
-                  >
-                    <RotateCw className="w-4 h-4" />
-                  </button>
+                  {/* Controls right: Ướm lại vòng & Đổi camera */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={triggerWearAnimation}
+                      className="px-2.5 py-1.5 rounded-full bg-black/65 hover:bg-black/85 text-amber-200 border border-amber-300/40 backdrop-blur-sm transition-all shadow-md flex items-center gap-1 text-[11px] font-semibold active:scale-95"
+                      title="Xem lại hiệu ứng trượt vòng và ôm vừa vặn cổ tay"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                      <span>Ướm Lại</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={toggleFacingMode}
+                      className="p-2 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-sm border border-white/20 transition-all shadow-md active:scale-95"
+                      title="Đổi camera trước / sau"
+                    >
+                      <RotateCw className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* AR Alignment Reticle (Khung định vị cổ tay) */}
@@ -1892,7 +1924,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                     const radius = baseRadius * depthFactor;
 
                     // Độ dẹp ngang theo góc nhìn phối cảnh (Foreshortening) khi hạt cuộn sang mép cổ tay
-                    const rxBead = radius * (0.75 + 0.25 * Math.cos(angle));
+                    const rxBead = radius * (0.55 + 0.45 * Math.cos(angle));
                     const ryBead = radius;
 
                     beadItems.push({
@@ -1905,6 +1937,7 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                       angle,
                       color: item.color || b.beadColor || '#FFFDF9',
                       index: i,
+                      isEdge: i === 0 || i === beadCount - 1,
                       isFlower: item.isFlower,
                       isPearl: item.isPearl,
                       isCrystal: item.isCrystal,
@@ -1918,14 +1951,53 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   // Đường cung ôm trước cổ tay (Front arc path ôm khít mu tay)
                   const frontArcPath = `M ${cx - rx} ${cy} C ${cx - rx * 0.60} ${cy + ry * 1.06}, ${cx + rx * 0.60} ${cy + ry * 1.06}, ${cx + rx} ${cy}`;
 
-                  // Đường dây luồn nhẹ ra sau cẳng tay ở 2 mép biên (tạo cảm giác vòng khép kín 360 độ quanh cổ tay)
-                  const leftWrapBack = `M ${cx - rx} ${cy} C ${cx - rx - 4} ${cy - ry * 0.35}, ${cx - rx + 14} ${cy - ry * 0.55}, ${cx - rx + 24} ${cy - ry * 0.60}`;
-                  const rightWrapBack = `M ${cx + rx} ${cy} C ${cx + rx + 4} ${cy - ry * 0.35}, ${cx + rx - 14} ${cy - ry * 0.55}, ${cx + rx - 24} ${cy - ry * 0.60}`;
+                  // Đường dây cước luồn bên trong các viên hạt (Nối chính xác qua tâm các hạt, ẩn khéo léo, TUYỆT ĐỐI KHÔNG CÒN 2 DẢI TRẮNG)
+                  const beadCordPath = beadItems.length > 1
+                    ? `M ${beadItems[0].x.toFixed(1)} ${beadItems[0].y.toFixed(1)} ` + beadItems.slice(1).map(bead => `L ${bead.x.toFixed(1)} ${bead.y.toFixed(1)}`).join(' ')
+                    : frontArcPath;
+
+                  // Bóng đổ tiếp xúc trực tiếp dưới hàng hạt lên da tay
+                  const contactShadowPath = beadCordPath;
 
                   return (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                       <svg viewBox="0 0 320 320" className="w-full h-full filter drop-shadow-xl">
                         <defs>
+                          {/* CSS Keyframes cho animation đeo trượt vào tay và charm đong đưa */}
+                          <style>{`
+                            @keyframes smoothWearSlide {
+                              0% {
+                                transform: translateY(-50px) scale(1.18);
+                                opacity: 0.15;
+                              }
+                              45% {
+                                transform: translateY(5px) scale(0.97);
+                                opacity: 0.95;
+                              }
+                              72% {
+                                transform: translateY(-2px) scale(1.02);
+                                opacity: 1;
+                              }
+                              100% {
+                                transform: translateY(0px) scale(1.0);
+                                opacity: 1;
+                              }
+                            }
+
+                            @keyframes charmWearSway {
+                              0% { transform: rotate(0deg); }
+                              30% { transform: rotate(-16deg); }
+                              60% { transform: rotate(10deg); }
+                              85% { transform: rotate(-4deg); }
+                              100% { transform: rotate(0deg); }
+                            }
+
+                            @keyframes snapRippleGlow {
+                              0% { transform: scale(0.92); opacity: 0; }
+                              35% { opacity: 0.75; }
+                              100% { transform: scale(1.15); opacity: 0; }
+                            }
+                          `}</style>
                           {/* Bóng đổ tiếp xúc trực tiếp lên da (Ambient Contact Shadow ôm sát da tay) */}
                           <filter id="skinContactBlur" x="-30%" y="-30%" width="160%" height="160%">
                             <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" />
@@ -1984,142 +2056,164 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                           </radialGradient>
                         </defs>
 
-                        {/* XOAY CHÍNH XÁC QUANH TRỌNG TÂM CỔ TAY (cx, cy) */}
-                        <g transform={`rotate(${arAngle} ${cx} ${cy})`}>
-                          {/* 1. LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA TAY (Ambient Contact Shadow) */}
-                          <path
-                            d={frontArcPath}
-                            fill="none"
-                            stroke="#180C05"
-                            strokeWidth={Math.max(6.5, rx * 0.22)}
-                            strokeLinecap="round"
-                            opacity="0.52"
-                            filter="url(#skinContactBlur)"
-                          />
+                        {/* XOAY VÀ THEO DÕI CỔ TAY VỚI TRANSITION MƯỢT NHƯ LỤA */}
+                        <g 
+                          transform={`rotate(${arAngle} ${cx} ${cy})`}
+                          style={{
+                            transformOrigin: `${cx}px ${cy}px`,
+                            transition: isDraggingOverlay ? 'none' : 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+                          }}
+                        >
+                          {/* NHÓM ANIMATION ĐEO VÀO TAY (SLIDE TỪ BÀN TAY XUỐNG VÀ CO ÔM KHÍT CỔ TAY) */}
+                          <g
+                            key={wearAnimKey}
+                            style={{
+                              transformOrigin: `${cx}px ${cy + ry * 0.4}px`,
+                              animation: isWearingAnim ? 'smoothWearSlide 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards' : 'none'
+                            }}
+                          >
+                            {/* Vòng ánh sáng lan tỏa nhẹ nhàng khi vòng chạm và ôm vào da tay */}
+                            {isWearingAnim && (
+                              <ellipse
+                                cx={cx}
+                                cy={cy + ry * 0.45}
+                                rx={rx * 1.12}
+                                ry={ry * 1.25}
+                                fill="none"
+                                stroke="#FDE2E4"
+                                strokeWidth="2"
+                                opacity="0.65"
+                                style={{
+                                  transformOrigin: `${cx}px ${cy + ry * 0.45}px`,
+                                  animation: 'snapRippleGlow 0.85s ease-out forwards'
+                                }}
+                              />
+                            )}
 
-                          {/* 2. DÂY LUỒN SAU Ở 2 BÊN MÉP (Wrap back) */}
-                          <path
-                            d={leftWrapBack}
-                            fill="none"
-                            stroke={b.cordColor || '#FFF8F0'}
-                            strokeWidth={Math.max(1.5, rx * 0.045)}
-                            opacity="0.38"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d={rightWrapBack}
-                            fill="none"
-                            stroke={b.cordColor || '#FFF8F0'}
-                            strokeWidth={Math.max(1.5, rx * 0.045)}
-                            opacity="0.38"
-                            strokeLinecap="round"
-                          />
+                            {/* 1. LỚP BÓNG ĐỔ TIẾP XÚC LÊN DA TAY (Ambient Contact Shadow ôm sát da tay) */}
+                            <path
+                              d={contactShadowPath}
+                              fill="none"
+                              stroke="#160905"
+                              strokeWidth={Math.max(5.5, rx * 0.20)}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              opacity="0.45"
+                              filter="url(#skinContactBlur)"
+                            />
 
-                          {/* 3. DÂY NỐI CUNG TRƯỚC */}
-                          <path
-                            d={frontArcPath}
-                            fill="none"
-                            stroke={b.cordColor || '#FFF8F0'}
-                            strokeWidth={Math.max(1.8, rx * 0.055)}
-                            strokeLinecap="round"
-                            opacity="0.95"
-                            filter="url(#beadDropShadow)"
-                          />
+                            {/* 2. DÂY CƯỚC LUỒN BÊN TRONG CÁC HẠT (Nối tâm hạt, ẩn kín, TUYỆT ĐỐI BỎ HOÀN TOÀN 2 DẢI TRẮNG) */}
+                            <path
+                              d={beadCordPath}
+                              fill="none"
+                              stroke={b.cordColor ? darkenColor(b.cordColor, 0.3) : '#756252'}
+                              strokeWidth={Math.max(1.2, rx * 0.032)}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              opacity="0.55"
+                            />
 
-                          {/* 4. TỪNG VIÊN HẠT & CHARM TRÊN CUNG TRƯỚC */}
-                          {beadItems.map((bead) => (
-                            <g key={bead.index}>
-                              {bead.isFlower ? (
-                                /* CHARM BÔNG HOA 5 CÁNH HỒNG PHẤN */
-                                <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  {[0, 1, 2, 3, 4].map((petalIdx) => {
-                                    const pRad = (petalIdx * 72 - 18) * (Math.PI / 180);
-                                    const px = Math.cos(pRad) * (bead.radius * 0.82);
-                                    const py = Math.sin(pRad) * (bead.radius * 0.82);
-                                    const pDeg = petalIdx * 72 - 18;
-                                    return (
-                                      <g key={petalIdx} transform={`translate(${px}, ${py}) rotate(${pDeg})`}>
-                                        <ellipse
-                                          cx="0"
-                                          cy="0"
-                                          rx={bead.rxBead * 0.65}
-                                          ry={bead.ryBead * 0.48}
-                                          fill="url(#sakuraPetalGrad)"
-                                          stroke="#FCA3B7"
-                                          strokeWidth="0.6"
-                                          filter="url(#beadDropShadow)"
-                                        />
-                                        <ellipse
-                                          cx="0"
-                                          cy="0"
-                                          rx={bead.rxBead * 0.38}
-                                          ry={bead.ryBead * 0.26}
-                                          fill="#FFF5F8"
-                                          opacity="0.85"
-                                        />
-                                      </g>
-                                    );
-                                  })}
-                                  <circle cx="0" cy="0" r={bead.radius * 0.40} fill="url(#sakuraCenterGrad)" stroke="#B8860B" strokeWidth="0.7" />
-                                  <circle cx={-bead.radius * 0.12} cy={-bead.radius * 0.12} r={bead.radius * 0.15} fill="#FFFFFF" opacity="0.95" />
-                                </g>
-                              ) : bead.isSpacer ? (
-                                /* KHOEN VÀNG ĐỆM 18K */
-                                <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
-                                  <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
-                                </g>
-                              ) : bead.isPearl ? (
-                                /* HẠT NGỌC TRAI TRẮNG BÓNG */
-                                <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                  <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.rxBead * 0.52} ry={bead.ryBead * 0.44} fill="#FFFFFF" opacity="0.55" />
-                                  <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.95" />
-                                </g>
-                              ) : bead.isCrystal ? (
-                                /* HẠT PHA LÊ TRONG SUỐT */
-                                <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
-                                  <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
-                                  <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
-                                </g>
-                              ) : (
-                                /* HẠT ĐÁ TỰ CHỌN (THẠCH ANH DÂU, NGỌC BÍCH, V.V...) */
-                                <g transform={`translate(${bead.x}, ${bead.y})`}>
-                                  <defs>
-                                    <radialGradient id={`dynBeadGrad-${bead.index}`} cx="32%" cy="28%" r="72%">
-                                      <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.88" />
-                                      <stop offset="38%" stopColor={bead.color} />
-                                      <stop offset="85%" stopColor={darkenColor(bead.color, 0.42)} />
-                                      <stop offset="100%" stopColor="#1C0E0A" stopOpacity="0.92" />
-                                    </radialGradient>
-                                  </defs>
-                                  <ellipse
-                                    cx="0"
-                                    cy="0"
-                                    rx={bead.rxBead}
-                                    ry={bead.ryBead}
-                                    fill={`url(#dynBeadGrad-${bead.index})`}
-                                    stroke="rgba(255,255,255,0.7)"
-                                    strokeWidth="0.8"
-                                    filter="url(#beadDropShadow)"
-                                  />
-                                  <ellipse cx={-bead.rxBead * 0.32} cy={-bead.ryBead * 0.32} rx={bead.rxBead * 0.32} ry={bead.ryBead * 0.28} fill="#FFFFFF" opacity="0.85" />
-                                  <ellipse cx={bead.rxBead * 0.25} cy={bead.ryBead * 0.25} rx={bead.rxBead * 0.20} ry={bead.ryBead * 0.18} fill="#FFFFFF" opacity="0.25" />
-                                </g>
-                              )}
-                            </g>
-                          ))}
+                            {/* 3. TỪNG VIÊN HẠT & CHARM TRÊN CUNG TRƯỚC (ÔM SÁT CỔ TAY, 2 HẠT BIÊN UỐN KHUẤT RA SAU) */}
+                            {beadItems.map((bead) => (
+                              <g key={bead.index} opacity={bead.isEdge ? 0.86 : 1.0}>
+                                {bead.isFlower ? (
+                                  /* CHARM BÔNG HOA 5 CÁNH HỒNG PHẤN */
+                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                    {[0, 1, 2, 3, 4].map((petalIdx) => {
+                                      const pRad = (petalIdx * 72 - 18) * (Math.PI / 180);
+                                      const px = Math.cos(pRad) * (bead.radius * 0.82);
+                                      const py = Math.sin(pRad) * (bead.radius * 0.82);
+                                      const pDeg = petalIdx * 72 - 18;
+                                      return (
+                                        <g key={petalIdx} transform={`translate(${px}, ${py}) rotate(${pDeg})`}>
+                                          <ellipse
+                                            cx="0"
+                                            cy="0"
+                                            rx={bead.rxBead * 0.65}
+                                            ry={bead.ryBead * 0.48}
+                                            fill="url(#sakuraPetalGrad)"
+                                            stroke="#FCA3B7"
+                                            strokeWidth="0.6"
+                                            filter="url(#beadDropShadow)"
+                                          />
+                                          <ellipse
+                                            cx="0"
+                                            cy="0"
+                                            rx={bead.rxBead * 0.38}
+                                            ry={bead.ryBead * 0.26}
+                                            fill="#FFF5F8"
+                                            opacity="0.85"
+                                          />
+                                        </g>
+                                      );
+                                    })}
+                                    <circle cx="0" cy="0" r={bead.radius * 0.40} fill="url(#sakuraCenterGrad)" stroke="#B8860B" strokeWidth="0.7" />
+                                    <circle cx={-bead.radius * 0.12} cy={-bead.radius * 0.12} r={bead.radius * 0.15} fill="#FFFFFF" opacity="0.95" />
+                                  </g>
+                                ) : bead.isSpacer ? (
+                                  /* KHOEN VÀNG ĐỆM 18K */
+                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                    <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#goldSpacerGrad)" stroke="#FFFFFF" strokeWidth="0.6" filter="url(#beadDropShadow)" />
+                                    <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.32} fill="#FFFFFF" opacity="0.9" />
+                                  </g>
+                                ) : bead.isPearl ? (
+                                  /* HẠT NGỌC TRAI TRẮNG BÓNG */
+                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                    <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#pearlLusterGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
+                                    <ellipse cx={-bead.radius * 0.18} cy={-bead.radius * 0.18} rx={bead.rxBead * 0.52} ry={bead.ryBead * 0.44} fill="#FFFFFF" opacity="0.55" />
+                                    <circle cx={-bead.radius * 0.32} cy={-bead.radius * 0.32} r={bead.radius * 0.28} fill="#FFFFFF" opacity="0.95" />
+                                  </g>
+                                ) : bead.isCrystal ? (
+                                  /* HẠT PHA LÊ TRONG SUỐT */
+                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                    <ellipse cx="0" cy="0" rx={bead.rxBead} ry={bead.ryBead} fill="url(#crystalGrad)" stroke="#FFFFFF" strokeWidth="0.8" filter="url(#beadDropShadow)" />
+                                    <circle cx={-bead.radius * 0.3} cy={-bead.radius * 0.3} r={bead.radius * 0.3} fill="#FFFFFF" opacity="0.9" />
+                                    <circle cx={bead.radius * 0.2} cy={bead.radius * 0.2} r={bead.radius * 0.35} fill="#FFFFFF" opacity="0.3" />
+                                  </g>
+                                ) : (
+                                  /* HẠT ĐÁ TỰ CHỌN (THẠCH ANH DÂU, NGỌC BÍCH, V.V...) */
+                                  <g transform={`translate(${bead.x}, ${bead.y})`}>
+                                    <defs>
+                                      <radialGradient id={`dynBeadGrad-${bead.index}`} cx="32%" cy="28%" r="72%">
+                                        <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.88" />
+                                        <stop offset="38%" stopColor={bead.color} />
+                                        <stop offset="85%" stopColor={darkenColor(bead.color, 0.42)} />
+                                        <stop offset="100%" stopColor="#1C0E0A" stopOpacity="0.92" />
+                                      </radialGradient>
+                                    </defs>
+                                    <ellipse
+                                      cx="0"
+                                      cy="0"
+                                      rx={bead.rxBead}
+                                      ry={bead.ryBead}
+                                      fill={`url(#dynBeadGrad-${bead.index})`}
+                                      stroke="rgba(255,255,255,0.7)"
+                                      strokeWidth="0.8"
+                                      filter="url(#beadDropShadow)"
+                                    />
+                                    <ellipse cx={-bead.rxBead * 0.32} cy={-bead.ryBead * 0.32} rx={bead.rxBead * 0.32} ry={bead.ryBead * 0.28} fill="#FFFFFF" opacity="0.85" />
+                                    <ellipse cx={bead.rxBead * 0.25} cy={bead.ryBead * 0.25} rx={bead.rxBead * 0.20} ry={bead.ryBead * 0.18} fill="#FFFFFF" opacity="0.25" />
+                                  </g>
+                                )}
+                              </g>
+                            ))}
 
-                          {/* 5. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NỐI DƯỚI ĐÁY HẠT SỐ 5, ĐONG ĐƯA THEO TRỌNG LỰC) */}
-                          {b.selectedCharm && !b.isFloralModel && (
-                            <g transform={`translate(${cx}, ${cy + ry + 1}) rotate(${-arAngle * 0.75})`}>
-                              {/* Jump ring connector nhỏ nhắn tinh xảo */}
-                              <circle cx="0" cy="0" r="2.2" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
-                              <line x1="0" y1="1.5" x2="0" y2="5" stroke="#D4AF37" strokeWidth="1.3" />
-                              {renderArCharmSvg(b.selectedCharm, Math.max(0.55, Math.min(0.85, (rx / 65) * 0.70)))}
-                            </g>
-                          )}
+                            {/* 4. CHARM ĐÍNH Ở TRUNG TÂM MẶT TRƯỚC (NỐI DƯỚI ĐÁY HẠT SỐ 5, ĐONG ĐƯA KHI ĐEO VÀO TAY) */}
+                            {b.selectedCharm && !b.isFloralModel && (
+                              <g 
+                                transform={`translate(${cx}, ${cy + ry + 1}) rotate(${-arAngle * 0.75})`}
+                                style={{
+                                  transformOrigin: '0px 0px',
+                                  animation: isWearingAnim ? 'charmWearSway 1.05s cubic-bezier(0.25, 1, 0.5, 1)' : 'none'
+                                }}
+                              >
+                                {/* Jump ring connector nhỏ nhắn tinh xảo */}
+                                <circle cx="0" cy="0" r="2.2" fill="none" stroke="#D4AF37" strokeWidth="1.2" />
+                                <line x1="0" y1="1.5" x2="0" y2="5" stroke="#D4AF37" strokeWidth="1.3" />
+                                {renderArCharmSvg(b.selectedCharm, Math.max(0.55, Math.min(0.85, (rx / 65) * 0.70)))}
+                              </g>
+                            )}
+                          </g>
                         </g>
                       </svg>
                     </div>
@@ -2152,7 +2246,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                       <button
                         key={item.id || idx}
                         type="button"
-                        onClick={() => setArSelectedBracelet(idx)}
+                        onClick={() => {
+                          setArSelectedBracelet(idx);
+                          triggerWearAnimation();
+                        }}
                         className={`p-2.5 rounded-2xl border text-left transition-all relative ${
                           isSelected
                             ? 'border-[#B86244] bg-[#FBEFEA] ring-2 ring-[#B86244]/40 shadow-sm'
@@ -2193,7 +2290,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setArSizeCm(14.5)}
+                    onClick={() => {
+                      setArSizeCm(14.5);
+                      triggerWearAnimation();
+                    }}
                     className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
                       arSizeCm <= 14.8
                         ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
@@ -2206,7 +2306,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                   <button
                     type="button"
-                    onClick={() => setArSizeCm(userCustomSize || 15.5)}
+                    onClick={() => {
+                      setArSizeCm(userCustomSize || 15.5);
+                      triggerWearAnimation();
+                    }}
                     className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
                       Math.abs(arSizeCm - (userCustomSize || 15.5)) < 0.4
                         ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
@@ -2219,7 +2322,10 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
 
                   <button
                     type="button"
-                    onClick={() => setArSizeCm(17.5)}
+                    onClick={() => {
+                      setArSizeCm(17.5);
+                      triggerWearAnimation();
+                    }}
                     className={`py-1.5 px-2 rounded-xl text-[11px] font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 ${
                       arSizeCm >= 17.2
                         ? 'bg-[#B86244] text-white border-[#B86244] shadow-xs'
@@ -2324,19 +2430,30 @@ export default function AICameraModal({ isOpen, onClose, onApplyCustomPreset, in
                   <p className="text-[11px] text-[#8C8276]">
                     💡 <strong>Mẹo:</strong> Bạn có thể chạm và kéo trực tiếp trên khung camera để di chuyển vòng tay!
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setArOffsetX(0);
-                      setArOffsetY(0);
-                      setArAngle(0);
-                      setIsAutoTracking(true);
-                      setTrackingFeedback('Đang tự động căn lại vị trí...');
-                    }}
-                    className="text-[11px] font-semibold text-[#B86244] hover:underline px-2 py-1 shrink-0"
-                  >
-                    🔄 Đặt Lại Trung Tâm
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={triggerWearAnimation}
+                      className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline px-2 py-1 shrink-0 flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-amber-600" />
+                      <span>✨ Thử Đeo Lại Vòng</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setArOffsetX(0);
+                        setArOffsetY(0);
+                        setArAngle(0);
+                        setIsAutoTracking(true);
+                        setTrackingFeedback('Đang tự động căn lại vị trí...');
+                        triggerWearAnimation();
+                      }}
+                      className="text-[11px] font-semibold text-[#B86244] hover:underline px-2 py-1 shrink-0"
+                    >
+                      🔄 Đặt Lại Trung Tâm
+                    </button>
+                  </div>
                 </div>
               </div>
 
